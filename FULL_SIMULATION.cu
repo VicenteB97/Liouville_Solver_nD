@@ -35,7 +35,7 @@ __host__ int _SL_PDF_ITERATIONS(std::vector<double>* store_PDFs,
 								const float& deltaT,
 								const int& ReinitSteps);
 
-//---------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------- //
 
 /// <summary>
 /// This function computes the evolution of an initial PDF (defined in "Parameter_distributions.cuh")
@@ -478,9 +478,9 @@ __host__ int PDF_ITERATIONS(std::vector<double>* store_PDFs,
 	int Adapt_Points, Total_Particles, MaxNeighborNum;
 
 	const double disc_X = (H_Mesh[1].position[0] - H_Mesh[0].position[0]);	// H_Mesh discretization size
-	const double search_radius = 7 * disc_X;								// max radius to search ([6,8] appears to be optimal)
+	const double search_radius = 4.5 * disc_X;								// max radius to search ([4,6] appears to be optimal)
 
-	const int	 max_steps = 5000;		 // max steps at the Conjugate Gradient (CG) algorithm
+	const int	 max_steps = 1000;		 // max steps at the Conjugate Gradient (CG) algorithm
 	const double in_tolerance = pow(10, -8); // CG stop tolerance
 
 	thrust::device_vector<int>		GPU_Index_array;
@@ -517,8 +517,8 @@ __host__ int PDF_ITERATIONS(std::vector<double>* store_PDFs,
 		}
 
 // 1.- Initial step Adaptive H_Mesh Refinement. First store the initial PDF with AMR performed
-		ADAPT_MESH_REFINEMENT(*H_PDF, &AdaptPDF, H_Mesh, &AdaptGrid, LvlFine, LvlCoarse, PtsPerDim);
-		// ADAPT_MESH_REFINEMENT_nD(*H_PDF, &AdaptPDF, H_Mesh, &AdaptGrid, LvlFine, LvlCoarse, PtsPerDim);
+		// ADAPT_MESH_REFINEMENT(*H_PDF, &AdaptPDF, H_Mesh, &AdaptGrid, LvlFine, LvlCoarse, PtsPerDim);
+		ADAPT_MESH_REFINEMENT_nD(*H_PDF, &AdaptPDF, H_Mesh, &AdaptGrid, LvlFine, LvlCoarse, PtsPerDim);
 
 	// 1.1.- COMPUTE THE TRANSFORMATION OF THE PDF (IF THERE IS ONE)
 		if (time_vector[j].impulse && (time_vector[j].samples[0] > 0 || time_vector[j].samples[1] > 0)) {
@@ -571,7 +571,7 @@ __host__ int PDF_ITERATIONS(std::vector<double>* store_PDFs,
 			AdaptGrid.clear();
 			AdaptPDF.clear();
 
-			MaxNeighborNum = (int)fminf(100, Adapt_Points);				// maximum neighbors to search
+			MaxNeighborNum = (int)fminf(200, Adapt_Points);				// maximum neighbors to search
 
 
 // ------------------ RESIZING OF THE INTERPOLATION MATRIX ------------------ //
@@ -896,9 +896,9 @@ __host__ int _SL_PDF_ITERATIONS(std::vector<double>* store_PDFs,
 	double Iteration_information[2];
 
 	const double disc_X = (H_Mesh[1].position[0] - H_Mesh[0].position[0]);	// H_Mesh discretization size
-	const double search_radius = 7 * disc_X;								// max radius to search ([6,8] appears to be optimal)
+	const double search_radius = 5 * disc_X;								// max radius to search ([6,8] appears to be optimal)
 
-	const int	 max_steps = 5000;				// max steps at the Conjugate Gradient (CG) algorithm
+	const int	 max_steps = 1000;				// max steps at the Conjugate Gradient (CG) algorithm
 	const double in_tolerance = pow(10, -8);  	// CG stop tolerance
 
 	thrust::device_vector<int>		GPU_Index_array;

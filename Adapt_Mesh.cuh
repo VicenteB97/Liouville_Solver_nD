@@ -16,9 +16,9 @@ inline unsigned int positive_rem(const int a, const int b){
 } 
 
 inline void _1D_WVLET(double& s1, double& s2){
-	double aux;
-	aux = 0.5*(s1+s2);
-	s2 	= s1-s2;
+
+	double aux = 0.5*(s1 + s2);
+	s2 	= s1 - s2;
 	s1 	= aux;
 }
 
@@ -62,7 +62,7 @@ std::vector<int> _nD_MultiLvlWavelet(const thrust::host_vector<double> PDF, cons
 	for (int k = 0; k < LvlFine - LvlCoarse - 1; k++) {
 
 		int rescaling 		= (int)pow(2, k + 1);
-		int Points_at_level = (int)pow(2, (LvlFine - (k + 1)));
+		int Points_at_level = PtsPerDim / rescaling;
 
 		// What cube am I at?
 		for (unsigned int i = 0; i < pow (Points_at_level, DIMENSIONS); i++){
@@ -70,7 +70,7 @@ std::vector<int> _nD_MultiLvlWavelet(const thrust::host_vector<double> PDF, cons
 			// This way we can obtain the global index of the cube vertex from the cube vertex position
 			int ii = 0; 
 			for (unsigned int j = 0; j < DIMENSIONS; j++){
-				ii += floor(positive_rem(i, powf(Points_at_level, j + 1)) / powf(Points_at_level, j)) * rescaling;
+				ii += floor(positive_rem(i, powf(Points_at_level, j + 1)) / powf(Points_at_level, j)) * pow(PtsPerDim, j) * rescaling;
 			}
 
 			// Create your dyadic cube
@@ -116,7 +116,6 @@ void ADAPT_MESH_REFINEMENT_nD(const thrust::host_vector<double>& H_PDF, std::vec
 }
 
 // ----------------- THE FOLLOWING FUNCTIONS PERFORM THE WAVELET-BASED AMR ------------------//
-
 /// <summary>
 /// 
 /// </summary>
@@ -147,7 +146,7 @@ std::vector<MeshId> MultiLvlWavelet(const thrust::host_vector<double> PDF, const
 				aux_signal[2] = PDF[ii + PtsPerDim * (jj + rescaling)];
 				aux_signal[3] = PDF[ii + rescaling + PtsPerDim * (jj + rescaling)];
 
-				ND_WAVELET(aux_signal);
+				ND_WAVELET(aux_signal); // this works for sure
 
 				if (k == LvlFine - LvlCoarse - 1) {
 					out.push_back({ ii, jj });
@@ -157,10 +156,10 @@ std::vector<MeshId> MultiLvlWavelet(const thrust::host_vector<double> PDF, const
 				if (abs(aux_signal[1]) > tol) {
 					out.push_back({ ii + rescaling , jj });
 				}
-				else if (abs(aux_signal[2]) > tol) {
+				if (abs(aux_signal[2]) > tol) {
 					out.push_back({ ii , jj + rescaling });
 				}
-				else if (abs(aux_signal[3]) > tol) {
+				if (abs(aux_signal[3]) > tol) {
 					out.push_back({ ii + rescaling , jj + rescaling });
 				}
 			}

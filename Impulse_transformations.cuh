@@ -103,8 +103,8 @@ int IMPULSE_TRANSFORM_PDF(	const gridPoint*				MESH,			// Fixed Mesh
 	
 	// 2.1. - Find near particles
 	const double	disc_X						= (MESH[1].position[0] - MESH[0].position[0]);
-	const double	search_radius				= 7 * disc_X;									// max radius to search
-	const int		MaxNeighborNum				= fminf(150, Adapt_Points);
+	const double	search_radius				= 4 * disc_X;									// max radius to search
+	const int		MaxNeighborNum				= fminf(200, Adapt_Points);
 	double			Iteration_information[2]	= { 0,0 };
 
 	thrust::device_vector<int>		GPU_Index_array;
