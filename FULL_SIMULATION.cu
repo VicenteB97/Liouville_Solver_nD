@@ -173,7 +173,7 @@ int PDF_EVOLUTION() {
 
 	// --------------------------------------------------------------------------------------------
 	// --------------------------------------------------------------------------------------------
-	// 2.- INITIAL PDF biuld up
+	// 2.- INITIAL PDF build up
 	thrust::host_vector<double> H_PDF(Grid_Nodes);	 // PDF values at the fixed, high-res grid (CPU)
 
 	double IC_dist_params[DIMENSIONS * 2];
@@ -247,9 +247,9 @@ int PDF_EVOLUTION() {
 	else {
 		// GOOD:
 		// - Easier to scale to higher dimensions/samples
-		// - More GPU-friendly
+		// - (Can be) more GPU-friendly
 		// - Several ideas to make it much better
-		//		- Tree structure for adapt. points
+		//		- Tree structure for particle search
 		//		- Conservative scheme is done by sparse matrix multiplication
 		// - Ideas are closer to reality
 		// - Handles critical points naturally
@@ -896,7 +896,7 @@ __host__ int _SL_PDF_ITERATIONS(std::vector<double>* store_PDFs,
 	double Iteration_information[2];
 
 	const double disc_X = (H_Mesh[1].position[0] - H_Mesh[0].position[0]);	// H_Mesh discretization size
-	const double search_radius = 5 * disc_X;								// max radius to search ([6,8] appears to be optimal)
+	const double search_radius = 4.5 * disc_X;								// max radius to search ([6,8] appears to be optimal)
 
 	const int	 max_steps = 1000;				// max steps at the Conjugate Gradient (CG) algorithm
 	const double in_tolerance = pow(10, -8);  	// CG stop tolerance
@@ -938,7 +938,7 @@ __host__ int _SL_PDF_ITERATIONS(std::vector<double>* store_PDFs,
 		std::cout << "/-------------------------------------------------------------------/\n";
 
 		// 1.- Initial step Adaptive H_Mesh Refinement. First store the initial PDF with AMR performed
-		ADAPT_MESH_REFINEMENT(*H_PDF, &AdaptPDF, H_Mesh, &AdaptGrid, LvlFine, LvlCoarse, PtsPerDim);
+		ADAPT_MESH_REFINEMENT_nD(*H_PDF, &AdaptPDF, H_Mesh, &AdaptGrid, LvlFine, LvlCoarse, PtsPerDim);
 
 		Adapt_Points = AdaptGrid.size();
 

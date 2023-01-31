@@ -3,14 +3,7 @@
 
 #include "Classes.cuh"
 
-// We'll optimize the AMR for 1,2,3 dimensions and then leave the complex part for larger dimensions
-
-class MeshId {
-public:
-	int indeces[DIMENSIONS];
-};
-
-// ---------------------- FUNCTIONS FOR GRADIENT - BASED AMR ---------------------- //
+// ---------------------- FUNCTIONS FOR General Dimension AMR ---------------------- //
 inline unsigned int positive_rem(const int a, const int b){
 	return (a % b + b) % b;
 } 
@@ -52,7 +45,6 @@ void ND_WAVELET(std::vector<double>& cube){ // THIS WORKS !!!
 }
 
 std::vector<int> _nD_MultiLvlWavelet(const thrust::host_vector<double> PDF, const int LvlFine, const int LvlCoarse, const double tol, const int PtsPerDim) { // Extending the simple Haar wavelet transform to a multi-level transform
-
 	std::vector<int> 	out;										// output
 	std::vector<double> aux_signal 		(pow(2, DIMENSIONS));		// auxiliary vector to hold our dyadic cube entries
 	std::vector<int> 	cube_indeces 	(pow(2, DIMENSIONS));		// auxiliary vector to hold our dyadic cube indeces
@@ -105,96 +97,12 @@ std::vector<int> _nD_MultiLvlWavelet(const thrust::host_vector<double> PDF, cons
 
 void ADAPT_MESH_REFINEMENT_nD(const thrust::host_vector<double>& H_PDF, std::vector<double>* AdaptPDF, const gridPoint* H_Mesh, std::vector<gridPoint>* AdaptGrid, const int LvlFine, const int LvlCoarse, const int PtsPerDim) {
 	// Final AMR procedure
-
-	std::vector<int> Grid = _nD_MultiLvlWavelet(H_PDF, LvlFine, LvlCoarse, pow(10, -5), PtsPerDim);
+	std::vector<int> Grid = _nD_MultiLvlWavelet(H_PDF, LvlFine, LvlCoarse, powf(50, -4), PtsPerDim);
 	int g_length = Grid.size();
 
 	for (int i = 0; i < g_length; i++) {
 		AdaptGrid->push_back(H_Mesh[Grid[i]]);
-		AdaptPDF ->push_back(H_PDF[Grid[i]]);
+		AdaptPDF ->push_back(H_PDF [Grid[i]]);
 	}
 }
-
-// ----------------- THE FOLLOWING FUNCTIONS PERFORM THE WAVELET-BASED AMR ------------------//
-/// <summary>
-/// 
-/// </summary>
-/// <param name="PDF"></param>
-/// <param name="LvlFine"></param>
-/// <param name="LvlCoarse"></param>
-/// <param name="tol"></param>
-/// <param name="PtsPerDim"></param>
-/// <returns></returns>
-std::vector<MeshId> MultiLvlWavelet(const thrust::host_vector<double> PDF, const int LvlFine, const int LvlCoarse, const double tol, const int PtsPerDim) { // Extending the simple Haar wavelet transform to a multi-level transform
-
-	std::vector<MeshId> out;
-	std::vector<double> aux_signal(pow(2, DIMENSIONS));
-
-	for (int k = 1; k < LvlFine - LvlCoarse; k++) {
-		int rescaling = pow(2, k - 1);
-
-		for (int j = 0; j < PtsPerDim / (2 * rescaling); j++) {
-
-			int jj = 2 * j * rescaling;
-
-			for (int i = 0; i < PtsPerDim / (2 * rescaling); i++) {
-
-				int ii = 2 * i * rescaling;
-
-				aux_signal[0] = PDF[ii + PtsPerDim * jj];
-				aux_signal[1] = PDF[ii + rescaling + PtsPerDim * jj];
-				aux_signal[2] = PDF[ii + PtsPerDim * (jj + rescaling)];
-				aux_signal[3] = PDF[ii + rescaling + PtsPerDim * (jj + rescaling)];
-
-				ND_WAVELET(aux_signal); // this works for sure
-
-				if (k == LvlFine - LvlCoarse - 1) {
-					out.push_back({ ii, jj });
-				}
-					
-				// generalize this!!!
-				if (abs(aux_signal[1]) > tol) {
-					out.push_back({ ii + rescaling , jj });
-				}
-				if (abs(aux_signal[2]) > tol) {
-					out.push_back({ ii , jj + rescaling });
-				}
-				if (abs(aux_signal[3]) > tol) {
-					out.push_back({ ii + rescaling , jj + rescaling });
-				}
-			}
-		}
-	}
-	return out;
-}
-
-/// <summary>
-/// @brief This function returns the grid nodes that are "relevant enough" according to the Haar wavelet transform.
-/// </summary>
-/// <param name="H_PDF"> - PDF values at the grid </param>
-/// <param name="AdaptPDF"> - PDF values at the relevant mesh points</param>
-/// <param name="H_Mesh"> - Fixed, high-res. grid </param>
-/// <param name="AdaptGrid"> - Returned, relevant grid nodes </param>
-/// <param name="Grid"> - Not really valuable, just to fill the other arrays </param>
-/// <param name="LvlFine"> - Finest level in the wavelet transform </param>
-/// <param name="LvlCoarse"> - Coarsest level </param>
-/// <param name="PtsPerDim"> - Poitns per dimension (2^LvlFine)</param>
-void ADAPT_MESH_REFINEMENT(const thrust::host_vector<double>& H_PDF, std::vector<double>* AdaptPDF, const gridPoint* H_Mesh, std::vector<gridPoint>* AdaptGrid, const int LvlFine, const int LvlCoarse, const int PtsPerDim) {
-	// Final AMR procedure
-
-	std::vector<MeshId> Grid = MultiLvlWavelet(H_PDF, LvlFine, LvlCoarse, pow(10, -5), PtsPerDim);
-	int g_length = Grid.size();
-
-	for (int i = 0; i < g_length; i++) {
-
-		// Re-write this for the general-dimensional case
-
-		int ii = Grid[i].indeces[0];
-		int jj = Grid[i].indeces[1];
-
-		AdaptGrid->push_back(H_Mesh[ii + PtsPerDim * jj]);
-		AdaptPDF ->push_back(H_PDF[ ii + PtsPerDim * jj]);
-	}
-}
-
 #endif
