@@ -5,7 +5,6 @@
 #include "Adapt_Mesh.cuh"
 #include "Mat_Ops.cuh"
 #include "Impulse_transformations.cuh"
-#include "CSRS_Search.cuh"
 
 #include "Debugging.cuh"
 
@@ -150,21 +149,26 @@ int PDF_EVOLUTION() {
 	// ----------------------------------------------------------------------------------------------- //
 	// ----------------------------------------------------------------------------------------------- //
 	// ----------------------------------------------------------------------------------------------- //
+	int Random_Samples = 1;
+	for (unsigned int i = 0; i < PARAM_DIMENSIONS; i++){
+		Random_Samples *= n_samples[i];
+	}
 
-	const int Random_Samples = n_samples[0] * n_samples[1];	// Total Samples
-
-	std::vector<Param_vec>	Parameter_Mesh;					// Full parameter array
-	double Dist_Params[PARAM_DIMENSIONS * 2];
+	std::vector<Param_vec>	Parameter_Mesh(Random_Samples);					// Full parameter array
+	double 					Dist_Params[PARAM_DIMENSIONS * 2];
+	char 					Dist_Names[PARAM_DIMENSIONS];
 
 	// 1st RV mean and variance
+	Dist_Names[0]  = 'N';
 	Dist_Params[0] = 0.2;
 	Dist_Params[1] = 0.02;
 
 	// 2nd RV mean and variance
+	Dist_Names[1]  = 'N';
 	Dist_Params[2] = 3;
 	Dist_Params[3] = 0.3;
 
-	RANDOMIZE(n_samples, Random_Samples, &Parameter_Mesh, Dist_Params);		// Create the random parameter H_Mesh
+	RANDOMIZE(n_samples, Random_Samples, &Parameter_Mesh, Dist_Params, Dist_Names);	
 
 	std::cout << "Total number of random samples: " << Random_Samples << ".\n";
 
@@ -616,66 +620,7 @@ __host__ int PDF_ITERATIONS(std::vector<double>* store_PDFs,
 
 			if (new_restart_mthd) {
 
-				// CSRS is very fast but extremely memory intensive!! Not good for my GPU :(
-
-				auto start_2 = std::chrono::high_resolution_clock::now();
-
-				// Here, we're going to call the CSRS algorithm!
-				// Query points		= GPU_Mesh;
-				// Reference points	= GPU_Particle Position;
-				// We have to make an index translator (from our indexing to the "flatten" version of the CSRS algorithm!)
-
-				thrust::host_vector<int>	Search_idxs;
-				thrust::host_vector<float>	Search_distances;
-				thrust::host_vector<int>	Search_neighborNum;
-
-				// PREPARE CSRS_QUERY POINTS (GRID)
-				gridPoint* CPU_Part_Position = new gridPoint[Total_Particles];
-				thrust::copy(GPU_Part_Position.begin(), GPU_Part_Position.end(), &CPU_Part_Position[0]);
-				float* CSRS_query = new float[DIMENSIONS * Grid_Nodes];
-				IDX_TRANSLATION_Query(H_Mesh, CSRS_query, Grid_Nodes);
-
-
-				// PREPARE CSRS_DATA POINTS (PARTICLES)
-				std::vector<float> vec_CSRS_data;
-				// int Final_CSRS_Total_Points = 0;
-				IDX_TRANSLATION_Data(CPU_Part_Position, &vec_CSRS_data, Total_Particles);
-				float* CSRS_data = new float[DIMENSIONS * Total_Particles];
-				std::copy(vec_CSRS_data.begin(), vec_CSRS_data.end(), &CSRS_data[0]);
-
-				// CALL CSRS
-				int _CSRS_MaxNeighborNum = 350;
-				double effective_query_radius = 2 * search_radius;	// extended radius?
-
-				_CSRS_GeneralSearch(CSRS_data, Total_Particles, CSRS_query, Grid_Nodes, effective_query_radius, _CSRS_MaxNeighborNum, &Search_idxs, &Search_distances, &Search_neighborNum);
-
-				thrust::device_vector<int>		GPU_Search_idxs = Search_idxs;
-				thrust::device_vector<float>	GPU_Search_distances = Search_distances;
-				thrust::device_vector<int>		GPU_Search_neighborNum = Search_neighborNum;
-
-				// Matrix Multiplication
-				_CSRS_MATRIX_VECTOR_MULTIPLICATION << < Blocks, Threads >> > (raw_pointer_cast(&GPU_PDF[0]), raw_pointer_cast(&GPU_lambdas[0]), raw_pointer_cast(&GPU_Search_idxs[0]),
-					raw_pointer_cast(&GPU_Search_distances[0]), Grid_Nodes, raw_pointer_cast(&GPU_Search_neighborNum[0]), _CSRS_MaxNeighborNum, Adapt_Points, raw_pointer_cast(&GPU_Parameter_Mesh[0]), search_radius);
-				gpuError_Check(cudaDeviceSynchronize());
-
-				auto end_2 = std::chrono::high_resolution_clock::now();
-
-				std::chrono::duration<float> duration_2 = end_2 - start_2;
-				printf("It took %.4f seconds\n", duration_2.count());
-
-				// clean up 		
-				// IS THIS NECESSARY?
-				Search_idxs.clear();
-				Search_distances.clear();
-				Search_neighborNum.clear();
-
-				// IS THIS NECESSARY?
-				delete[] CSRS_data;
-				delete[] CSRS_query;
-				delete[] CPU_Part_Position;
-
-				// IS THIS NECESSARY?
-				vec_CSRS_data.clear();
+				// FILL UP WITH SOMETHING...SOMEDAY
 			}
 			else {
 

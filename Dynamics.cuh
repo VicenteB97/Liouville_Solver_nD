@@ -12,9 +12,10 @@ __device__ gridPoint VECTOR_FIELD(gridPoint X, double t, const Param_vec paramet
 	// DESCRIPTION: UNFORCED DUFFING OSCILLATOR
 	// parameter[0] = Xi
 	// parameter[1] = Lambda
+	// parameter[2] = Forcing
 
 	output.position[0] = X.position[1];
-	output.position[1] = -2 * parameter.sample_vec[0] * X.position[1] - X.position[0] - parameter.sample_vec[1] * pow(X.position[0], 3);
+	output.position[1] = -2 * parameter.sample_vec[0] * X.position[1] - X.position[0] - parameter.sample_vec[1] * pow(X.position[0], 3); // + parameter.sample_vec[2]; for adding external forcing
 
 	return output;
 }

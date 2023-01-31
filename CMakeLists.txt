@@ -34,20 +34,12 @@ add_library(${LIB_NAME} STATIC
 FULL_SIMULATION.cu
 Adapt_Mesh.cuh
 Classes.cuh
-CSRS_Search.cuh
 Debugging.cuh
 Dynamics.cuh
-Global_Declarations.cuh
 Impulse_Transformations.cuh
 Mat_Ops.cuh
 Parameter_distributions.cuh
-Simulation_parameters.cuh
-SRStree.cpp
-SRStree.h
-SRStree_CPU.cpp
-SRStree_CPU.h
-SRStree_GPU.cu
-SRStree_GPU.h)
+Simulation_parameters.cuh)
 
 target_include_directories(${LIB_NAME} PUBLIC
     "./"

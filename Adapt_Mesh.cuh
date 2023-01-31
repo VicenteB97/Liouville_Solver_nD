@@ -4,10 +4,6 @@
 #include "Classes.cuh"
 
 // ---------------------- FUNCTIONS FOR General Dimension AMR ---------------------- //
-inline unsigned int positive_rem(const int a, const int b){
-	return (a % b + b) % b;
-} 
-
 inline void _1D_WVLET(double& s1, double& s2){
 
 	double aux = 0.5*(s1 + s2);
@@ -97,7 +93,10 @@ std::vector<int> _nD_MultiLvlWavelet(const thrust::host_vector<double> PDF, cons
 
 void ADAPT_MESH_REFINEMENT_nD(const thrust::host_vector<double>& H_PDF, std::vector<double>* AdaptPDF, const gridPoint* H_Mesh, std::vector<gridPoint>* AdaptGrid, const int LvlFine, const int LvlCoarse, const int PtsPerDim) {
 	// Final AMR procedure
-	std::vector<int> Grid = _nD_MultiLvlWavelet(H_PDF, LvlFine, LvlCoarse, powf(50, -4), PtsPerDim);
+
+	double tolerance = powf(50,-4);
+
+	std::vector<int> Grid = _nD_MultiLvlWavelet(H_PDF, LvlFine, LvlCoarse, tolerance, PtsPerDim);
 	int g_length = Grid.size();
 
 	for (int i = 0; i < g_length; i++) {

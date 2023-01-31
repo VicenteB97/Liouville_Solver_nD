@@ -1,6 +1,7 @@
 ﻿#include <iostream>
+#include "cuda_runtime.h"
+#include "device_launch_parameters.h"
 
-#include "Global_Declarations.cuh"
 #include "config.hpp"
 
 int PDF_EVOLUTION();

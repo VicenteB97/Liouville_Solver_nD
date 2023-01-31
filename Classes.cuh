@@ -1,14 +1,43 @@
 #ifndef __CLASSES_CUH__
 #define __CLASSES_CUH__
+#include "cuda_runtime.h"
+#include "device_launch_parameters.h"
 
-#include "Global_Declarations.cuh"
+#include <fstream>
+#include <vector>
+#include <cmath>
+#include <numeric>
+#include <algorithm>
 
+#include <thrust/host_vector.h>
+#include <thrust/device_vector.h>
+#include <thrust/reduce.h>
+#include <thrust/execution_policy.h>
+#include <thrust/functional.h>
+#include <thrust/transform.h>
+#include <thrust/fill.h>
+
+#include <chrono>
+
+#define DIMENSIONS 2		
+#define PARAM_DIMENSIONS 2
+#define THREADS_P_BLK 512
+
+// This is for CUDA built-in functions error handling
+#define gpuError_Check(ans) {gpuAssert((cudaError_t) ans, __FILE__, __LINE__);}
+
+inline void gpuAssert (cudaError_t code, const char *file, int line, bool abort = true){
+if (code != cudaSuccess) {
+		fprintf(stderr, "GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
+		if (abort) exit(code);
+	}
+}
 
 //----------------- CLASSES USED ---------------------------------
 //----------------------------------------------------------------
 
 // Grid points----------------------------------------------------
-class gridPoint {
+class gridPoint { // maybe this should be re-thought
 public:
 	double position[DIMENSIONS];
 
@@ -79,6 +108,11 @@ public:
 //------------------ FUNCTIONS TO BE USED ELSEWHERE IN THE CODE------------
 //-------------------------------------------------------------------------
 
+// Computing the mod of two numbers (AVOIDING NEGATIVE REMAINDERS)
+inline unsigned int positive_rem(const int a, const int b){
+	return (a % b + b) % b;
+} 
+
 /// <summary>
 /// Computes euclidean distance between two points in space
 /// </summary>
@@ -110,41 +144,6 @@ __device__ gridPoint Mult_by_Scalar(double scalar, gridPoint Point) {
 	}
 
 	return out;
-}
-
-
-// THESE FUNCTIONS ARE ONLY USED IN THE CASE WHERE THE "NEW" POINT SEARCH ALGORITHM IS USED
-
-/// <summary>
-/// 
-/// </summary>
-/// <param name="Particles_solver"></param>
-/// <param name="Particles_CSRS"></param>
-/// <param name="length"></param>
-void IDX_TRANSLATION_Query(const gridPoint* Particles_solver, float* Particles_CSRS, const int length) {
-	for (int i = 0; i < length; i++) {
-		for (int d = 0; d < DIMENSIONS; d++) {
-			Particles_CSRS[i * DIMENSIONS + d] = Particles_solver[i].position[d];
-		}
-	}
-}
-
-/// <summary>
-/// 
-/// </summary>
-/// <param name="Particles_solver"></param>
-/// <param name="Particles_CSRS"></param>
-/// <param name="length"></param>
-/// <param name="Real_Length"></param>
-/// <param name="Limit_high"></param>
-/// <param name="Limit_low"></param>
-void IDX_TRANSLATION_Data(const gridPoint* Particles_solver, std::vector<float>* Particles_CSRS, const int length) {
-
-	for (int i = 0; i < length; i++) {
-		for (int d = 0; d < DIMENSIONS; d++) {
-			Particles_CSRS->push_back(Particles_solver[i].position[d]);
-		}
-	}
 }
 
 #endif
