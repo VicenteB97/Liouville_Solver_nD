@@ -21,7 +21,7 @@
 
 #define DIMENSIONS 2		
 #define PARAM_DIMENSIONS 2
-#define THREADS_P_BLK 512
+#define THREADS_P_BLK 256
 
 // This is for CUDA built-in functions error handling
 #define gpuError_Check(ans) {gpuAssert((cudaError_t) ans, __FILE__, __LINE__);}
@@ -39,16 +39,16 @@ if (code != cudaSuccess) {
 // Grid points----------------------------------------------------
 class gridPoint { // maybe this should be re-thought
 public:
-	double position[DIMENSIONS];
+	double dim[DIMENSIONS];
 
 	__host__ __device__ gridPoint operator+(const gridPoint& other) {
 
 		gridPoint out;
 
 		for (unsigned int d = 0; d < DIMENSIONS; d++) {
-			double aux = position[d];
-			aux += other.position[d];
-			out.position[d] = aux;
+			double aux = dim[d];
+			aux += other.dim[d];
+			out.dim[d] = aux;
 		}
 
 		return out;
@@ -58,9 +58,9 @@ public:
 		gridPoint out;
 
 		for (unsigned int d = 0; d < DIMENSIONS; d++) {
-			double aux = position[d];
-			aux -= other.position[d];
-			out.position[d] = aux;
+			double aux = dim[d];
+			aux -= other.dim[d];
+			out.dim[d] = aux;
 		}
 
 		return out;
@@ -69,7 +69,7 @@ public:
 		bool out = true;
 
 		for (unsigned int d = 0; d < DIMENSIONS; d++) {
-			if (position[d] != other.position[d]) { out = false; }
+			if (dim[d] != other.dim[d]) { out = false; }
 		}
 
 		return out;
@@ -109,7 +109,7 @@ public:
 //-------------------------------------------------------------------------
 
 // Computing the mod of two numbers (AVOIDING NEGATIVE REMAINDERS)
-inline unsigned int positive_rem(const int a, const int b){
+__host__ __device__ inline unsigned int positive_rem(const int a, const int b){
 	return (a % b + b) % b;
 } 
 
@@ -124,7 +124,7 @@ __host__ __device__ double Distance(const gridPoint P1, const gridPoint P2) {
 	double out = 0;
 
 	for (unsigned int d = 0; d < DIMENSIONS; d++) {
-		out += (P1.position[d] - P2.position[d]) * (P1.position[d] - P2.position[d]);
+		out += (P1.dim[d] - P2.dim[d]) * (P1.dim[d] - P2.dim[d]);
 	}
 
 	return sqrt(out);
@@ -140,7 +140,7 @@ __device__ gridPoint Mult_by_Scalar(double scalar, gridPoint Point) {
 	gridPoint out;
 
 	for (unsigned int d = 0; d < DIMENSIONS; d++) {
-		out.position[d] = scalar * Point.position[d];
+		out.dim[d] = scalar * Point.dim[d];
 	}
 
 	return out;

@@ -14,8 +14,8 @@ __device__ gridPoint VECTOR_FIELD(gridPoint X, double t, const Param_vec paramet
 	// parameter[1] = Lambda
 	// parameter[2] = Forcing
 
-	output.position[0] = X.position[1];
-	output.position[1] = -2 * parameter.sample_vec[0] * X.position[1] - X.position[0] - parameter.sample_vec[1] * pow(X.position[0], 3); // + parameter.sample_vec[2]; for adding external forcing
+	output.dim[0] = X.dim[1];
+	output.dim[1] = -2 * parameter.sample_vec[0] * X.dim[1] - X.dim[0] - parameter.sample_vec[1] * pow(X.dim[0], 3); // + parameter.sample_vec[2]; for adding external forcing
 
 	return output;
 }

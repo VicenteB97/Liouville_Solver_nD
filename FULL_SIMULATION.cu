@@ -82,7 +82,7 @@ int PDF_EVOLUTION() {
 	for (unsigned int i = 0; i < Grid_Nodes; i++){
 		for (unsigned int d = 0; d < DIMENSIONS; d++){
 			unsigned int j = floor(positive_rem(i, pow(PtsPerDim, d + 1))/pow(PtsPerDim, d));
-			H_Mesh[i].position[d] = ((double) j / (PtsPerDim - 1) - Domain_Center.position[d]) * Domain_Radius.position[d]; 
+			H_Mesh[i].dim[d] = ((double) j / (PtsPerDim - 1) - Domain_Center.dim[d]) * Domain_Radius.dim[d]; 
 		}
 	}
 
@@ -293,8 +293,8 @@ int PDF_EVOLUTION() {
 		file1.open("Simulation_Info.csv");
 		if (file1.is_open()) {
 			//file1 << "Total Grid Points," << "Points per dimension," << "Grid X min," << "Grid X max," << "Grid Y min," << "Grid Y max," << "Time values," << "Simulation cost" << "t0" << "deltaT" << "Reinitialization Steps" << "\n";
-			file1 << Grid_Nodes << "," << PtsPerDim << "," << H_Mesh[0].position[0] << "," << H_Mesh[Grid_Nodes - 1].position[0]
-				<< "," << H_Mesh[0].position[1] << "," << H_Mesh[Grid_Nodes - 1].position[1] << "," << time_vector.size() << "," << duration.count() << "," << "\n";
+			file1 << Grid_Nodes << "," << PtsPerDim << "," << H_Mesh[0].dim[0] << "," << H_Mesh[Grid_Nodes - 1].dim[0]
+				<< "," << H_Mesh[0].dim[1] << "," << H_Mesh[Grid_Nodes - 1].dim[1] << "," << time_vector.size() << "," << duration.count() << "," << "\n";
 
 			for (int i = 0; i < time_vector.size() - 1; i++) {
 				file1 << time_vector[i].time << ",";
@@ -371,7 +371,7 @@ __global__ void RungeKutta(	gridPoint* 			H_Mesh,
 		gridPoint k0, k1, k2, k3, aux;
 		double	  Int1, Int2, Int3;
 
-		gridPoint x0 	= H_Mesh[i]; 	// register storing the initial particle position
+		gridPoint x0 	= H_Mesh[i]; 	// register storing the initial particle dim
 		double Int_PDF 	= PDF[i];	// register storing the initial particle value
 
 		while (steps < ReinitSteps) {
@@ -391,7 +391,7 @@ __global__ void RungeKutta(	gridPoint* 			H_Mesh,
 			k1 = Mult_by_Scalar(2, k1);
 			k2 = Mult_by_Scalar(2, k2);
 
-			aux = x0 + Mult_by_Scalar(deltaT / 6, (k0 + k3 + k1 + k2)); // New particle position
+			aux = x0 + Mult_by_Scalar(deltaT / 6, (k0 + k3 + k1 + k2)); // New particle dim
 
 			// Integration of PDF
 			Int1 = DIVERGENCE_FIELD(x0, t0, parameters[i_sample]);
@@ -457,7 +457,7 @@ __host__ int PDF_ITERATIONS(std::vector<double>* store_PDFs,
 //--------------------------------------------------------------------------------------------//
 //--------------------------------------------------------------------------------------------//
 //--------------------------------------------------------------------------------------------//
-	std::vector<gridPoint>	AdaptGrid(0);			// Particle positions to be used for simulation (corresponding position from AMR)
+	std::vector<gridPoint>	AdaptGrid(0);			// Particle positions to be used for simulation (corresponding dim from AMR)
 	std::vector<double>		AdaptPDF(0);			// PDF value at the particle positions (corresponding values from AMR)
 	std::vector<gridPoint>	Full_AdaptGrid(0);		// Final adapted grid (adapted grid x number of samples)
 	std::vector<double>		Full_AdaptPDF(0);		// Final adapted PDF (adapted grid x number of samples)
@@ -481,7 +481,7 @@ __host__ int PDF_ITERATIONS(std::vector<double>* store_PDFs,
 // ------------------ DEFINITION OF THE INTERPOLATION VARIABLES AND ARRAYS ------------------ //
 	int Adapt_Points, Total_Particles, MaxNeighborNum;
 
-	const double disc_X = (H_Mesh[1].position[0] - H_Mesh[0].position[0]);	// H_Mesh discretization size
+	const double disc_X = (H_Mesh[1].dim[0] - H_Mesh[0].dim[0]);	// H_Mesh discretization size
 	const double search_radius = 4.5 * disc_X;								// max radius to search ([4,6] appears to be optimal)
 
 	const int	 max_steps = 1000;		 // max steps at the Conjugate Gradient (CG) algorithm
@@ -620,7 +620,10 @@ __host__ int PDF_ITERATIONS(std::vector<double>* store_PDFs,
 
 			if (new_restart_mthd) {
 
-				// FILL UP WITH SOMETHING...SOMEDAY
+				// FIRST I'M GOING TO FIND THE NEAREST GRID NODES TO EACH PARTICLE
+				
+
+
 			}
 			else {
 
@@ -689,7 +692,7 @@ __global__ void _SL_RungeKutta( const gridPoint* 	H_Mesh,
 	if (i < Grid_Nodes) {
 
 		double New_PDF_val 	= 0;			// cumulative variable for the new PDF value
-		// double discretization_length = H_Mesh[1].position[0] - H_Mesh[0].position[0];
+		// double discretization_length = H_Mesh[1].dim[0] - H_Mesh[0].dim[0];
 
 		for (int i_sample = 0; i_sample < Random_Samples; i_sample++) {
 
@@ -720,7 +723,7 @@ __global__ void _SL_RungeKutta( const gridPoint* 	H_Mesh,
 				k1 = Mult_by_Scalar(2, k1);
 				k2 = Mult_by_Scalar(2, k2);
 
-				x0 = x0 + Mult_by_Scalar(deltaT / 6, (k0 + k1 + k2 - k3));	// New particle position WHY IS IT "-"?
+				x0 = x0 + Mult_by_Scalar(deltaT / 6, (k0 + k1 + k2 - k3));	// New particle dim WHY IS IT "-"?
 
 				// Inverse integrate the imagined value for the PDF at the characteristic curve
 				// we are going to try and do it twice, comparing the interpolated value with the transported value and adjusting
@@ -739,9 +742,9 @@ __global__ void _SL_RungeKutta( const gridPoint* 	H_Mesh,
 			}
 
 		// // compute the nearest node from the discretization
-		// int nearest_node = round(x0.position[0] / discretization_length);
+		// int nearest_node = round(x0.dim[0] / discretization_length);
 		// for (unsigned int d = 0; d < DIMENSIONS; d++){
-		// 	nearest_node += round(x0.position[d] / discretization_length) * pow(Grid_Nodes, d);
+		// 	nearest_node += round(x0.dim[d] / discretization_length) * pow(Grid_Nodes, d);
 		// }
 
 		// double Old_PDF = 0;
@@ -756,9 +759,9 @@ __global__ void _SL_RungeKutta( const gridPoint* 	H_Mesh,
 
 			// find nearby grid nodes and interpolate the "upstream" point
 		// // compute the nearest node from the discretization
-		// 	int nearest_node = round(x0.position[0] / discretization_length);
+		// 	int nearest_node = round(x0.dim[0] / discretization_length);
 		// 	for (unsigned int d = 1; d < DIMENSIONS; d++){
-		// 		nearest_node += round(x0.position[d] / discretization_length) * pow(Grid_Nodes, d);
+		// 		nearest_node += round(x0.dim[d] / discretization_length) * pow(Grid_Nodes, d);
 		// 	}
 
 			double Old_PDF = 0;
@@ -815,7 +818,7 @@ __host__ int _SL_PDF_ITERATIONS(std::vector<double>* store_PDFs,
 	//--------------------------------------------------------------------------------------------//
 	//--------------------------------------------------------------------------------------------//
 	//--------------------------------------------------------------------------------------------//
-	std::vector<gridPoint>	AdaptGrid;			// Particle positions to be used for simulation (corresponding position from AMR)
+	std::vector<gridPoint>	AdaptGrid;			// Particle positions to be used for simulation (corresponding dim from AMR)
 	std::vector<double>		AdaptPDF;			// PDF value at the particle positions (corresponding values from AMR)
 
 	thrust::device_vector<gridPoint>	GPU_Part_Position;		// Particle positions (for the GPU)
@@ -840,11 +843,11 @@ __host__ int _SL_PDF_ITERATIONS(std::vector<double>* store_PDFs,
 
 	double Iteration_information[2];
 
-	const double disc_X = (H_Mesh[1].position[0] - H_Mesh[0].position[0]);	// H_Mesh discretization size
-	const double search_radius = 4.5 * disc_X;								// max radius to search ([6,8] appears to be optimal)
+	const double disc_X 		= (H_Mesh[1].dim[0] - H_Mesh[0].dim[0]);	// H_Mesh discretization size
+	const double search_radius  = 4.5 * disc_X;								// max radius to search ([6,8] appears to be optimal)
 
-	const int	 max_steps = 1000;				// max steps at the Conjugate Gradient (CG) algorithm
-	const double in_tolerance = pow(10, -8);  	// CG stop tolerance
+	const int	 max_steps 	  	= 1000;				// max steps at the Conjugate Gradient (CG) algorithm
+	const double in_tolerance 	= pow(10, -8);  	// CG stop tolerance
 
 	thrust::device_vector<int>		GPU_Index_array;
 	thrust::device_vector<double>	GPU_Mat_entries;

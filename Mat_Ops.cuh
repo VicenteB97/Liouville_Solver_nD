@@ -47,7 +47,7 @@ __global__ void Exh_PP_Search(const gridPoint* Search_Particles, const gridPoint
 
 	if (i < Total_Particles) {
 		int				aux		= 1;
-		const int		i_aux	= floorf(i / Adapt_Points);													// Tells me what parameter sample I'm at
+		const int		i_aux	= floorf(i / Adapt_Points);										// Tells me what parameter sample I'm at
 		const int		k		= i * max_neighbor_num;
 		double			dist;
 		const gridPoint FP_aux	= Fixed_Particles[i];
@@ -108,17 +108,15 @@ __global__ void UPDATE_VEC(T* x, const T* x0, const T scalar, const double* v, c
 }
 
 template<class T>
-/// <summary>
-/// Sparse matrix-vector multiplication
-/// </summary>
-/// <param name="X"></param>
-/// <param name="x0"></param>
-/// <param name="Matrix_idxs"></param>
-/// <param name="Matrix_entries"></param>
-/// <param name="total_length"></param>
-/// <param name="Interaction_Lengths"></param>
-/// <param name="Max_Neighbors"></param>
-/// <returns></returns>
+/// @brief This function performs a sparse matrix multiplication
+/// @param X 
+/// @param x0 
+/// @param Matrix_idxs 
+/// @param Matrix_entries 
+/// @param total_length 
+/// @param Interaction_Lengths 
+/// @param Max_Neighbors 
+/// @return 
 __global__ void MATRIX_VECTOR_MULTIPLICATION(T* X, const T* x0, const int* Matrix_idxs, const T* Matrix_entries, const int total_length, const int* Interaction_Lengths, const int Max_Neighbors) {
 
 	const int i = blockDim.x * blockIdx.x + threadIdx.x;	// For each i, which represents the matrix row, we read the index positions and multiply against the particle weights
@@ -142,21 +140,18 @@ __global__ void MATRIX_VECTOR_MULTIPLICATION(T* X, const T* x0, const int* Matri
 	}
 }
 
-
 template<class T>
-/// <summary>
-/// This function is a linear system solver (for a sparse matrix in COO format) via the Conjugate Gradient algorithm. Your matrix must be symmetric and positive definite. Also, this has been done as a template. Other types can be used.
-/// </summary>
-/// <param name="GPU_lambdas">  - This is the input/output array: RBF weights. </param>
-/// <param name="GPU_Index_array">  - Indeces where there are non-zero entries: Particle IDs. </param>
-/// <param name="GPU_Mat_entries">  - Matrix entries: RBF-weighted distances between particles. </param>
-/// <param name="GPU_Num_Neighbors">  - Num. of non-zero entries per row: Num. of neighbors per particle. </param>
-/// <param name="GPU_AdaptPDF">  - RHS of matrix equation: PDF values at the particles' location. </param>
-/// <param name="Total_Particles"> - Row number: Total num. of particles.</param>
-/// <param name="MaxNeighborNum"> - Max. non-zeros per row: Max neighbors allowed.</param>
-/// <param name="max_steps"> - Max. steps in the CG iterations. </param>
-/// <param name="in_tolerance"> - Stop tolerance.</param>
-/// <returns></returns>
+/// @brief This function solves a linear system of equations where the matrix is SPARSE, SYMMETRIC AND POSITIVE DEFINITE
+/// @param GPU_lambdas 
+/// @param GPU_Index_array 
+/// @param GPU_Mat_entries 
+/// @param GPU_Num_Neighbors 
+/// @param GPU_AdaptPDF 
+/// @param Total_Particles 
+/// @param MaxNeighborNum 
+/// @param max_steps 
+/// @param in_tolerance 
+/// @return An integer for determining whether it has exited successfully or not
 __host__ int CONJUGATE_GRADIENT_SOLVE(	thrust::device_vector<T>&	GPU_lambdas,
 										thrust::device_vector<int>& GPU_Index_array,
 										thrust::device_vector<T>&	GPU_Mat_entries,
@@ -297,59 +292,66 @@ if (i < Grid_Nodes) {
 }
 }
 
-/// <summary>
-/// Matrix multiplication for the CSRS algorithm...work in progress
-/// </summary>
-/// <param name="PDF_new"></param>
-/// <param name="Lambdas"></param>
-/// <param name="Matrix_idxs"></param>
-/// <param name="Matrix_entries"></param>
-/// <param name="Grid_Nodes"></param>
-/// <param name="Interaction_Lengths"></param>
-/// <param name="Max_Neighbors"></param>
-/// <param name="Adapt_Points"></param>
-/// <param name="Parameter_Mesh"></param>
-/// <param name="search_radius"></param>
-/// <returns></returns>
-__global__ void _CSRS_MATRIX_VECTOR_MULTIPLICATION( double*				PDF_new, 
-													const double*		Lambdas, 
-													const int*			Matrix_idxs, 
-													const float*		Matrix_entries, 
-													const int			Grid_Nodes, 
-													const int*			Interaction_Lengths, 
-													const int			Max_Neighbors, 
-													const int			Adapt_Points, 
-													const Param_vec*	Parameter_Mesh,
-													const float			search_radius) {
+/// @brief This function computes the neighboring grid nodes for each advected particle from the simulation. Note that we're going to have a coo format. 
+// OUTPUT IS THE COO FORMAT OF THE TRANSPOSED SPARSE MATRIX
+/// @param Particle_Positions 
+/// @param Neighbor_Indx_array 
+/// @param search_radius 
+/// @param lowest_node 
+/// @param grid_discretization_length 
+/// @param PtsPerDimension 
+/// @param GridNodes 
+/// @param Total_Particles 
+/// @return 
+__global__ void RESTART_GRID_FIND_GN(gridPoint*  	Particle_Positions,
+									int*		 	Row_Indx_array,
+									int*		 	Col_Indx_array,
+									double*		 	Val_Indx_array,
+									const gridPoint* Fixed_Mesh,
+									const double 	search_radius,
+									const gridPoint lowest_node,
+									const double 	grid_discretization_length,
+									const int	 	PtsPerDimension,
+									const int	 	GridNodes,
+									const int	 	Total_Particles) {
+// OUTPUT: New values of the PDF at the fixed grid
 
-	const int i = blockDim.x * blockIdx.x + threadIdx.x;	// For each i, which represents the matrix row, we read the index positions and multiply against the particle weights
+const int i = blockDim.x * blockIdx.x + threadIdx.x;
 
-	if (i < Grid_Nodes) {
-// 1.- Compute A*X0										
-	// 1.1.- Determine where my particles are!!
-		const int n  = Interaction_Lengths[i];	// total neighbors to look at
-		const int i0 = i * Max_Neighbors;		// where does my search index start
+if (i < Total_Particles) {
+	gridPoint particle = Particle_Positions[i];
+	int lowest_idx = 0;
+	int num_neighbors_per_dim = (int)2 * floorf(search_radius / grid_discretization_length) + 1;
 
-		double	a = 0,	dist;					// auxiliary value for sum (the diagonal is always 1 in our case)
-		int		p,		aux;					// auxiliary variable for indexing
+	// I want to compute the index of the lowest neighboring grid node and build its nearest neighbors, which are going to be floor( (2*search_radius) )^DIM
+	for (unsigned int d = 0; d < DIMENSIONS; d++){
+		lowest_idx += (roundf((particle.dim[d] - lowest_node.dim[d]) / grid_discretization_length) - floorf(search_radius / grid_discretization_length)) * powf(PtsPerDimension, d);
+	}
 
-		if (n > 0) {
-		// 1.2.- Multiply row vec (from matrix) - column vec (possible solution)
-			for (unsigned int j = i0; j < i0 + n; j++) {
-				p = Matrix_idxs[j];
-				dist = sqrt((double) Matrix_entries[j]) / search_radius;
-				
-				if (dist <= 1) {
-					aux = floorf(p / Adapt_Points);
-					a += RBF(search_radius, dist) * Lambdas[p] * Parameter_Mesh[aux].Joint_PDF;
-				}
-			}
+	// store the lowest index sparse identification (remember we are alredy storing the transposed matrix. The one we will need for multiplication)
+	Row_Indx_array[i * num_neighbors_per_dim] = lowest_idx;
+	Col_Indx_array[i * num_neighbors_per_dim] = i;
+
+	double aux = Distance(Fixed_Mesh[lowest_idx], particle) / search_radius;
+	Val_Indx_array[i * num_neighbors_per_dim] = RBF(search_radius, aux);
+
+	// now, go through all the neighboring grid nodes and store their indeces
+	for(unsigned int j = 1; j < (int)powf(num_neighbors_per_dim, DIMENSIONS); j++){
+		int idx = lowest_idx;
+
+		for (unsigned int d = 0; d < DIMENSIONS; d++){
+			idx += (int) floorf( positive_rem(j, (int)powf(num_neighbors_per_dim, d + 1)) / powf(num_neighbors_per_dim, d) ) * powf(PtsPerDimension, d);
 		}
 
-// 2.- Output
-		PDF_new[i] = cuda_fmax(a, 0);			// particle weights
+			Row_Indx_array[i * num_neighbors_per_dim + j] = idx;
+			Col_Indx_array[i * num_neighbors_per_dim + j] = i;
+					
+			double aux = Distance(Fixed_Mesh[idx], particle) / search_radius;
+			Val_Indx_array[i * num_neighbors_per_dim + j] = RBF(search_radius, aux);
 	}
 }
+}
+
 
 /// <summary>
 /// 

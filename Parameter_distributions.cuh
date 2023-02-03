@@ -60,8 +60,8 @@ void PDF_INITIAL_CONDITION(int Points_per_dimension, const gridPoint* Mesh, thru
 	// build the IC pts per dimension
 	for (int j = 0; j < Points_per_dimension; j++) {
 		for (int i = 0; i < Points_per_dimension; i++) {
-			PDF_value[i + Points_per_dimension * j] =	Normal_Dist<double>(Mesh[i + Points_per_dimension * j].position[0], mean1, var*var) * 
-														Normal_Dist<double>(Mesh[i + Points_per_dimension * j].position[1], mean2, var2*var2);
+			PDF_value[i + Points_per_dimension * j] =	Normal_Dist<double>(Mesh[i + Points_per_dimension * j].dim[0], mean1, var*var) * 
+														Normal_Dist<double>(Mesh[i + Points_per_dimension * j].dim[1], mean2, var2*var2);
 		}
 	}
 }

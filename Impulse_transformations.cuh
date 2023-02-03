@@ -26,7 +26,7 @@ __global__ void TRANSFORM_PARTICLES(gridPoint*		Particle_Positions,
 
 		const int j = floorf(i / Num_Particles_per_sample);				// current sample
 
-		Particle_Positions[i].position[1] += impulse_strengths[j];		// we only have to add to the second variable!
+		Particle_Positions[i].dim[1] += impulse_strengths[j];		// we only have to add to the second variable!
 	
 	}
 }
@@ -51,7 +51,7 @@ int IMPULSE_TRANSFORM_PDF(	const gridPoint*				MESH,			// Fixed Mesh
 		std::vector<double> impulse_values(num_samples);		// the array where we store the PDF of the impulse random variable
 		double				sum_totalPDF = 0;					// The "total mass" of the PDF
 
-		double mean = time.impulse_vec.position[1];
+		double mean = time.impulse_vec.dim[1];
 
 		int Adapt_Points = Adapt_PDF->size();
 
@@ -102,9 +102,9 @@ int IMPULSE_TRANSFORM_PDF(	const gridPoint*				MESH,			// Fixed Mesh
 // 2.- RBF interpolation into the fixed grid
 	
 	// 2.1. - Find near particles
-	const double	disc_X						= (MESH[1].position[0] - MESH[0].position[0]);
-	const double	search_radius				= 4 * disc_X;									// max radius to search
-	const int		MaxNeighborNum				= fminf(200, Adapt_Points);
+	const double	disc_X						= (MESH[1].dim[0] - MESH[0].dim[0]);
+	const double	search_radius				= 4.5 * disc_X;									// max radius to search
+	const int		MaxNeighborNum				= fminf(100, Adapt_Points);
 	double			Iteration_information[2]	= { 0,0 };
 
 	thrust::device_vector<int>		GPU_Index_array;
@@ -120,7 +120,7 @@ int IMPULSE_TRANSFORM_PDF(	const gridPoint*				MESH,			// Fixed Mesh
 	//std::cout << "Transformation Point Search: done\n";
 
 	// 2.2.- Solve Conjugate Gradient system
-	const int max_steps = 5000;
+	const int max_steps = 1000;
 	const double in_tolerance = pow(10, -8);
 
 
