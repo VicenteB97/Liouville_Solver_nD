@@ -24,7 +24,6 @@ set(CMAKE_CXX_STANDARD          17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS        ON)
 
-set(    CMAKE_CUDA_FLAGS    "-arch=sm_52")
 option( CMAKE_BUILD_TYPE    RELEASE)
 option( COMPILE_EXECUTABLE "Include executable compiling" ON)
 
@@ -48,5 +47,7 @@ target_include_directories(${LIB_NAME} PUBLIC
 add_executable(${EXECUTABLE_NAME} 00_MAIN.cu)
 
 target_link_libraries(${EXECUTABLE_NAME} PUBLIC ${LIB_NAME})
+
+set_property(TARGET ${EXECUTABLE_NAME} PROPERTY CUDA_ARCHITECTURES 75)
 
 # EXTRA STUFF

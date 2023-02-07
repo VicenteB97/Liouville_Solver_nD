@@ -131,7 +131,6 @@ void RANDOMIZE(	const int* 				n_samples,
 	}
 
 	for (unsigned int k = 0; k < Total_Samples; k++){
-
 		// 1st, find the parameter components
 		int aux_num 	=  n_samples[0];
 		int aux_num_2 	=  n_samples[0];
@@ -139,7 +138,7 @@ void RANDOMIZE(	const int* 				n_samples,
 		int aux_idx = positive_rem(k, aux_num);
 
 		Parameter_Mesh->at(k).sample_vec[0] = aux_PM[aux_idx].sample;
-		Parameter_Mesh->at(k).Joint_PDF = aux_PM[aux_idx].PDF;
+		Parameter_Mesh->at(k).Joint_PDF 	= aux_PM[aux_idx].PDF;
 
 		for (unsigned int d = 1; d < PARAM_DIMENSIONS; d++){
 

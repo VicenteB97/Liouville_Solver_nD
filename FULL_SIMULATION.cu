@@ -482,7 +482,7 @@ __host__ int PDF_ITERATIONS(std::vector<double>* store_PDFs,
 	int Adapt_Points, Total_Particles, MaxNeighborNum;
 
 	const double disc_X = (H_Mesh[1].dim[0] - H_Mesh[0].dim[0]);	// H_Mesh discretization size
-	const double search_radius = 4.5 * disc_X;								// max radius to search ([4,6] appears to be optimal)
+	const double search_radius = 4.75 * disc_X;						// max radius to search ([4,6] appears to be optimal)
 
 	const int	 max_steps = 1000;		 // max steps at the Conjugate Gradient (CG) algorithm
 	const double in_tolerance = pow(10, -8); // CG stop tolerance
@@ -521,7 +521,6 @@ __host__ int PDF_ITERATIONS(std::vector<double>* store_PDFs,
 		}
 
 // 1.- Initial step Adaptive H_Mesh Refinement. First store the initial PDF with AMR performed
-		// ADAPT_MESH_REFINEMENT(*H_PDF, &AdaptPDF, H_Mesh, &AdaptGrid, LvlFine, LvlCoarse, PtsPerDim);
 		ADAPT_MESH_REFINEMENT_nD(*H_PDF, &AdaptPDF, H_Mesh, &AdaptGrid, LvlFine, LvlCoarse, PtsPerDim);
 
 	// 1.1.- COMPUTE THE TRANSFORMATION OF THE PDF (IF THERE IS ONE)
@@ -529,9 +528,9 @@ __host__ int PDF_ITERATIONS(std::vector<double>* store_PDFs,
 			// compute transformaton
 			//std::cout << "Computing impulse transformation.\n";
 
-			int success_impulse = IMPULSE_TRANSFORM_PDF(H_Mesh, &AdaptGrid, H_PDF, &AdaptPDF, time_vector[j], Grid_Nodes);
+			int success_impulse = IMPULSE_TRANSFORM_PDF(H_Mesh, &AdaptGrid, H_PDF, &AdaptPDF, time_vector[j], Grid_Nodes, PtsPerDim);
 
-			if (success_impulse == 0) {
+			if (success_impulse != 0) {
 				//std::cout << "Something went wrong...\n";
 				std::cin.get();
 				return success_impulse;
@@ -565,9 +564,9 @@ __host__ int PDF_ITERATIONS(std::vector<double>* store_PDFs,
 			}
 
 			// Upload information to the GPU
-			GPU_AdaptPDF = Full_AdaptPDF;
-			GPU_Part_Position = Full_AdaptGrid;
-			GPU_Parameter_Mesh = *Parameter_Mesh;
+			GPU_AdaptPDF 		= Full_AdaptPDF;
+			GPU_Part_Position 	= Full_AdaptGrid;
+			GPU_Parameter_Mesh 	= *Parameter_Mesh;
 
 			std::cout << "Size of relevant PDF points (per sample): " << Adapt_Points << "\n";	// this allows to check if the info is passed to the GPU correctly
 
@@ -583,54 +582,100 @@ __host__ int PDF_ITERATIONS(std::vector<double>* store_PDFs,
 			GPU_Mat_entries.resize(MaxNeighborNum * Total_Particles);
 			GPU_Num_Neighbors.resize(Total_Particles);
 // -------------------------------------------------------------------------- //
-
 			// Determine threads and blocks for the simulation
 			int Threads = (int)fminf(THREADS_P_BLK, Total_Particles);
-			int Blocks = (int)floorf((Total_Particles - 1) / Threads) + 1;
+			int Blocks  = (int)floorf((Total_Particles - 1) / Threads) + 1;
 
 // ------------------------------------------------------------------------------------ //
 // -------------------------- POINT ADVECTION ----------------------------------------- //
 // ------------------------------------------------------------------------------------ //
 			// Using RK4 for time integration of characteristic curves
-			RungeKutta << <Blocks, Threads >> > (raw_pointer_cast(&GPU_Part_Position[0]), raw_pointer_cast(&GPU_AdaptPDF[0]),
-				raw_pointer_cast(&GPU_Parameter_Mesh[0]), t0, deltaT, ReinitSteps, Adapt_Points, Random_Samples);
+			RungeKutta << <Blocks, Threads >> >(raw_pointer_cast(&GPU_Part_Position[0]), 
+												raw_pointer_cast(&GPU_AdaptPDF[0]),
+												raw_pointer_cast(&GPU_Parameter_Mesh[0]), 
+												t0, 
+												deltaT, 
+												ReinitSteps, 
+												Adapt_Points, 
+												Random_Samples);
 			gpuError_Check(cudaDeviceSynchronize()); // Here, the entire H_Mesh points (those that were selected) and PDF points (same) have been updated.
 
 // ----------------------------------------------------------------------------------- //
 // -------------------------- INTERPOLATION ------------------------------------------ //
 // ----------------------------------------------------------------------------------- //
 	// 1.- Build Matix in GPU (indexes, dists and neighbors) Using Exahustive search...
-			Exh_PP_Search << <Blocks, Threads >> > (raw_pointer_cast(&GPU_Part_Position[0]), raw_pointer_cast(&GPU_Part_Position[0]), raw_pointer_cast(&GPU_Index_array[0]),
-				raw_pointer_cast(&GPU_Mat_entries[0]), raw_pointer_cast(&GPU_Num_Neighbors[0]), MaxNeighborNum, Adapt_Points, Total_Particles, search_radius);
+			Exh_PP_Search << <Blocks, Threads >> > (raw_pointer_cast(&GPU_Part_Position[0]), 
+													raw_pointer_cast(&GPU_Part_Position[0]), 
+													raw_pointer_cast(&GPU_Index_array[0]),
+													raw_pointer_cast(&GPU_Mat_entries[0]), 
+													raw_pointer_cast(&GPU_Num_Neighbors[0]), 
+													MaxNeighborNum, 
+													Adapt_Points, 
+													Total_Particles, 
+													search_radius);
 			gpuError_Check(cudaDeviceSynchronize());
 
 	// 2.- Iterative solution (Conjugate Gradient) to obtain coefficients of the RBFs
 			thrust::device_vector<double>	GPU_lambdas(Total_Particles);	// solution vector (RBF weights)
 			thrust::fill(GPU_lambdas.begin(), GPU_lambdas.end(), 0);		// this will serve as the initial condition
 
-			int err = CONJUGATE_GRADIENT_SOLVE<double>(GPU_lambdas, GPU_Index_array, GPU_Mat_entries, GPU_Num_Neighbors, GPU_AdaptPDF, Total_Particles, MaxNeighborNum, max_steps, in_tolerance);
-			if (err == -1) { return 0; }
+			int err = CONJUGATE_GRADIENT_SOLVE<double>( GPU_lambdas, 
+														GPU_Index_array, 
+														GPU_Mat_entries, 
+														GPU_Num_Neighbors, 
+														GPU_AdaptPDF, 
+														Total_Particles, 
+														MaxNeighborNum, 
+														max_steps, 
+														in_tolerance);
+			if (err == -1) { return err; }
 
 	// 3.- Multiplication of matrix-lambdas to obtain new points
-			bool new_restart_mthd = false;			// if this is TRUE...debugging needed: SOME GRID NODES ARE NOT BEING INTERPOLATED WELL
-
-			// Re-define Threads and Blocks
-			Threads = fminf(THREADS_P_BLK, Grid_Nodes);
-			Blocks = floorf((Grid_Nodes - 1) / Threads) + 1;
+			bool new_restart_mthd = true;
 
 			if (new_restart_mthd) {
+			// Re-define Threads and Blocks
+			Threads = fminf(THREADS_P_BLK, Total_Particles);
+			Blocks  = floorf((Grid_Nodes - 1) / Threads) + 1;
 
-				// FIRST I'M GOING TO FIND THE NEAREST GRID NODES TO EACH PARTICLE
+			thrust::fill(GPU_PDF.begin(), GPU_PDF.end(), 0);	// PDF is reset to 0, so that we may use atomic adding
+
+			// I'M GOING TO FIND THE NEAREST GRID NODES TO EACH PARTICLE
+			// TO DO: MAKE IT USING BATCHES! (MAYBE BATCHES OF 10-50) BECAUSE IT'S NOT WORKING PROPERLY! IT'S THE ATOMICADD FUNCTION'S FAULT
+			RESTART_GRID_FIND_GN<<< Blocks, Threads >>>(raw_pointer_cast(&GPU_Part_Position[0]),
+														raw_pointer_cast(&GPU_PDF[0]),
+														raw_pointer_cast(&GPU_lambdas[0]),
+														raw_pointer_cast(&GPU_Mesh[0]),
+														raw_pointer_cast(&GPU_Parameter_Mesh[0]),
+														search_radius,
+														H_Mesh[0],
+														disc_X,
+														PtsPerDim,
+														Adapt_Points,
+														Total_Particles);
+			gpuError_Check(cudaDeviceSynchronize());
+
+			// Correct any possible negative PDF values
+			CORRECTION<<<Blocks, Threads>>>(raw_pointer_cast(&GPU_PDF[0]), Grid_Nodes);
+			gpuError_Check(cudaDeviceSynchronize());
 				
-
-
 			}
 			else {
+				// Re-define Threads and Blocks
+				Threads = fminf(THREADS_P_BLK, Grid_Nodes);
+				Blocks = floorf((Grid_Nodes - 1) / Threads) + 1;
 
 				auto start_2 = std::chrono::high_resolution_clock::now();
 
-				RESTART_GRID << <Blocks, Threads >> > (raw_pointer_cast(&GPU_PDF[0]), raw_pointer_cast(&GPU_Mesh[0]), raw_pointer_cast(&GPU_Part_Position[0]),
-					raw_pointer_cast(&GPU_lambdas[0]), raw_pointer_cast(&GPU_Parameter_Mesh[0]), search_radius, Grid_Nodes, Adapt_Points, Total_Particles);
+				RESTART_GRID<<< Blocks, Threads >>>(raw_pointer_cast(&GPU_PDF[0]), 
+													raw_pointer_cast(&GPU_Mesh[0]), 
+													raw_pointer_cast(&GPU_Part_Position[0]),
+													raw_pointer_cast(&GPU_lambdas[0]), 
+													raw_pointer_cast(&GPU_Parameter_Mesh[0]), 
+													search_radius, 
+													Grid_Nodes, 
+													Adapt_Points, 
+													Total_Particles);
 				gpuError_Check(cudaDeviceSynchronize());
 
 				auto end_2 = std::chrono::high_resolution_clock::now();
@@ -646,7 +691,6 @@ __host__ int PDF_ITERATIONS(std::vector<double>* store_PDFs,
 		// Store info in cumulative variable
 		store_PDFs->insert(store_PDFs->end(), H_PDF->begin(), H_PDF->end());
 		j++;
-
 
 		auto end_2 = std::chrono::high_resolution_clock::now();
 
@@ -896,10 +940,10 @@ __host__ int _SL_PDF_ITERATIONS(std::vector<double>* store_PDFs,
 			std::cout << "RVT transformation at time: " << t0 << "\n";
 
 			std::cout << "Number of points: " << Adapt_Points << "\n";
-			int success_impulse = IMPULSE_TRANSFORM_PDF(H_Mesh, &AdaptGrid, H_PDF, &AdaptPDF, time_vector[j], Grid_Nodes);
+			int success_impulse = IMPULSE_TRANSFORM_PDF(H_Mesh, &AdaptGrid, H_PDF, &AdaptPDF, time_vector[j], Grid_Nodes, PtsPerDim);
 
-			if (success_impulse == 0) {
-				//std::cout << "Something went wrong...\n";
+			if (success_impulse != 0) {
+				std::cout << "Something went wrong...\n";
 				std::cin.get();
 				return success_impulse;
 			}
@@ -952,7 +996,7 @@ __host__ int _SL_PDF_ITERATIONS(std::vector<double>* store_PDFs,
 			GPU_P.resize(Adapt_Points);
 
 			// Determine threads and blocks for the simulation
-			Threads = (int)fminf(1024, Adapt_Points);
+			Threads = (int)fminf(THREADS_P_BLK, Adapt_Points);
 			Blocks = (int)floorf(Adapt_Points / Threads) + 1;
 
 			//Search for nearby points

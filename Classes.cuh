@@ -21,7 +21,7 @@
 
 #define DIMENSIONS 2		
 #define PARAM_DIMENSIONS 2
-#define THREADS_P_BLK 256
+#define THREADS_P_BLK 512
 
 // This is for CUDA built-in functions error handling
 #define gpuError_Check(ans) {gpuAssert((cudaError_t) ans, __FILE__, __LINE__);}
@@ -102,23 +102,51 @@ public:
 	double sample, PDF;
 };
 
-//-------------------------------------------------------------------------
-//-------------------------------------------------------------------------
-//-------------------------------------------------------------------------
-//------------------ FUNCTIONS TO BE USED ELSEWHERE IN THE CODE------------
-//-------------------------------------------------------------------------
+//-------------------------------------------------------------------------//
+//-------------------------------------------------------------------------//
+//-------------------------------------------------------------------------//
+//---------------- FUNCTIONS TO BE USED ELSEWHERE IN THE CODE -------------//
+//-------------------------------------------------------------------------//
+//-------------------------------------------------------------------------//
+//-------------------------------------------------------------------------//
 
-// Computing the mod of two numbers (AVOIDING NEGATIVE REMAINDERS)
+// ------------------------------------------------------------------------ //
+// ------------------------------------------------------------------------ //
+/// @brief Host/Device function that computes the positive remainder (mod) between two integers
+/// @param a This is the numerator
+/// @param b This is the denominator
+/// @return Returns mod(a,b)
 __host__ __device__ inline unsigned int positive_rem(const int a, const int b){
 	return (a % b + b) % b;
 } 
+// ------------------------------------------------------------------------ //
+// ------------------------------------------------------------------------ //
 
-/// <summary>
-/// Computes euclidean distance between two points in space
-/// </summary>
-/// <param name="P1"></param>
-/// <param name="P2"></param>
-/// <returns></returns>
+// ------------------------------------------------------------------------ //
+// ------------------------------------------------------------------------ //
+/// @brief This function allows to atomically add values of type double
+/// @param address 
+/// @param val 
+/// @return 
+__device__ double atomicAdd_D(double* address, double val)
+{
+    unsigned long long int* address_as_ull =
+                             (unsigned long long int*)address;
+    unsigned long long int old = *address_as_ull, assumed;
+    do {
+        assumed = old;
+old = atomicCAS(address_as_ull, assumed,
+                        __double_as_longlong(val +
+                               __longlong_as_double(assumed)));
+    } while (assumed != old);
+    return __longlong_as_double(old);
+}
+// ------------------------------------------------------------------------ //
+// ------------------------------------------------------------------------ //
+
+
+// ------------------------------------------------------------------------ //
+// ------------------------------------------------------------------------ //
 __host__ __device__ double Distance(const gridPoint P1, const gridPoint P2) {
 
 	double out = 0;
@@ -129,13 +157,11 @@ __host__ __device__ double Distance(const gridPoint P1, const gridPoint P2) {
 
 	return sqrt(out);
 }
+// ------------------------------------------------------------------------ //
+// ------------------------------------------------------------------------ //
 
-/// <summary>
-/// Computes the multiplication of a scalar with a point in space
-/// </summary>
-/// <param name="scalar"></param>
-/// <param name="Point"></param>
-/// <returns></returns>
+// ------------------------------------------------------------------------ //
+// ------------------------------------------------------------------------ //
 __device__ gridPoint Mult_by_Scalar(double scalar, gridPoint Point) {
 	gridPoint out;
 
@@ -145,5 +171,7 @@ __device__ gridPoint Mult_by_Scalar(double scalar, gridPoint Point) {
 
 	return out;
 }
+// ------------------------------------------------------------------------ //
+// ------------------------------------------------------------------------ //
 
 #endif

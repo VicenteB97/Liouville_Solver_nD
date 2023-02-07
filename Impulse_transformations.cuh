@@ -43,7 +43,8 @@ int IMPULSE_TRANSFORM_PDF(	const gridPoint*				MESH,			// Fixed Mesh
 							thrust::host_vector<double>*	PDF,			// PDF in Mesh
 							const std::vector<double>*		Adapt_PDF,		// PDF in AMR-selected points
 							const Time_Impulse_vec			time,			// time-impulse information 
-							const int						Grid_Nodes){	// Number of grid points 
+							const int						Grid_Nodes,		// Number of grid points
+							const int 						PtsPerDim){	 
 
 // 0.- Create the impulse samples
 		const int			num_samples = time.samples[1];		// only in the second variable (general will be done in the future)
@@ -90,7 +91,7 @@ int IMPULSE_TRANSFORM_PDF(	const gridPoint*				MESH,			// Fixed Mesh
 		thrust::device_vector<double>		Impulse_Strength	= impulse_values;		// To compute the transformation strengths at the GPU
 		thrust::device_vector<double>		Impulse_Weights		= impulse_weights;		// Impulse weights at the GPU
 
-		int Threads = fminf(1024, Total_Points);
+		int Threads = fminf(THREADS_P_BLK, Total_Points);
 		int Blocks  = floorf(Total_Points / Threads) + 1;
 
 	// FOR SOME REASON, I'M ONLY WRITING IN SOME VALUES...NOT ALL OF THEM
@@ -219,7 +220,7 @@ int IMPULSE_TRANSFORM_PDF(	const gridPoint*				MESH,			// Fixed Mesh
 	// 3.- Reinitialization
 
 	// Multiplication of matrix-lambdas to obtain new points
-	Threads = fminf(1024, Grid_Nodes);
+	Threads = fminf(THREADS_P_BLK, Grid_Nodes);
 	Blocks = floorf(Grid_Nodes / Threads) + 1;
 
 	thrust::device_vector<double> GPU_PDF (Grid_Nodes);							// To compute the interpolation results at the GPU
@@ -228,16 +229,18 @@ int IMPULSE_TRANSFORM_PDF(	const gridPoint*				MESH,			// Fixed Mesh
 	cudaMalloc((void**)&GPU_Mesh, sizeof(gridPoint) * Grid_Nodes); // To compute the interpolation results at the GPU
 	cudaMemcpy(GPU_Mesh, MESH, sizeof(gridPoint) * Grid_Nodes, cudaMemcpyHostToDevice);
 
-	RESTART_GRID_II << <Blocks, Threads >> > (	raw_pointer_cast(&GPU_PDF[0]),
-												GPU_Mesh, 
-												raw_pointer_cast(&Particle_Positions[0]),
-												raw_pointer_cast(&GPU_lambdas[0]), 
+	RESTART_GRID_FIND_GN_II<<< Blocks, Threads >>>(raw_pointer_cast(&Particle_Positions[0]),
+												raw_pointer_cast(&GPU_PDF[0]),
+												raw_pointer_cast(&GPU_lambdas[0]),
+												GPU_Mesh,
 												raw_pointer_cast(&Impulse_Weights[0]),
 												search_radius,
-												Grid_Nodes,
-												Adapt_Points, 
+												MESH[0],
+												disc_X,
+												PtsPerDim,
+												Adapt_Points,
 												Total_Points);
-	gpuError_Check( cudaDeviceSynchronize() );
+	gpuError_Check(cudaDeviceSynchronize());
 
 	//std::cout << "Transformation reinitialization: done\n";
 	std::cout << "/-------------------------------------------------------------------/\n";
@@ -248,7 +251,7 @@ int IMPULSE_TRANSFORM_PDF(	const gridPoint*				MESH,			// Fixed Mesh
 
 	cudaFree(GPU_Mesh);
 
-	return 1; // if this works
+	return 0; // if this works
 }
 
 #endif
