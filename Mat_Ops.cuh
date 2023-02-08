@@ -311,18 +311,18 @@ __global__ void RESTART_GRID_FIND_GN(gridPoint*  	 Particle_Positions,
 									const double 	 grid_discretization_length,
 									const int	 	 PtsPerDimension,
 									const int	 	 Adapt_Pts,
-									const int	 	 Total_Particles) {
+									const int	 	 Current_sample) {
 // OUTPUT: New values of the PDF at the fixed grid
 
 const int i = blockDim.x * blockIdx.x + threadIdx.x;
 
-if (i < Total_Particles) {
+if (i < Adapt_Pts) {
 	unsigned int num_neighbors_per_dim 		= (unsigned int) 2 * floorf(search_radius / grid_discretization_length) + 1;
 	unsigned int num_neighbors_per_particle = (unsigned int) powf(num_neighbors_per_dim, DIMENSIONS);
 
-	gridPoint particle = Particle_Positions[i];
+	gridPoint particle = Particle_Positions[i + Current_sample * Adapt_Pts];
 	
-	double weighted_lambda = lambdas[i] * Parameter_Mesh[(int) floorf(i / Adapt_Pts)].Joint_PDF;
+	double weighted_lambda = lambdas[i + Current_sample * Adapt_Pts] * Parameter_Mesh[Current_sample].Joint_PDF;
 
 // I want to compute the index of the lowest neighboring grid node and build its nearest neighbors
 	int lowest_idx = 0;
@@ -333,7 +333,7 @@ if (i < Total_Particles) {
 	double dist = Distance(Fixed_Mesh[lowest_idx], particle) / search_radius;
 	if (dist <= 1){
 		dist = RBF(search_radius, dist) * weighted_lambda;
-		atomicAdd_D(&PDF[lowest_idx], dist);
+		_D_atomicAdd(&PDF[lowest_idx], dist);
 	}
 
 // now, go through all the neighboring grid nodes and add the values to the PDF field
@@ -347,7 +347,7 @@ if (i < Total_Particles) {
 		dist = Distance(Fixed_Mesh[idx], particle) / search_radius;
 		if (dist <= 1){
 			dist = RBF(search_radius, dist) * weighted_lambda;
-			atomicAdd_D(&PDF[idx], dist);
+			_D_atomicAdd(&PDF[idx], dist);
 		}
 	}
 }
@@ -376,20 +376,18 @@ __global__ void RESTART_GRID_FIND_GN_II(gridPoint*  Particle_Positions,
 									const double 	grid_discretization_length,
 									const int	 	PtsPerDimension,
 									const int	 	Adapt_Pts,
-									const int	 	Total_Particles) {
+									const int	 	Current_sample) {
 // OUTPUT: New values of the PDF at the fixed grid
 
 const int i = blockDim.x * blockIdx.x + threadIdx.x;
 
-if (i < Total_Particles) {
-	int num_neighbors_per_dim 		= (int)2 * floorf(search_radius / grid_discretization_length) + 1;
+if (i < Adapt_Pts) {
+	int num_neighbors_per_dim 		= (int) 2 * floorf(search_radius / grid_discretization_length) + 1;
 	int num_neighbors_per_particle 	= (int) powf(num_neighbors_per_dim, DIMENSIONS);
 
-	gridPoint particle 	= Particle_Positions[i];
-	double lambda 		= lambdas[i];
+	gridPoint particle 	= Particle_Positions[i + Current_sample * Adapt_Pts];
 
-	int sample_num 		 = floorf(i / Adapt_Pts);					// random sample I'm at
-	double sample_weight = Impulse_weights[sample_num];				// the specific sample weight
+	double weighted_lambda = lambdas[i + Current_sample * Adapt_Pts] * Impulse_weights[Current_sample];				// the specific sample weight
 
 	// I want to compute the index of the lowest neighboring grid node and build its nearest neighbors
 	int lowest_idx = 0;
@@ -400,8 +398,8 @@ if (i < Total_Particles) {
 	// store the lowest sparse index identification (remember we are alredy storing the transposed matrix. The one we will need for multiplication)
 	double dist = Distance(Fixed_Mesh[lowest_idx], particle) / search_radius;
 	if (dist <= 1){
-		dist = RBF(search_radius, dist) * sample_weight * lambda;
-		atomicAdd_D(&PDF[lowest_idx], dist);
+		dist = RBF(search_radius, dist) * weighted_lambda;
+		_D_atomicAdd(&PDF[lowest_idx], dist);
 	}
 
 	// now, go through all the neighboring grid nodes and add the values to the PDF field
@@ -414,8 +412,8 @@ if (i < Total_Particles) {
 
 		dist = Distance(Fixed_Mesh[idx], particle) / search_radius;
 		if (dist <= 1){
-			dist = RBF(search_radius, dist) * sample_weight * lambda;
-			atomicAdd_D(&PDF[idx], dist);
+			dist = RBF(search_radius, dist) * weighted_lambda;
+			_D_atomicAdd(&PDF[idx], dist);
 		}
 	}
 }

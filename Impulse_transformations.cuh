@@ -96,17 +96,19 @@ int IMPULSE_TRANSFORM_PDF(	const gridPoint*				MESH,			// Fixed Mesh
 
 	// FOR SOME REASON, I'M ONLY WRITING IN SOME VALUES...NOT ALL OF THEM
 
-	TRANSFORM_PARTICLES << <Blocks, Threads >> > (raw_pointer_cast(&Particle_Positions[0]), raw_pointer_cast(&Impulse_Strength[0]), Adapt_Points, Total_Points);
+	TRANSFORM_PARTICLES << <Blocks, Threads >> > (	raw_pointer_cast(&Particle_Positions[0]), 
+													raw_pointer_cast(&Impulse_Strength[0]), 
+													Adapt_Points, 
+													Total_Points);
 	gpuError_Check( cudaDeviceSynchronize() );
 
 
 // 2.- RBF interpolation into the fixed grid
 	
 	// 2.1. - Find near particles
-	const double	disc_X						= (MESH[1].dim[0] - MESH[0].dim[0]);
-	const double	search_radius				= 4.5 * disc_X;									// max radius to search
-	const int		MaxNeighborNum				= fminf(100, Adapt_Points);
-	double			Iteration_information[2]	= { 0,0 };
+	const double	disc_X			= (MESH[1].dim[0] - MESH[0].dim[0]);
+	const double	search_radius	= 4.75 * disc_X;									// max radius to search
+	const int		MaxNeighborNum	= fminf(200, Adapt_Points);
 
 	thrust::device_vector<int>		GPU_Index_array;
 	thrust::device_vector<double>	GPU_Mat_entries;
@@ -116,15 +118,21 @@ int IMPULSE_TRANSFORM_PDF(	const gridPoint*				MESH,			// Fixed Mesh
 	GPU_Mat_entries.resize(MaxNeighborNum * Total_Points);
 	GPU_Num_Neighbors.resize(Total_Points);
 
-	Exh_PP_Search << <Blocks, Threads >> > (raw_pointer_cast(&Particle_Positions[0]), raw_pointer_cast(&Particle_Positions[0]), raw_pointer_cast(&GPU_Index_array[0]), raw_pointer_cast(&GPU_Mat_entries[0]), raw_pointer_cast(&GPU_Num_Neighbors[0]), MaxNeighborNum, Adapt_Points, Total_Points, search_radius);
+	Exh_PP_Search << <Blocks, Threads >> > (raw_pointer_cast(&Particle_Positions[0]), 
+											raw_pointer_cast(&Particle_Positions[0]), 
+											raw_pointer_cast(&GPU_Index_array[0]), 
+											raw_pointer_cast(&GPU_Mat_entries[0]), 
+											raw_pointer_cast(&GPU_Num_Neighbors[0]), 
+											MaxNeighborNum, 
+											Adapt_Points, 
+											Total_Points, 
+											search_radius);
 	gpuError_Check( cudaDeviceSynchronize() );
 	//std::cout << "Transformation Point Search: done\n";
 
 	// 2.2.- Solve Conjugate Gradient system
 	const int max_steps = 1000;
 	const double in_tolerance = pow(10, -8);
-
-
 
 	// ------------------ AUXILIARIES FOR THE INTEPROLATION PROC. ------------------ //
 	thrust::device_vector<double> GPU_lambdas;
@@ -194,8 +202,6 @@ int IMPULSE_TRANSFORM_PDF(	const gridPoint*				MESH,			// Fixed Mesh
 		sq_error = sqrt(sq_error);
 
 		if (sq_error < in_tolerance) {
-			Iteration_information[0] = (int)k;
-			Iteration_information[1] = sq_error;
 			//std::cout << "Transformation convergence success. Iterations:" << Iteration_information[0] << " Error:" << Iteration_information[1] << "\n";
 			flag = false;
 		}
@@ -220,27 +226,54 @@ int IMPULSE_TRANSFORM_PDF(	const gridPoint*				MESH,			// Fixed Mesh
 	// 3.- Reinitialization
 
 	// Multiplication of matrix-lambdas to obtain new points
-	Threads = fminf(THREADS_P_BLK, Grid_Nodes);
-	Blocks = floorf(Grid_Nodes / Threads) + 1;
+	// Threads = fminf(THREADS_P_BLK, Grid_Nodes);
+	// Blocks = floorf(Grid_Nodes / Threads) + 1;
 
-	thrust::device_vector<double> GPU_PDF (Grid_Nodes);							// To compute the interpolation results at the GPU
+	// thrust::device_vector<double> GPU_PDF (Grid_Nodes);							// To compute the interpolation results at the GPU
+
+	// gridPoint* GPU_Mesh;
+	// cudaMalloc((void**)&GPU_Mesh, sizeof(gridPoint) * Grid_Nodes); // To compute the interpolation results at the GPU
+	// cudaMemcpy(GPU_Mesh, MESH, sizeof(gridPoint) * Grid_Nodes, cudaMemcpyHostToDevice);
+
+	// RESTART_GRID_FIND_GN_II<<< Blocks, Threads >>>(raw_pointer_cast(&Particle_Positions[0]),
+	// 											raw_pointer_cast(&GPU_PDF[0]),
+	// 											raw_pointer_cast(&GPU_lambdas[0]),
+	// 											GPU_Mesh,
+	// 											raw_pointer_cast(&Impulse_Weights[0]),
+	// 											search_radius,
+	// 											MESH[0],
+	// 											disc_X,
+	// 											PtsPerDim,
+	// 											Adapt_Points,
+	// 											Total_Points);
+	// gpuError_Check(cudaDeviceSynchronize());
+
+
+	thrust::device_vector<double> GPU_PDF (Grid_Nodes);
+	thrust::fill(GPU_PDF.begin(),GPU_PDF.end(), 0);
 
 	gridPoint* GPU_Mesh;
 	cudaMalloc((void**)&GPU_Mesh, sizeof(gridPoint) * Grid_Nodes); // To compute the interpolation results at the GPU
 	cudaMemcpy(GPU_Mesh, MESH, sizeof(gridPoint) * Grid_Nodes, cudaMemcpyHostToDevice);
 
-	RESTART_GRID_FIND_GN_II<<< Blocks, Threads >>>(raw_pointer_cast(&Particle_Positions[0]),
-												raw_pointer_cast(&GPU_PDF[0]),
-												raw_pointer_cast(&GPU_lambdas[0]),
-												GPU_Mesh,
-												raw_pointer_cast(&Impulse_Weights[0]),
-												search_radius,
-												MESH[0],
-												disc_X,
-												PtsPerDim,
-												Adapt_Points,
-												Total_Points);
+for (unsigned int s = 0; s < num_samples; s++){
+	Threads = fminf(THREADS_P_BLK, Adapt_Points);
+	Blocks = floorf((Adapt_Points - 1) / Threads) + 1;					// To compute the interpolation results at the GPU
+
+	RESTART_GRID_FIND_GN_II<<< Blocks, Threads >>>( raw_pointer_cast(&Particle_Positions[0]),
+													raw_pointer_cast(&GPU_PDF[0]),
+													raw_pointer_cast(&GPU_lambdas[0]),
+													GPU_Mesh,
+													raw_pointer_cast(&Impulse_Weights[0]),
+													search_radius,
+													MESH[0],
+													disc_X,
+													PtsPerDim,
+													Adapt_Points,
+													s);
 	gpuError_Check(cudaDeviceSynchronize());
+}
+	
 
 	//std::cout << "Transformation reinitialization: done\n";
 	std::cout << "/-------------------------------------------------------------------/\n";

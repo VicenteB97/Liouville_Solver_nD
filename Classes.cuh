@@ -128,18 +128,22 @@ __host__ __device__ inline unsigned int positive_rem(const int a, const int b){
 /// @param address 
 /// @param val 
 /// @return 
-__device__ double atomicAdd_D(double* address, double val)
-{
-    unsigned long long int* address_as_ull =
-                             (unsigned long long int*)address;
-    unsigned long long int old = *address_as_ull, assumed;
-    do {
-        assumed = old;
-old = atomicCAS(address_as_ull, assumed,
-                        __double_as_longlong(val +
-                               __longlong_as_double(assumed)));
-    } while (assumed != old);
-    return __longlong_as_double(old);
+__device__ inline void _D_atomicAdd(double *address, double value) {
+
+    unsigned long long oldval, newval, readback;
+
+	oldval = __double_as_longlong(*address);
+
+    newval = __double_as_longlong(__longlong_as_double(oldval) + value);
+
+    while ((readback = atomicCAS((unsigned long long *) address, oldval, newval)) != oldval) {
+
+        oldval = readback;
+
+        newval = __double_as_longlong(__longlong_as_double(oldval) + value);
+
+    }
+
 }
 // ------------------------------------------------------------------------ //
 // ------------------------------------------------------------------------ //

@@ -528,7 +528,13 @@ __host__ int PDF_ITERATIONS(std::vector<double>* store_PDFs,
 			// compute transformaton
 			//std::cout << "Computing impulse transformation.\n";
 
-			int success_impulse = IMPULSE_TRANSFORM_PDF(H_Mesh, &AdaptGrid, H_PDF, &AdaptPDF, time_vector[j], Grid_Nodes, PtsPerDim);
+			int success_impulse = IMPULSE_TRANSFORM_PDF(H_Mesh, 
+														&AdaptGrid, 
+														H_PDF, 
+														&AdaptPDF, 
+														time_vector[j], 
+														Grid_Nodes, 
+														PtsPerDim);
 
 			if (success_impulse != 0) {
 				//std::cout << "Something went wrong...\n";
@@ -537,10 +543,8 @@ __host__ int PDF_ITERATIONS(std::vector<double>* store_PDFs,
 			}
 			else {
 				//std::cout << "Transformation done...continuing with Liouville PDE\n";
-
 				AdaptGrid.clear();
 				AdaptPDF.clear();
-
 			}
 		}
 	// 1.2.- Error?
@@ -554,9 +558,6 @@ __host__ int PDF_ITERATIONS(std::vector<double>* store_PDFs,
 			Adapt_Points = AdaptGrid.size();
 			Total_Particles = Adapt_Points * Random_Samples;
 
-			Full_AdaptGrid.clear();
-			Full_AdaptPDF.clear();
-
 			// 1.2.- Append the optimal particles once per sample!
 			for (int k = 0; k < Random_Samples; k++) {
 				Full_AdaptGrid.insert(Full_AdaptGrid.end(), AdaptGrid.begin(), AdaptGrid.end());
@@ -568,11 +569,13 @@ __host__ int PDF_ITERATIONS(std::vector<double>* store_PDFs,
 			GPU_Part_Position 	= Full_AdaptGrid;
 			GPU_Parameter_Mesh 	= *Parameter_Mesh;
 
-			std::cout << "Size of relevant PDF points (per sample): " << Adapt_Points << "\n";	// this allows to check if the info is passed to the GPU correctly
-
 			// Clear CPU info about the AMR procedure: no longer needed
 			AdaptGrid.clear();
 			AdaptPDF.clear();
+			Full_AdaptGrid.clear();
+			Full_AdaptPDF.clear();
+
+			std::cout << "Size of relevant PDF points (per sample): " << Adapt_Points << "\n";	// this allows to check if the info is passed to the GPU correctly
 
 			MaxNeighborNum = (int)fminf(200, Adapt_Points);				// maximum neighbors to search
 
@@ -634,28 +637,33 @@ __host__ int PDF_ITERATIONS(std::vector<double>* store_PDFs,
 			bool new_restart_mthd = true;
 
 			if (new_restart_mthd) {
-			// Re-define Threads and Blocks
-			Threads = fminf(THREADS_P_BLK, Total_Particles);
-			Blocks  = floorf((Grid_Nodes - 1) / Threads) + 1;
 
 			thrust::fill(GPU_PDF.begin(), GPU_PDF.end(), 0);	// PDF is reset to 0, so that we may use atomic adding
 
 			// I'M GOING TO FIND THE NEAREST GRID NODES TO EACH PARTICLE
-			// TO DO: MAKE IT USING BATCHES! (MAYBE BATCHES OF 10-50) BECAUSE IT'S NOT WORKING PROPERLY! IT'S THE ATOMICADD FUNCTION'S FAULT
-			RESTART_GRID_FIND_GN<<< Blocks, Threads >>>(raw_pointer_cast(&GPU_Part_Position[0]),
-														raw_pointer_cast(&GPU_PDF[0]),
-														raw_pointer_cast(&GPU_lambdas[0]),
-														raw_pointer_cast(&GPU_Mesh[0]),
-														raw_pointer_cast(&GPU_Parameter_Mesh[0]),
-														search_radius,
-														H_Mesh[0],
-														disc_X,
-														PtsPerDim,
-														Adapt_Points,
-														Total_Particles);
-			gpuError_Check(cudaDeviceSynchronize());
+			for(unsigned int s = 0; s < Random_Samples; s++){
+				// Re-define Threads and Blocks
+				Threads = fminf(THREADS_P_BLK, Adapt_Points);
+				Blocks  = floorf((Adapt_Points - 1) / Threads) + 1;
+				
+				RESTART_GRID_FIND_GN<<< Blocks, Threads >>>(raw_pointer_cast(&GPU_Part_Position[0]),
+															raw_pointer_cast(&GPU_PDF[0]),
+															raw_pointer_cast(&GPU_lambdas[0]),
+															raw_pointer_cast(&GPU_Mesh[0]),
+															raw_pointer_cast(&GPU_Parameter_Mesh[0]),
+															search_radius,
+															H_Mesh[0],
+															disc_X,
+															PtsPerDim,
+															Adapt_Points,
+															s);
+				gpuError_Check(cudaDeviceSynchronize());
+			}
 
-			// Correct any possible negative PDF values
+			// Correction of any possible negative PDF values
+				// Re-define Threads and Blocks
+				Threads = fminf(THREADS_P_BLK, Grid_Nodes);
+				Blocks  = floorf((Grid_Nodes - 1) / Threads) + 1;
 			CORRECTION<<<Blocks, Threads>>>(raw_pointer_cast(&GPU_PDF[0]), Grid_Nodes);
 			gpuError_Check(cudaDeviceSynchronize());
 				
