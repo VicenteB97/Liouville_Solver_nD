@@ -21,7 +21,8 @@
 
 #define DIMENSIONS 2		
 #define PARAM_DIMENSIONS 2
-#define THREADS_P_BLK 512
+#define THREADS_P_BLK 256
+#define IMPULSE true
 
 // This is for CUDA built-in functions error handling
 #define gpuError_Check(ans) {gpuAssert((cudaError_t) ans, __FILE__, __LINE__);}
@@ -166,7 +167,7 @@ __host__ __device__ double Distance(const gridPoint P1, const gridPoint P2) {
 
 // ------------------------------------------------------------------------ //
 // ------------------------------------------------------------------------ //
-__device__ gridPoint Mult_by_Scalar(double scalar, gridPoint Point) {
+__host__ __device__ gridPoint Mult_by_Scalar(double scalar, gridPoint Point) {
 	gridPoint out;
 
 	for (unsigned int d = 0; d < DIMENSIONS; d++) {

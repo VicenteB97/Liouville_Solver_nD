@@ -24,17 +24,11 @@ __host__ int PDF_ITERATIONS(std::vector<double>* store_PDFs,
 
 //--------------------------------------------------------------------------------------------- //
 
-/// <summary>
-/// This function computes the evolution of an initial PDF (defined in "Parameter_distributions.cuh")
-///  according to the dynamics parameters (also defined in "Parameter_distributions.cuh"), with some 
-/// given simulation parameters (given in "Simulation_parameters.cuh"). 
-/// </summary>
-/// <returns> An integer (0 if there are no problems)</returns>
 
 /// @brief This function computes the evolution of an initial PDF (defined in "Parameter_distributions.cuh")
 ///  according to the dynamics parameters (also defined in "Parameter_distributions.cuh"), with some 
 /// given simulation parameters (given in "Simulation_parameters.cuh"). 
-/// @return 
+/// @return An integer (0 if everything was OK, -1 if the simulaion was forced to stop for some reason)
 int PDF_EVOLUTION() {
 	std::cout << "You must choose: \n - FINEST / COARSEST MESH LEVEL \n - If you wish to include IMPULSE terms \n - FINAL time and TIMESTEP";
 	std::cout << "\n - Reinitialization Steps \n - SAMPLES PER PARAMETER \n";
@@ -44,20 +38,20 @@ int PDF_EVOLUTION() {
 	// ----------------------------------------------------------------------------------------------- //
 	// ---------------------------------- OBTAIN INFO FROM TERMINAL ---------------------------------- //
 	// ----------------------------------------------------------------------------------------------- //
-					int LvlFine, LvlCoarse = 0;
-					std::cout << "Finest level in the domain?: ";
-					std::cin >> LvlFine;
-					if (LvlFine == -1){
-						std::cout << "Exiting simulation\n";
-						return -1;
-					}
+	int LvlFine, LvlCoarse = 0;
+	std::cout << "Finest level in the domain?: ";
+	std::cin >> LvlFine;
+	if (LvlFine == -1){
+		std::cout << "Exiting simulation\n";
+		return -1;
+	}
 
-					std::cout << "Coarsest level in the domain?: ";
-					std::cin >> LvlCoarse;
-					if (LvlCoarse == -1){
-						std::cout << "Exiting simulation\n";
-						return -1;
-					}
+	std::cout << "Coarsest level in the domain?: ";
+	std::cin >> LvlCoarse;
+	if (LvlCoarse == -1){
+		std::cout << "Exiting simulation\n";
+		return -1;
+	}
 	// ----------------------------------------------------------------------------------------------- //
 	// ----------------------------------------------------------------------------------------------- //
 	// ----------------------------------------------------------------------------------------------- //
@@ -83,32 +77,12 @@ int PDF_EVOLUTION() {
 	int			ReinitSteps;
 	double		deltaT;
 	std::vector<Time_Impulse_vec> time_vector;
-
-	bool impulse = true;
 	
 	// ----------------------------------------------------------------------------------------------- //
-	// ---------------------------------- OBTAIN INFO FROM TERMINAL ---------------------------------- //
-	// ----------------------------------------------------------------------------------------------- //
-					char ans;
-					std::cout << "Include impulse terms? (Y=Yes, N=No): ";
-					std::cin >> ans;
-					while (ans != 'Y' && ans != 'y') {
-						if (ans == 'N' || ans == 'n') { impulse = false; break; }
-						else if(ans == '-1'){
-						std::cout << "Exiting simulation\n";
-							return -1;
-							break;
-						}
-						else {
-							std::cout << "SYNTAX Error. Include impulse terms? (Y=Yes, N=No): ";
-							std::cin >> ans;
-						}
-					}
-	// ----------------------------------------------------------------------------------------------- //
 	// ----------------------------------------------------------------------------------------------- //
 	// ----------------------------------------------------------------------------------------------- //
 
-	int error_check = Simul_Data_Def(time_vector, deltaT, ReinitSteps, impulse);
+	int error_check = Simul_Data_Def(time_vector, deltaT, ReinitSteps);
 	if (error_check == -1){
 		std::cout << "Exiting simulation.\n";
 		return error_check;
@@ -214,6 +188,7 @@ int PDF_EVOLUTION() {
 // --------------------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------
+	char ans;
 	std::cout << "Simulation time: " << duration.count() << " seconds. Memory to be written: " << (float)store_PDFs.size() * sizeof(double) / 1000000 << " MB. Write? (Y=Yes, N=no)\n";
 	std::cin >> ans;
 
@@ -269,19 +244,17 @@ int PDF_EVOLUTION() {
 // 2.- Iterations of the Liouville-Equation solver --------------------------------------------
 //---------------------------------------------------------------------------------------------
 
-/// <summary>
-/// This function computes the advection of the particles created by AMR.
-/// It uses the RK4 scheme for the spatial variables advection and the Simpson rule for the exponential integral.
-/// </summary>
-/// <param name="H_Mesh"> - Particle location (spatial variables)</param>
-/// <param name="PDF"> - PDF value at the corresponding particle location </param>
-/// <param name="parameters"> - Parameters to be used for the vector field and its corresponding divergence function</param>
-/// <param name="t0"> - Inital time for starting the simulation</param>
-/// <param name="deltaT"> - time step used in the simulation</param>
-/// <param name="ReinitSteps"> - Number of steps before needing a re-interpolation</param>
-/// <param name="Adapt_Points"> - Number of particles as computed by the AMR scheme</param>
-/// <param name="Random_Samples"> - Number of random parameter samples</param>
-/// <returns></returns>
+/// @brief This function computes the advection of the particles created by AMR.
+/// 		It uses the RK4 scheme for the spatial variables advection and the Simpson rule for the exponential integral.
+/// @param H_Mesh Particle location (spatial variables)
+/// @param PDF PDF value at the corresponding particle location
+/// @param parameters Parameters to be used for the vector field and its corresponding divergence function
+/// @param t0 Inital time for starting the simulation
+/// @param deltaT Time step used in the simulation
+/// @param ReinitSteps Number of steps before needing a re-interpolation
+/// @param Adapt_Points Number of particles as computed by the AMR scheme
+/// @param Random_Samples Number of random parameter samples
+/// @return 
 __global__ void RungeKutta(	gridPoint* 			H_Mesh,
 							double* 			PDF,
 							const Param_vec* 	parameters,
@@ -565,7 +538,7 @@ __host__ int PDF_ITERATIONS(std::vector<double>* store_PDFs,
 														in_tolerance);
 			if (err == -1) { return err; }
 
-	// 3.- Multiplication of matrix-lambdas to obtain new points
+	// 3.- Multiplication of matrix-lambdas to obtain updated grid nodes
 			thrust::fill(GPU_PDF.begin(), GPU_PDF.end(), 0);	// PDF is reset to 0, so that we may use atomic adding
 
 			// I'M GOING TO FIND THE NEAREST GRID NODES TO EACH PARTICLE

@@ -9,7 +9,7 @@
 /// <param name="time_Vec"></param>
 /// <param name="deltaT"></param>
 /// <param name="ReinitSteps"></param>
-int Simul_Data_Def(std::vector<Time_Impulse_vec>& time_Vec, double& deltaT, int& ReinitSteps, const bool impulse) {
+int Simul_Data_Def(std::vector<Time_Impulse_vec>& time_Vec, double& deltaT, int& ReinitSteps) {
 // MODIFIABLE
 // 1.- Time values for output + impulse vectors
 	double t0 = 0;
@@ -40,7 +40,7 @@ int Simul_Data_Def(std::vector<Time_Impulse_vec>& time_Vec, double& deltaT, int&
 
 // 2.- if there are impulses:
 
-	if (impulse) {//		 time	Imp?	mean_vec	st. dev.   samples
+	if (IMPULSE) {//		 time	Imp?	mean_vec	st. dev.   samples
 		time_Vec.push_back({ 0.6, true,	{0,2.5} ,	{0,0.02} , {0,20} });	// Include time instants where impulses take place
 		time_Vec.push_back({ 1.2, true,	{0,1} ,		{0,0.02} , {0,20} });	// Include time instants where impulses take place
 		time_Vec.push_back({ 2.4, true,	{0,1.2} ,	{0,0.02} , {0,20} });	// Include time instants where impulses take place

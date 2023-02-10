@@ -160,11 +160,11 @@ int IMPULSE_TRANSFORM_PDF(	const gridPoint*				MESH,			// Fixed Mesh
 
 	// Initialize Conjugate gradient method
 	// Compute A * X0
-	MATRIX_VECTOR_MULTIPLICATION << < Blocks, Threads >> > (raw_pointer_cast(&GPU_AUX[0]), raw_pointer_cast(&GPU_lambdas[0]), raw_pointer_cast(&GPU_Index_array[0]), raw_pointer_cast(&GPU_Mat_entries[0]), Total_Points, raw_pointer_cast(&GPU_Num_Neighbors[0]), MaxNeighborNum);
+	MATRIX_VECTOR_MULTIPLICATION<double> << < Blocks, Threads >> > (raw_pointer_cast(&GPU_AUX[0]), raw_pointer_cast(&GPU_lambdas[0]), raw_pointer_cast(&GPU_Index_array[0]), raw_pointer_cast(&GPU_Mat_entries[0]), Total_Points, raw_pointer_cast(&GPU_Num_Neighbors[0]), MaxNeighborNum);
 	gpuError_Check( cudaDeviceSynchronize() );
 
 	// Compute R=B-A*X0
-	DIFF_VECS << <Blocks, Threads >> > (raw_pointer_cast(&GPU_R[0]), raw_pointer_cast(&PDF_Particles[0]), raw_pointer_cast(&GPU_AUX[0]), Total_Points);
+	UPDATE_VEC<double> << <Blocks, Threads >> > (raw_pointer_cast(&GPU_R[0]), raw_pointer_cast(&PDF_Particles[0]), (double) -1, raw_pointer_cast(&GPU_AUX[0]), Total_Points);
 	gpuError_Check( cudaDeviceSynchronize() );
 
 	double Alpha, R0_norm, aux, beta;
@@ -174,7 +174,7 @@ int IMPULSE_TRANSFORM_PDF(	const gridPoint*				MESH,			// Fixed Mesh
 	while (flag) {
 		// Alpha computation (EVERYTHING IS CORRECT!)
 		// 1.1.- Compute AP=A*P
-		MATRIX_VECTOR_MULTIPLICATION << < Blocks, Threads >> > (raw_pointer_cast(&GPU_AP[0]), raw_pointer_cast(&GPU_P[0]), raw_pointer_cast(&GPU_Index_array[0]), raw_pointer_cast(&GPU_Mat_entries[0]), Total_Points, raw_pointer_cast(&GPU_Num_Neighbors[0]), MaxNeighborNum);
+		MATRIX_VECTOR_MULTIPLICATION<double> << < Blocks, Threads >> > (raw_pointer_cast(&GPU_AP[0]), raw_pointer_cast(&GPU_P[0]), raw_pointer_cast(&GPU_Index_array[0]), raw_pointer_cast(&GPU_Mat_entries[0]), Total_Points, raw_pointer_cast(&GPU_Num_Neighbors[0]), MaxNeighborNum);
 		gpuError_Check( cudaDeviceSynchronize() );
 
 		// 1.2.- Compute P'*AP
@@ -189,11 +189,11 @@ int IMPULSE_TRANSFORM_PDF(	const gridPoint*				MESH,			// Fixed Mesh
 
 		// New X and R: (new, old, scalar, driving vec, total length)
 			// 1.- Update Lambdas
-		UPDATE_VEC << <Blocks, Threads >> > (raw_pointer_cast(&GPU_lambdas[0]), raw_pointer_cast(&GPU_lambdas[0]), Alpha, raw_pointer_cast(&GPU_P[0]), Total_Points);
+		UPDATE_VEC<double> << <Blocks, Threads >> > (raw_pointer_cast(&GPU_lambdas[0]), raw_pointer_cast(&GPU_lambdas[0]), Alpha, raw_pointer_cast(&GPU_P[0]), Total_Points);
 		gpuError_Check( cudaDeviceSynchronize() );
 
 		// 2.- Update residuals 
-		UPDATE_VEC << <Blocks, Threads >> > (raw_pointer_cast(&GPU_R[0]), raw_pointer_cast(&GPU_R[0]), -Alpha, raw_pointer_cast(&GPU_AP[0]), Total_Points);
+		UPDATE_VEC<double> << <Blocks, Threads >> > (raw_pointer_cast(&GPU_R[0]), raw_pointer_cast(&GPU_R[0]), -Alpha, raw_pointer_cast(&GPU_AP[0]), Total_Points);
 		gpuError_Check( cudaDeviceSynchronize() );
 
 		// Compute residual norm
@@ -215,7 +215,7 @@ int IMPULSE_TRANSFORM_PDF(	const gridPoint*				MESH,			// Fixed Mesh
 		else {
 			beta = sq_error * sq_error / R0_norm;
 
-			UPDATE_VEC << <Blocks, Threads >> > (raw_pointer_cast(&GPU_P[0]), raw_pointer_cast(&GPU_R[0]), beta, raw_pointer_cast(&GPU_P[0]), Total_Points);
+			UPDATE_VEC<double> << <Blocks, Threads >> > (raw_pointer_cast(&GPU_P[0]), raw_pointer_cast(&GPU_R[0]), beta, raw_pointer_cast(&GPU_P[0]), Total_Points);
 			gpuError_Check( cudaDeviceSynchronize() );
 			k++;
 		}
@@ -272,7 +272,15 @@ for (unsigned int s = 0; s < num_samples; s++){
 													Adapt_Points,
 													s);
 	gpuError_Check(cudaDeviceSynchronize());
-}
+}			
+
+// Correction of any possible negative PDF values
+		// Re-define Threads and Blocks
+		Threads = fminf(THREADS_P_BLK, Grid_Nodes);
+		Blocks  = floorf((Grid_Nodes - 1) / Threads) + 1;
+		
+	CORRECTION<<<Blocks, Threads>>>(raw_pointer_cast(&GPU_PDF[0]), Grid_Nodes);
+	gpuError_Check(cudaDeviceSynchronize());
 	
 
 	//std::cout << "Transformation reinitialization: done\n";

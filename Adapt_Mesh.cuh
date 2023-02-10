@@ -94,7 +94,7 @@ std::vector<int> _nD_MultiLvlWavelet(const thrust::host_vector<double> PDF, cons
 void ADAPT_MESH_REFINEMENT_nD(const thrust::host_vector<double>& H_PDF, std::vector<double>* AdaptPDF, const gridPoint* H_Mesh, std::vector<gridPoint>* AdaptGrid, const int LvlFine, const int LvlCoarse, const int PtsPerDim) {
 	// Final AMR procedure
 
-	double tolerance = powf(10,-4);
+	double tolerance = 5 * powf(10,-4);
 
 	std::vector<int> Grid = _nD_MultiLvlWavelet(H_PDF, LvlFine, LvlCoarse, tolerance, PtsPerDim);
 	int g_length = Grid.size();

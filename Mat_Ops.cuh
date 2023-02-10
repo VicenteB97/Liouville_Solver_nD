@@ -3,21 +3,20 @@
 
 #include "Classes.cuh"
 
-#define Mass_RBF 0.071428571420238
+#define Mass_RBF 0.071428571420238f
 /// <summary>
 /// Compactly Supported Radial Basis Function (CS-RBF): Wendland C2 kernel (L1-normalized)
 /// </summary>
 /// <param name="entry"> - Euclidean distance / support radius</param>
 /// <returns></returns>
-///  * 4.5576820034785532
-__device__ double RBF(const double support_radius, const double entry) {
+__device__ inline double RBF(const double support_radius, const double entry) {
 
-	return pow(fmaxf(0, 1 - entry), 4) * (4 * entry + 1) / (Mass_RBF * 2 * M_PI * support_radius * support_radius); // We multiply by this last factor to get the L1-normalized RBF
+	return (double)powf(fmaxf(0, 1 - entry), 4) * (4 * entry + 1) / (Mass_RBF * 2 * M_PI * powf(support_radius, DIMENSIONS)); // We multiply by this last factor to get the L1-normalized RBF
 
 }
 
 // Define CUDA implementation for the max function
-__device__ double cuda_fmax(double X, double Y) {
+__device__ inline double cuda_fmax(double X, double Y) {
 
 	if (X >= Y) {
 		return X;
@@ -74,23 +73,6 @@ __global__ void Exh_PP_Search(const gridPoint* Search_Particles, const gridPoint
 
 template<class T>
 /// <summary>
-/// This function allows the computation of the difference of GPU vectors
-/// </summary>
-/// <param name="output"></param>
-/// <param name="u"> - Vector which is to be substracted by v </param>
-/// <param name="v"> - Substracting vector</param>
-/// <param name="Max_Length"> - Vector lengths </param>
-/// <returns></returns>
-__global__ void DIFF_VECS(T* output, const T* u, const T* v, const int Max_Length) {
-	const int i = blockDim.x * blockIdx.x + threadIdx.x;
-
-	if (i < Max_Length) {
-		output[i] = u[i] - v[i];
-	}
-}
-
-template<class T>
-/// <summary>
 /// Update function. This function allows to compute the update of a vector in the CG linear solver
 /// </summary>
 /// <param name="x"> - Final vector</param>
@@ -99,7 +81,7 @@ template<class T>
 /// <param name="v"> - Update vector </param>
 /// <param name="Max_Length"> - Vector lengths</param>
 /// <returns></returns>
-__global__ void UPDATE_VEC(T* x, const T* x0, const T scalar, const double* v, const int Max_Length) {
+__global__ void UPDATE_VEC(T* x, const T* x0, const T scalar, const T* v, const int Max_Length) {
 	const int i = blockDim.x * blockIdx.x + threadIdx.x;
 
 	if (i < Max_Length) {
@@ -186,7 +168,7 @@ __host__ int CONJUGATE_GRADIENT_SOLVE(	thrust::device_vector<T>&	GPU_lambdas,
 	gpuError_Check(cudaDeviceSynchronize());
 
 	// Compute R=B-A*X0
-	DIFF_VECS <T> << <Blocks, Threads >> > (raw_pointer_cast(&GPU_R[0]), raw_pointer_cast(&GPU_AdaptPDF[0]), raw_pointer_cast(&GPU_AUX[0]), Total_Particles);
+	UPDATE_VEC <T> << <Blocks, Threads >> > (raw_pointer_cast(&GPU_R[0]), raw_pointer_cast(&GPU_AdaptPDF[0]), (T)-1, raw_pointer_cast(&GPU_AUX[0]), Total_Particles);
 	gpuError_Check(cudaDeviceSynchronize());
 
 	T Alpha, R0_norm, aux, beta;
@@ -247,51 +229,7 @@ __host__ int CONJUGATE_GRADIENT_SOLVE(	thrust::device_vector<T>&	GPU_lambdas,
 	return 0;
 }
 
-
-/// @brief 
-/// @param New_GRID_PDF 
-/// @param Fixed_Mesh 
-/// @param Particle_Positions 
-/// @param Lambdas 
-/// @param Parameter_Mesh 
-/// @param search_radius 
-/// @param Grid_Nodes 
-/// @param Particles_Per_Sample 
-/// @param Total_Particles 
-/// @return 
-__global__ void RESTART_GRID(double*	 New_GRID_PDF,
-							gridPoint*	 Fixed_Mesh,
-							gridPoint*	 Particle_Positions,
-							double*		 Lambdas,
-							Param_vec*	 Parameter_Mesh,
-							const double search_radius,
-							const int	 Grid_Nodes,
-							const int	 Particles_Per_Sample,
-							const int	 Total_Particles) {
-// OUTPUT: New values of the PDF at the fixed grid
-
-const int i = blockDim.x * blockIdx.x + threadIdx.x;
-
-if (i < Grid_Nodes) {
-	const gridPoint Aux_FixedMesh = Fixed_Mesh[i];
-	int				current_sample;
-	double			dist, sum = 0;
-
-	for (int j = 0; j < Total_Particles; j++) {
-		dist = Distance(Particle_Positions[j], Aux_FixedMesh) / search_radius;	// distance between the grid point and the 
-
-		if (dist <= 1) {
-			current_sample = floorf(j / Particles_Per_Sample);					// current sample we're working with
-			sum += RBF(search_radius, dist) * Lambdas[j] * Parameter_Mesh[current_sample].Joint_PDF;
-		}
-	}
-	New_GRID_PDF[i] = cuda_fmax(sum, 0);
-}
-}
-
-
-/// @brief This function computes the neighboring grid nodes for each advected particle from the simulation. Note that we're going to have a coo format. 
-// OUTPUT IS THE COO FORMAT OF THE TRANSPOSED SPARSE MATRIX
+/// @brief This function computes the neighboring grid nodes for each advected particle from the simulation.
 /// @param Particle_Positions 
 /// @param Neighbor_Indx_array 
 /// @param search_radius 
