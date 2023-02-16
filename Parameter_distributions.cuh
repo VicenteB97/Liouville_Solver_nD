@@ -3,41 +3,9 @@
 
 
 #include "Classes.cuh"
-
-
-
-// PUT THE FUNCTIONS WHERE WE DO THE DISTRIBUTION ASSIGNMENTS HEREEEEE
-
-
-
-// WE CAN EASILY IMPLEMENT DIFFERENT 1D-DISTRIBUTIONS
-
-/// @brief This function computes the value given by the PDF of a Normal Distribution at input, with mean and variance as parameters
-/// @tparam T Select the type/class to be used
-/// @param input 
-/// @param mean 
-/// @param variance 
-/// @return 
-template<class T>
-inline T Normal_Dist(T input, T mean, T variance){
-	return 1 / sqrt(2 * M_PI * variance) * exp(-0.5 / variance * pow(input - mean, 2));
-}
-
-/// @brief This function computes the value given by the PDF of a Uniform Distribution at input, with inf. and sup. of the support interval parameters
-/// @tparam T 
-/// @param input Where we compute
-/// @param x0 Inf. of the support interval
-/// @param xF Sup. of the support interval
-/// @return 
-template<class T>
-inline T Unif_Dist(T input, T x0, T xF){
-	T mid_Pt = 0.5*(xF + x0), supp_size = xF - x0;
-
-	if (abs(input - mid_Pt) < supp_size/2){
-		return (input - x0) / (xF - x0);
-	}
-	else{ return (T)0;}
-}
+#include <boost/math/distributions/gamma.hpp>
+#include <boost/math/distributions/normal.hpp>
+#include <boost/math/distributions/uniform.hpp>
 
 
 // ----------------------------------------------------------------------------------- //
@@ -46,23 +14,26 @@ inline T Unif_Dist(T input, T x0, T xF){
 // ----------------------------------------------------------------------------------- //
 // ----------------------------------------------------------------------------------- //
 
-// THIS FUNCTION REMAINS TO BE GENERALIZED FOR THE DIMENSION INDEPENDENT SIMULATIONS
+/// @brief This function creates the IC PDF. We assume it is the tensor product of Normal Distributions
+/// @param Points_per_dimension 
+/// @param Mesh 
+/// @param PDF_value 
+/// @param IC_dist_parameters 
 void PDF_INITIAL_CONDITION(int Points_per_dimension, const gridPoint* Mesh, thrust::host_vector<double>& PDF_value, double* IC_dist_parameters) {
-	// read parameters:
-	// Mean and var of the 1st variable
-	double mean1 = IC_dist_parameters[0];
-	double mean2 = IC_dist_parameters[2];
 
-	// Mean and var of the 2nd variable
-	double var  = IC_dist_parameters[1];
-	double var2 = IC_dist_parameters[3];
+	boost::math::normal dist[DIMENSIONS];
 
-	// build the IC pts per dimension
-	for (int j = 0; j < Points_per_dimension; j++) {
-		for (int i = 0; i < Points_per_dimension; i++) {
-			PDF_value[i + Points_per_dimension * j] =	Normal_Dist<double>(Mesh[i + Points_per_dimension * j].dim[0], mean1, var*var) * 
-														Normal_Dist<double>(Mesh[i + Points_per_dimension * j].dim[1], mean2, var2*var2);
+	//create the distributions per dimension:
+	for (unsigned int d = 0; d < DIMENSIONS; d++){
+		dist[d] = boost::math::normal_distribution(IC_dist_parameters[2*d], IC_dist_parameters[2*d + 1]);
+	}
+
+	for (unsigned int k = 0; k < PDF_value.size(); k++){
+		double aux = 1;
+		for (unsigned d = 0; d < DIMENSIONS; d++){
+			aux *= boost::math::pdf(dist[d], Mesh[k].dim[d]);
 		}
+		PDF_value[k] = aux;
 	}
 }
 
@@ -72,34 +43,107 @@ void PDF_INITIAL_CONDITION(int Points_per_dimension, const gridPoint* Mesh, thru
 // ------------------ TO BUILD THE RANDOM PARAMETER MESH! ---------------------------- //
 // ----------------------------------------------------------------------------------- //
 // ----------------------------------------------------------------------------------- //
-void PARAMETER_VEC_BUILD(const int n_Samples, Param_pair* PP, const double* Dist_params, const char Dist_Names) {
 
-	double expectation = Dist_params[0], var = Dist_params[1];
+/// @brief 
+/// @param n_Samples 
+/// @param PP 
+/// @param Dist_params 
+int PARAMETER_VEC_BUILD(const int n_Samples, Param_pair* PP, const Distributions Dist_params) {
+
+	double expectation = Dist_params.params[0], std_dev = Dist_params.params[1];
 
 	if (n_Samples == 1) {
 		*PP = { expectation, 1 };
+		return 0;
 	}
 	else {
 
-		if (Dist_Names == 'N'){
-			double x0 = fmax(expectation - 5 * sqrt(var), 0);
-			double xF = expectation + 5 * sqrt(var);
+		if (Dist_params.Name == 'N'){
+			// Build the distribution:
+			auto dist = boost::math::normal_distribution(expectation, std_dev);
 
-			double dx = (xF - x0) / (n_Samples - 1);
+			if (Dist_params.Truncated){
+				// Make the truncation intervals:
+				double x0 = fmaxf(expectation - 6 * std_dev, Dist_params.trunc_interval[0]);
+				double xF = fminf(expectation + 6 * std_dev, Dist_params.trunc_interval[1]);
 
-			for (int i = 0; i < n_Samples; i++) {
-				PP[i] = { x0 + i * dx, Normal_Dist<double>(x0 + i * dx, expectation, var) }; // other distributions could be used
+				// Re-scaling for the truncation of the random variables
+				double rescale_cdf = boost::math::cdf(dist, xF) - boost::math::cdf(dist, x0);
+
+				// Mesh discretization
+				double dx = (xF - x0) / (n_Samples - 1);
+
+				for (int i = 0; i < n_Samples; i++) {
+					double x = x0 + i * dx;
+					PP[i] = { x, boost::math::pdf(dist, x) / rescale_cdf }; // other distributions could be used
+				}
 			}
+			else{
+				
+				double x0 = expectation - 6 * std_dev;
+				double xF = expectation + 6 * std_dev;
+
+				double dx = (xF - x0) / (n_Samples - 1);
+
+				for (int i = 0; i < n_Samples; i++) {
+					double x = x0 + i * dx;
+					PP[i] = { x, boost::math::pdf(dist, x) }; // other distributions could be used
+				}
+			}
+			return 0;
 		}
-		else if(Dist_Names == 'U'){
+		else if(Dist_params.Name == 'U'){
 
-			double x0 = Dist_params[0];
-			double xF = Dist_params[1];
+			double x0 = expectation;
+			double xF = std_dev;
+
+			auto dist = boost::math::uniform_distribution(x0, xF);
 
 			double dx = (xF - x0) / (n_Samples - 1);
 			for (int i = 0; i < n_Samples; i++) {
-				PP[i] = { x0 + i * dx, Unif_Dist<double>(x0 + i * dx, x0, xF) }; // other distributions could be used
+				double x = x0 + i * dx;
+				PP[i] = {x , boost::math::pdf(dist, x) }; // other distributions could be used
 			}
+			return 0;
+		}
+		else if(Dist_params.Name == 'G'){
+
+			double shape = pow(expectation / std_dev, 2);
+			double scale = pow(std_dev, 2) / expectation;
+
+			auto dist = boost::math::uniform_distribution(shape, scale);
+
+			if(Dist_params.Truncated){
+				double x0 = fmax(fmax(0, expectation - 6 * std_dev), Dist_params.trunc_interval[0]);
+				double xF = fmin(expectation + 6 * std_dev, Dist_params.trunc_interval[1]);
+
+				// Re-scaling for the truncation of the random variables
+				double rescale_cdf = boost::math::cdf(dist, xF) - boost::math::cdf(dist, x0);
+
+				// Mesh discretization
+				double dx = (xF - x0) / (n_Samples - 1);
+
+				for (int i = 0; i < n_Samples; i++) {
+					double x = x0 + i * dx;
+					PP[i] = { x, boost::math::pdf(dist, x) / rescale_cdf }; // other distributions could be used
+				}
+			}
+			else{
+				double x0 = fmax(0, expectation - 6 * std_dev);
+				double xF = expectation + 6 * std_dev;
+
+				double dx = (xF - x0) / (n_Samples - 1);
+
+				for (int i = 0; i < n_Samples; i++) {
+					double x = x0 + i * dx;
+					PP[i] = { x, boost::math::pdf(dist, x) }; // other distributions could be used
+				}
+			}
+			return 0;
+		}
+		else{
+			std::cout << "Parameter distribution not recognized. Choose correctly please. \nExiting program...\n";
+			return -1;
 		}
 	}
 }
@@ -110,20 +154,19 @@ void PARAMETER_VEC_BUILD(const int n_Samples, Param_pair* PP, const double* Dist
 /// @param Parameter_Mesh Parameter Mesh 
 /// @param Dist_Parameters Parameters' (hyper)parameters
 /// @param Dist_Names Distributions that will be assigned (N = Normal, U = Uniform, etc.)
-void RANDOMIZE(	const int* 				n_samples, 
+int RANDOMIZE(	const int* 				n_samples, 
 				const int 				Total_Samples, 
 				std::vector<Param_vec>* Parameter_Mesh, 
-				const double* 			Dist_Parameters,
-				const char* 			Dist_Names) {
+				const Distributions* 	Dist_Parameters) {
 
 	std::vector<Param_pair> aux_PM;
 
 	for (unsigned int d = 0; d < PARAM_DIMENSIONS; d++){
 		// call the parameter pair vec. function
 		Param_pair* PP = new Param_pair[n_samples[d]];
-		double aux_Dist_Parameters[2] = {(double) Dist_Parameters[2*d], (double) Dist_Parameters[2*d + 1]};
 
-		PARAMETER_VEC_BUILD(n_samples[d], PP, aux_Dist_Parameters, Dist_Names[d]);
+		int err_check = PARAMETER_VEC_BUILD(n_samples[d], PP, Dist_Parameters[d]);
+		if (err_check == -1){ return -1; }
 
 		// append to the output array
 		aux_PM.insert(aux_PM.end(), &PP[0], &PP[n_samples[d]]);
@@ -152,7 +195,7 @@ void RANDOMIZE(	const int* 				n_samples,
 		}
 
 	}
-	
+	return 0;
 }
 
 #endif

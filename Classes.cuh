@@ -1,5 +1,15 @@
 #ifndef __CLASSES_CUH__
 #define __CLASSES_CUH__
+
+
+// ------------------------------------------------------------------------------- //
+//  HERE ARE THE DEFINITIONS THAT CAN BE CHANGED ACCORDING TO THE PROBLEM TO STUDY //
+#define DIMENSIONS 2		// SPATIAL DIMENSIONS = NUMBER OF EQUATIONS OF RDE SYSTEM
+#define PARAM_DIMENSIONS 2	// PARAMETER SPACE DIMENSIONS = NUMBER OF PARAMETERS (ICs MUST NOT BE INCLUDED)
+#define IMPULSE true		// WHETHER DELTA-LIKE IMPULSE TERMS ARE TO BE ADDED
+// ------------------------------------------------------------------------------- //
+// ------------------------------------------------------------------------------- //
+
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 
@@ -19,10 +29,7 @@
 
 #include <chrono>
 
-#define DIMENSIONS 2		
-#define PARAM_DIMENSIONS 2
 #define THREADS_P_BLK 256
-#define IMPULSE true
 
 // This is for CUDA built-in functions error handling
 #define gpuError_Check(ans) {gpuAssert((cudaError_t) ans, __FILE__, __LINE__);}
@@ -103,6 +110,13 @@ public:
 	double sample, PDF;
 };
 
+class Distributions{
+public:
+	double params[2];
+	char Name;
+	bool Truncated;
+	double trunc_interval[2];
+};
 //-------------------------------------------------------------------------//
 //-------------------------------------------------------------------------//
 //-------------------------------------------------------------------------//

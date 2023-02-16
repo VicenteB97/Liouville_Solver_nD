@@ -1,15 +1,7 @@
-# 1.) mkdir build
-# 2.) cd build
-# 3.) cmake .. Config Project
-# 4.) cmake --build . REMEMBER THE DOT
-# 5.) ./Executable 
-
 # IF NO CXX COMPILER IS AVAILABLE, TYPE export CXX=/usr/bin/g++
 
 ## IN ORDER TO EXECUTE FROM THE TERMINAL (UBUNTU), ALL YOU HAVE TO DO IS ACCESS THE BUILD FOLDER:
 # /mnt/c/Users/Vicentin/source/repos/CMAKE_LIOUVILLE/build
-## AND THEN EXECUTE THE EXECUTABLE PROGRAM
-# ./Simulation
 
 cmake_minimum_required(VERSION 3.22)
 
@@ -24,8 +16,8 @@ set(CMAKE_CXX_STANDARD          17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS        ON)
 
-option( CMAKE_BUILD_TYPE    RELEASE)
-option( COMPILE_EXECUTABLE "Include executable compiling" ON)
+option(CMAKE_BUILD_TYPE    RELEASE)
+option(COMPILE_EXECUTABLE "Include executable compiling" ON)
 
 add_subdirectory(Configured)
 

@@ -81,12 +81,10 @@ int PDF_EVOLUTION() {
 	// ----------------------------------------------------------------------------------------------- //
 	// ----------------------------------------------------------------------------------------------- //
 	// ----------------------------------------------------------------------------------------------- //
-
-	int error_check = Simul_Data_Def(time_vector, deltaT, ReinitSteps);
-	if (error_check == -1){
-		std::cout << "Exiting simulation.\n";
-		return error_check;
-	}
+	int error_check = 0;
+	
+	error_check = Simul_Data_Def(time_vector, deltaT, ReinitSteps);
+	if (error_check == -1){	std::cout << "Exiting simulation.\n";return -1;}
 
 	// --------------------------------------------------------------------------------------------
 	// --------------------------------------------------------------------------------------------
@@ -99,46 +97,52 @@ int PDF_EVOLUTION() {
 	// --------------------------------------------------------------------------------------------
 	// --------------------------------------------------------------------------------------------
 	// 1.- PARAMETER H_MESH biuld up
-	int n_samples[PARAM_DIMENSIONS];						// number of samples per parameter
-	
-	// ----------------------------------------------------------------------------------------------- //
-	// ---------------------------------- OBTAIN INFO FROM TERMINAL ---------------------------------- //
-	// ----------------------------------------------------------------------------------------------- //
-	for (int k = 0; k < PARAM_DIMENSIONS; k++) {
-		std::cout << "How many samples for parameter " << k + 1 << " ? ";
-		std::cin >> n_samples[k];
-		while (n_samples[k] == 0){ 
-			std::cout << "At least 1 sample must be selected. How many samples for parameter " << k + 1 << " ? "; 
+		int n_samples[PARAM_DIMENSIONS];						// number of samples per parameter
+		
+		// ----------------------------------------------------------------------------------------------- //
+		// ---------------------------------- OBTAIN INFO FROM TERMINAL ---------------------------------- //
+		// ----------------------------------------------------------------------------------------------- //
+		for (int k = 0; k < PARAM_DIMENSIONS; k++) {
+			std::cout << "How many samples for parameter " << k + 1 << " ? ";
 			std::cin >> n_samples[k];
+			while (n_samples[k] == 0){ 
+				std::cout << "At least 1 sample must be selected. How many samples for parameter " << k + 1 << " ? "; 
+				std::cin >> n_samples[k];
+			}
+			if (n_samples[k] == -1){
+			std::cout << "Exiting simulation.\n"; return -1;}
 		}
-		if (n_samples[k] == -1){
-		std::cout << "Exiting simulation.\n"; return -1;}
-	}
-	// ----------------------------------------------------------------------------------------------- //
-	// ----------------------------------------------------------------------------------------------- //
-	// ----------------------------------------------------------------------------------------------- //
-	int Random_Samples = 1;
-	for (unsigned int i = 0; i < PARAM_DIMENSIONS; i++){
-		Random_Samples *= n_samples[i];
-	}
+		// ----------------------------------------------------------------------------------------------- //
+		// ----------------------------------------------------------------------------------------------- //
+		// ----------------------------------------------------------------------------------------------- //
+		int Random_Samples = 1;
+		for (unsigned int i = 0; i < PARAM_DIMENSIONS; i++){
+			Random_Samples *= n_samples[i];
+		}
 
-	std::vector<Param_vec>	Parameter_Mesh(Random_Samples);					// Full parameter array
-	double 					Dist_Params[PARAM_DIMENSIONS * 2];
-	char 					Dist_Names[PARAM_DIMENSIONS];
+		std::vector<Param_vec>	Parameter_Mesh(Random_Samples);					// Full parameter array
+		Distributions* Param_dist = new Distributions[PARAM_DIMENSIONS];
 
-	// 1st RV mean and variance
-	Dist_Names[0]  = 'N';
-	Dist_Params[0] = 0.2;
-	Dist_Params[1] = 0.02;
+		// 1st RV mean and variance
+		Param_dist[0].Name  			= 'N';
+		Param_dist[0].Truncated  		= true;
+		Param_dist[0].trunc_interval[0] = 0;
+		Param_dist[0].trunc_interval[1] = 1000; // if chosen large enough, automatically bounds to 6 std. deviations
+		Param_dist[0].params[0] 		= 0.2;
+		Param_dist[0].params[1] 		= sqrt(0.02);
 
-	// 2nd RV mean and variance
-	Dist_Names[1]  = 'N';
-	Dist_Params[2] = 3;
-	Dist_Params[3] = 0.3;
+		// 2nd RV mean and variance	
+		Param_dist[1].Name  			= 'N';
+		Param_dist[1].Truncated  		= true;
+		Param_dist[1].trunc_interval[0] = 0;
+		Param_dist[1].trunc_interval[1] = 1000; // if chosen large enough, automatically bounds to 6 std. deviations
+		Param_dist[1].params[0] 		= 3;
+		Param_dist[1].params[1] 		= sqrt(0.3);
 
-	RANDOMIZE(n_samples, Random_Samples, &Parameter_Mesh, Dist_Params, Dist_Names);	
+		error_check = RANDOMIZE(n_samples, Random_Samples, &Parameter_Mesh, Param_dist);
+		if (error_check == -1){return -1;}
 
-	std::cout << "Total number of random samples: " << Random_Samples << ".\n";
+		std::cout << "Total number of random samples: " << Random_Samples << ".\n";
 
 	// --------------------------------------------------------------------------------------------
 	// --------------------------------------------------------------------------------------------
@@ -152,10 +156,10 @@ int PDF_EVOLUTION() {
 
 	// one pair per dimension
 	IC_dist_params[0] = 1.75;  // mean
-	IC_dist_params[1] = sqrt(0.025); // var
+	IC_dist_params[1] = sqrt(0.025); // std
 
 	IC_dist_params[2] = 0.00;  // mean
-	IC_dist_params[3] = sqrt(0.025); // var
+	IC_dist_params[3] = sqrt(0.025); // std
 
 	PDF_INITIAL_CONDITION(PtsPerDim, H_Mesh, H_PDF, IC_dist_params); // initialize the grid and the PDF at the grid nodes (change so as to change the parameters as well)
 
@@ -173,10 +177,7 @@ int PDF_EVOLUTION() {
 	
 	error_check = PDF_ITERATIONS(&store_PDFs, &Parameter_Mesh, H_Mesh, &H_PDF, LvlFine, LvlCoarse, PtsPerDim, Grid_Nodes, time_vector, deltaT, ReinitSteps);
 	// To do: CREATE TREE STRUCT FOR THE AMR-POINTS + conservative scheme
-	if (error_check == -1){
-		std::cout << "An error has occured. Exiting simulation.\n";
-		return error_check;
-	}
+	if (error_check == -1){	std::cout << "An error has occured. Exiting simulation.\n"; return error_check;}
 
 	auto end = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<float> duration = end - start; // duration
@@ -230,8 +231,8 @@ int PDF_EVOLUTION() {
 	}
 
 	delete[] H_Mesh;
-
-	return 0;
+	delete[] Param_dist;
+	return error_check;
 }
 
 
