@@ -30,7 +30,7 @@ __host__ int PDF_ITERATIONS(std::vector<double>* store_PDFs,
 /// given simulation parameters (given in "Simulation_parameters.cuh"). 
 /// @return An integer (0 if everything was OK, -1 if the simulaion was forced to stop for some reason)
 int PDF_EVOLUTION() {
-	std::cout << "You must choose: \n - FINEST / COARSEST MESH LEVEL \n - If you wish to include IMPULSE terms \n - FINAL time and TIMESTEP";
+	std::cout << "You must choose: \n - FINEST / COARSEST MESH LEVEL \n - FINAL time \n - TIMESTEP \n - Samples per Parameter";
 	std::cout << "\n - Reinitialization Steps \n - SAMPLES PER PARAMETER \n";
 	std::cout << "(REMINDER) You can type \"-1\" to  exit the program while selecting the simulation parameters.\n";
 	// Pre-Simulation Data initialization -------------------------------------------------------------------------------
