@@ -1,4 +1,18 @@
-﻿#include <iostream>
+﻿#########################################################
+#########################################################
+#########################################################
+#							#
+#	Written by: Vicente José Bevia Escrig		#
+#	Mathematics Ph.D. student (2020-2024) at:	#
+#	Instituto de Matemática Multidisciplinar,	#
+#	Universitat Politècnica de València, Spain	#
+#							#
+#########################################################
+#########################################################
+#########################################################
+
+
+#include <iostream>
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 
