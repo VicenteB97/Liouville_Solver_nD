@@ -1,12 +1,7 @@
 #ifndef __PARAMETER_DISTRIBUTIONS_CUH__
 #define __PARAMETER_DISTRIBUTIONS_CUH__
 
-
 #include "Classes.cuh"
-#include <boost/math/distributions/gamma.hpp>
-#include <boost/math/distributions/normal.hpp>
-#include <boost/math/distributions/uniform.hpp>
-
 
 // ----------------------------------------------------------------------------------- //
 // ----------------------------------------------------------------------------------- //
@@ -24,6 +19,7 @@ void PDF_INITIAL_CONDITION(int Points_per_dimension, const gridPoint* Mesh, thru
 	boost::math::normal dist[DIMENSIONS];
 
 	//create the distributions per dimension:
+	#pragma unroll
 	for (unsigned int d = 0; d < DIMENSIONS; d++){
 		dist[d] = boost::math::normal_distribution(IC_dist_parameters[2*d], IC_dist_parameters[2*d + 1]);
 	}
@@ -94,8 +90,8 @@ int PARAMETER_VEC_BUILD(const int n_Samples, Param_pair* PP, const Distributions
 		}
 		else if(Dist_params.Name == 'U'){
 
-			double x0 = expectation;
-			double xF = std_dev;
+			double x0 = expectation - sqrtf(3) * std_dev;
+			double xF = expectation + sqrtf(3) * std_dev;
 
 			auto dist = boost::math::uniform_distribution(x0, xF);
 
@@ -111,7 +107,7 @@ int PARAMETER_VEC_BUILD(const int n_Samples, Param_pair* PP, const Distributions
 			double shape = pow(expectation / std_dev, 2);
 			double scale = pow(std_dev, 2) / expectation;
 
-			auto dist = boost::math::uniform_distribution(shape, scale);
+			auto dist = boost::math::gamma_distribution(shape, scale);
 
 			if(Dist_params.Truncated){
 				double x0 = fmax(fmax(0, expectation - 6 * std_dev), Dist_params.trunc_interval[0]);
@@ -161,6 +157,7 @@ int RANDOMIZE(	const int* 				n_samples,
 
 	std::vector<Param_pair> aux_PM;
 
+	#pragma unroll
 	for (unsigned int d = 0; d < PARAM_DIMENSIONS; d++){
 		// call the parameter pair vec. function
 		Param_pair* PP = new Param_pair[n_samples[d]];
@@ -183,6 +180,7 @@ int RANDOMIZE(	const int* 				n_samples,
 		Parameter_Mesh->at(k).sample_vec[0] = aux_PM[aux_idx].sample;
 		Parameter_Mesh->at(k).Joint_PDF 	= aux_PM[aux_idx].PDF;
 
+		#pragma unroll
 		for (unsigned int d = 1; d < PARAM_DIMENSIONS; d++){
 
 			aux_idx = floor(positive_rem(k, aux_num * n_samples[d]) / aux_num);

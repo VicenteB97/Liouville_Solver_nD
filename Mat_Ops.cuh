@@ -4,18 +4,23 @@
 #include "Classes.cuh"
 
 #define Mass_RBF 0.071428571420238f
-/// <summary>
-/// Compactly Supported Radial Basis Function (CS-RBF): Wendland C2 kernel (L1-normalized)
-/// </summary>
-/// <param name="entry"> - Euclidean distance / support radius</param>
-/// <returns></returns>
-__device__ inline double RBF(const double support_radius, const double entry) {
 
-	return (double)powf(fmaxf(0, 1 - entry), 4) * (4 * entry + 1) / (Mass_RBF * 2 * M_PI * powf(support_radius, DIMENSIONS)); // We multiply by this last factor to get the L1-normalized RBF
+/// @brief Radial Basis Function interpolation kernel
+/// @param support_radius 
+/// @param x Is the normalized distance, respect to the discretization
+/// @return 
+__device__ inline double RBF(const double support_radius, const double x) {
+
+	return (double)powf(fmaxf(0, 1 - x), 4) * (4 * x + 1) / (Mass_RBF * 2 * M_PI * powf(support_radius, DIMENSIONS)); // We multiply by this last factor to get the L1-normalized RBF
 
 }
 
 // Define CUDA implementation for the max function
+
+/// @brief Cuda-implementation of the max function for double-type values
+/// @param X 
+/// @param Y 
+/// @return 
 __device__ inline double cuda_fmax(double X, double Y) {
 
 	if (X >= Y) {
@@ -27,19 +32,17 @@ __device__ inline double cuda_fmax(double X, double Y) {
 
 }
 
-/// <summary>
-/// This function performs an exhaustive search in the particle set
-/// </summary>
-/// <param name="Search_Particles"></param>
-/// <param name="Fixed_Particles"></param>
-/// <param name="Index_Array"></param>
-/// <param name="Matrix_Entries"></param>
-/// <param name="Num_Neighbors"></param>
-/// <param name="max_neighbor_num"></param>
-/// <param name="Adapt_Points"></param>
-/// <param name="Total_Particles"></param>
-/// <param name="search_radius"></param>
-/// <returns></returns>
+/// @brief Exhaustive PP search (in the respective parameter sample neighborhood)
+/// @param Search_Particles 
+/// @param Fixed_Particles 
+/// @param Index_Array 
+/// @param Matrix_Entries 
+/// @param Num_Neighbors 
+/// @param max_neighbor_num 
+/// @param Adapt_Points 
+/// @param Total_Particles 
+/// @param search_radius 
+/// @return 
 __global__ void Exh_PP_Search(const gridPoint* Search_Particles, const gridPoint* Fixed_Particles, int* Index_Array, double* Matrix_Entries, int* Num_Neighbors, const int max_neighbor_num, const int Adapt_Points, const int Total_Particles, const double search_radius) {
 
 	const int i = blockDim.x * blockIdx.x + threadIdx.x;
@@ -72,15 +75,13 @@ __global__ void Exh_PP_Search(const gridPoint* Search_Particles, const gridPoint
 //---------------------------------------------------------------------------------------------------------------------//
 
 template<class T>
-/// <summary>
-/// Update function. This function allows to compute the update of a vector in the CG linear solver
-/// </summary>
-/// <param name="x"> - Final vector</param>
-/// <param name="x0"> - Initial vector (to be updated)</param>
-/// <param name="scalar"> - Scalar multiplying the update vector </param>
-/// <param name="v"> - Update vector </param>
-/// <param name="Max_Length"> - Vector lengths</param>
-/// <returns></returns>
+/// @brief General function for computing the "update" of a vector x0, storing it in x
+/// @param x Output vector
+/// @param x0 Vec. to be updated
+/// @param scalar "Strength" of the updating vector
+/// @param v "Direction" of the updating vector
+/// @param Max_Length Length of the vectors
+/// @return 
 __global__ void UPDATE_VEC(T* x, const T* x0, const T scalar, const T* v, const int Max_Length) {
 	const int i = blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -265,6 +266,8 @@ if (i < Adapt_Pts) {
 
 // I want to compute the index of the lowest neighboring grid node and build its nearest neighbors
 	int lowest_idx = 0;
+	
+	#pragma unroll
 	for (unsigned int d = 0; d < DIMENSIONS; d++){
 		lowest_idx += (roundf((float) (particle.dim[d] - lowest_node.dim[d]) / grid_discretization_length) - floorf((float) search_radius / grid_discretization_length)) * powf(PtsPerDimension, d);
 	}	
@@ -282,6 +285,7 @@ if (i < Adapt_Pts) {
 	for(unsigned int j = 1; j < num_neighbors_per_particle; j++){
 		int idx = lowest_idx;
 
+		#pragma unroll
 		for (unsigned int d = 0; d < DIMENSIONS; d++){
 			idx += (int) floorf( positive_rem(j, (int)powf(num_neighbors_per_dim, d + 1)) / powf(num_neighbors_per_dim, d) ) * powf(PtsPerDimension, d);
 		}
@@ -316,7 +320,7 @@ __global__ void RESTART_GRID_FIND_GN_II(gridPoint*  Particle_Positions,
 									double* 		PDF,
 									double* 		lambdas,
 									const gridPoint* Fixed_Mesh,
-									const double* 	Impulse_weights,
+									const Impulse_Param_vec* Impulse_weights,
 									const double 	search_radius,
 									const gridPoint lowest_node,
 									const double 	grid_discretization_length,
@@ -332,12 +336,13 @@ if (i < Adapt_Pts) {
 	int num_neighbors_per_particle 	= (int) powf(num_neighbors_per_dim, DIMENSIONS);
 
 	gridPoint 	particle 		= Particle_Positions[i + Current_sample * Adapt_Pts];
-	double 		weighted_lambda = lambdas[i + Current_sample * Adapt_Pts] * Impulse_weights[Current_sample];				// the specific sample weight
+	double 		weighted_lambda = lambdas[i + Current_sample * Adapt_Pts] * Impulse_weights[Current_sample].Joint_PDF;				// the specific sample weight
 
 	double dist;
 
 	// I want to compute the index of the lowest neighboring grid node and build its nearest neighbors
 	int lowest_idx = 0;
+	#pragma unroll
 	for (unsigned int d = 0; d < DIMENSIONS; d++){
 		lowest_idx += (roundf((particle.dim[d] - lowest_node.dim[d]) / grid_discretization_length) - floorf(search_radius / grid_discretization_length)) * powf(PtsPerDimension, d);
 	}

@@ -22,14 +22,15 @@ void ND_WAVELET(std::vector<double>& cube){ // THIS WORKS !!!
 		unsigned int num_vrtx = 0;
 
 		// Select the base indeces for the dyadic cube
-		for (unsigned int k = 0; k < pow(2, DIMENSIONS); k++){
+		for (unsigned int k = 0; k < (unsigned)powf(2, DIMENSIONS); k++){
 			if( floor(positive_rem(k, pow(2, d + 1)) / pow(2, d))  == 0 ){
 				base_indx[num_vrtx] = k;
 				num_vrtx++;
 			}
 		}
 
-		for (unsigned int k = 0; k < pow(2, DIMENSIONS - 1); k++){
+		#pragma unroll
+		for (unsigned int k = 0; k <(unsigned) powf(2, DIMENSIONS - 1); k++){
 			unsigned int idx1 = base_indx[k],
 						 idx2 = base_indx[k] + pow(2, d);
 
@@ -47,16 +48,19 @@ std::vector<int> _nD_MultiLvlWavelet(const thrust::host_vector<double> PDF, cons
 
 	unsigned int 		Total_Points = pow(PtsPerDim, DIMENSIONS);  // points per dimension at level...
 
+	int rescaling = 1;
+
 	for (int k = 0; k < LvlFine - LvlCoarse - 1; k++) {
 
-		int rescaling 		= (int)pow(2, k + 1);
-		int Points_at_level = PtsPerDim / rescaling;
+			rescaling 		*= 2;
+		int Points_at_level  = PtsPerDim / rescaling;
 
 		// What cube am I at?
-		for (unsigned int i = 0; i < pow (Points_at_level, DIMENSIONS); i++){
+		for (unsigned int i = 0; i < (unsigned)powf(Points_at_level, DIMENSIONS); i++){
 
 			// This way we can obtain the global index of the cube vertex from the cube vertex position
-			int ii = 0; 
+			int ii = 0;
+			#pragma unroll 
 			for (unsigned int j = 0; j < DIMENSIONS; j++){
 				ii += floor(positive_rem(i, powf(Points_at_level, j + 1)) / powf(Points_at_level, j)) * pow(PtsPerDim, j) * rescaling;
 			}
@@ -67,7 +71,8 @@ std::vector<int> _nD_MultiLvlWavelet(const thrust::host_vector<double> PDF, cons
 				aux_signal[0] 	= PDF[ii];
 
 				// global indeces for each vertex of the cube
-				for (unsigned int l = 1; l < pow(2, DIMENSIONS); l++){
+				#pragma unroll
+				for (unsigned int l = 1; l < (unsigned)powf(2, DIMENSIONS); l++){
 					cube_indeces[l] = ii;
 
 					for (unsigned int j = 0; j < DIMENSIONS; j++){
@@ -81,7 +86,8 @@ std::vector<int> _nD_MultiLvlWavelet(const thrust::host_vector<double> PDF, cons
 			ND_WAVELET(aux_signal);
 
 			// Now we analyze the error values in order to choose what indeces we keep
-			for (unsigned int l = 1; l < pow(2, DIMENSIONS); l++){
+			#pragma unroll
+			for (unsigned int l = 1; l < (unsigned)powf(2, DIMENSIONS); l++){
 				if (abs(aux_signal[l]) > tol){
 					out.push_back(cube_indeces[l]);
 				}
@@ -94,7 +100,12 @@ std::vector<int> _nD_MultiLvlWavelet(const thrust::host_vector<double> PDF, cons
 void ADAPT_MESH_REFINEMENT_nD(const thrust::host_vector<double>& H_PDF, std::vector<double>* AdaptPDF, const gridPoint* H_Mesh, std::vector<gridPoint>* AdaptGrid, const int LvlFine, const int LvlCoarse, const int PtsPerDim) {
 	// Final AMR procedure
 
-	double tolerance = 5 * powf(10,-4);
+	#if (CASE == 1)
+		double tolerance = 5 * powf(10,-5);
+	#endif
+	#if (CASE == 2)
+		double tolerance = 5 * powf(10,-4);
+	#endif
 
 	std::vector<int> Grid = _nD_MultiLvlWavelet(H_PDF, LvlFine, LvlCoarse, tolerance, PtsPerDim);
 	int g_length = Grid.size();

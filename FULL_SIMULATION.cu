@@ -56,23 +56,31 @@ int PDF_EVOLUTION() {
 	// ----------------------------------------------------------------------------------------------- //
 	// ----------------------------------------------------------------------------------------------- //
 
+	#if (CASE == 1)
+		const gridPoint Domain_Center = {2};
+		const gridPoint Domain_Diameter = {4};
+	#endif
+	#if(CASE == 2)
+		const gridPoint Domain_Center = {0, 0};
+		const gridPoint Domain_Diameter = {12, 12};
+	#endif
+
+
 	const int PtsPerDim  = (int)powf(2, LvlFine);
 	const int Grid_Nodes = (int)powf(PtsPerDim, DIMENSIONS);
+	gridPoint* H_Mesh = new gridPoint[Grid_Nodes];
 
-	// Build H_Mesh here (TO BE MODIFIED FOR OTHER DIMENSIONS)
-	const gridPoint Domain_Center = {0.5, 0.5};
-	const gridPoint Domain_Radius = {12, 12};
-
-	gridPoint* H_Mesh = new gridPoint[Grid_Nodes]; // maybe it could be implemented as constant memory?
-
-	// GENERAL DIMENSION Cartesian coordinate grid
+	// GENERAL DIMENSION Cartesian coordinate grid build up
 	for (unsigned int i = 0; i < Grid_Nodes; i++){
 		for (unsigned int d = 0; d < DIMENSIONS; d++){
 			unsigned int j = floor(positive_rem(i, pow(PtsPerDim, d + 1))/pow(PtsPerDim, d));
-			H_Mesh[i].dim[d] = ((double) j / (PtsPerDim - 1) - Domain_Center.dim[d]) * Domain_Radius.dim[d]; 
+			H_Mesh[i].dim[d] = ((double) j / (PtsPerDim - 1) - 0.5) * Domain_Diameter.dim[d] + Domain_Center.dim[d]; 
 		}
 	}
 
+// -------------------------------------------------------------------------------------------------------------- //
+// -------------------------------------------------------------------------------------------------------------- //
+// -------------------------------------------------------------------------------------------------------------- //
 	// Time simulation data Definition: -------------------------------------------------------------------------------
 	int			ReinitSteps;
 	double		deltaT;
@@ -94,14 +102,16 @@ int PDF_EVOLUTION() {
 	// 	   you have to make a function such as PDF_EVOLUTION but you must modify THIS following part
 	// 	   PDF_EVOLUTION simply computes the evolution of a PDF according to some sim. parameters
 	// 	   as well as the corresponding dynamics parameters.
-	// --------------------------------------------------------------------------------------------
-	// --------------------------------------------------------------------------------------------
-	// 1.- PARAMETER H_MESH biuld up
-		int n_samples[PARAM_DIMENSIONS];						// number of samples per parameter
+// --------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------
+// 1.- PARAMETERS biuld up
+		int n_samples[PARAM_DIMENSIONS];	// number of samples per parameter
+
+		double IC_dist_params[DIMENSIONS * 2];	// distribution parameters for the IC
 		
-		// ----------------------------------------------------------------------------------------------- //
-		// ---------------------------------- OBTAIN INFO FROM TERMINAL ---------------------------------- //
-		// ----------------------------------------------------------------------------------------------- //
+	// ----------------------------------------------------------------------------------------------- //
+	// ---------------------------------- OBTAIN INFO FROM TERMINAL ---------------------------------- //
+	// ----------------------------------------------------------------------------------------------- //
 		for (int k = 0; k < PARAM_DIMENSIONS; k++) {
 			std::cout << "How many samples for parameter " << k + 1 << " ? ";
 			std::cin >> n_samples[k];
@@ -112,9 +122,9 @@ int PDF_EVOLUTION() {
 			if (n_samples[k] == -1){
 			std::cout << "Exiting simulation.\n"; return -1;}
 		}
-		// ----------------------------------------------------------------------------------------------- //
-		// ----------------------------------------------------------------------------------------------- //
-		// ----------------------------------------------------------------------------------------------- //
+	// ----------------------------------------------------------------------------------------------- //
+	// ----------------------------------------------------------------------------------------------- //
+	// ----------------------------------------------------------------------------------------------- //
 		int Random_Samples = 1;
 		for (unsigned int i = 0; i < PARAM_DIMENSIONS; i++){
 			Random_Samples *= n_samples[i];
@@ -123,45 +133,62 @@ int PDF_EVOLUTION() {
 		std::vector<Param_vec>	Parameter_Mesh(Random_Samples);					// Full parameter array
 		Distributions* Param_dist = new Distributions[PARAM_DIMENSIONS];
 
+		#if(CASE == 1)
+			// 1st RV mean and variance
+			Param_dist[0].Name  			= 'G';			// N, G or U distributions
+			Param_dist[0].Truncated  		= true;			// TRUNCATED?
+			Param_dist[0].trunc_interval[0] = 0;			// min of trunc. interval
+			Param_dist[0].trunc_interval[1] = 1000; 		// max. of trunc. interval (if chosen large enough, automatically bounds to 6 std. deviations)
+			Param_dist[0].params[0] 		= 0.082;		// mean
+			Param_dist[0].params[1] 		= 0.005;		// std
+
+			// 2nd RV mean and variance	
+			Param_dist[1].Name  			= 'U';
+			Param_dist[1].Truncated  		= true; 		// in uniforms, it doesn't really matter what you put
+			Param_dist[1].trunc_interval[0] = 0;
+			Param_dist[1].trunc_interval[1] = 1000; 
+			Param_dist[1].params[0] 		= 0.01;
+			Param_dist[1].params[1] 		= 0.005;
+
+			
+			// PARAMETERS FOR THE IC
+			IC_dist_params[0] = 0.17;  // mean
+			IC_dist_params[1] = 0.0075; // std
+		#endif
+		#if(CASE == 2)
 		// 1st RV mean and variance
-		Param_dist[0].Name  			= 'N';
-		Param_dist[0].Truncated  		= true;
-		Param_dist[0].trunc_interval[0] = 0;
-		Param_dist[0].trunc_interval[1] = 1000; // if chosen large enough, automatically bounds to 6 std. deviations
-		Param_dist[0].params[0] 		= 0.2;
-		Param_dist[0].params[1] 		= sqrt(0.02);
+			Param_dist[0].Name  			= 'N';			// N, G or U distributions
+			Param_dist[0].Truncated  		= true;			// TRUNCATED?
+			Param_dist[0].trunc_interval[0] = 0;			// min of trunc. interval
+			Param_dist[0].trunc_interval[1] = 1000; 		// max. of trunc. interval (if chosen large enough, automatically bounds to 6 std. deviations)
+			Param_dist[0].params[0] 		= 0.2;			// mean
+			Param_dist[0].params[1] 		= sqrt(0.02);	// std
 
-		// 2nd RV mean and variance	
-		Param_dist[1].Name  			= 'N';
-		Param_dist[1].Truncated  		= true;
-		Param_dist[1].trunc_interval[0] = 0;
-		Param_dist[1].trunc_interval[1] = 1000; // if chosen large enough, automatically bounds to 6 std. deviations
-		Param_dist[1].params[0] 		= 3;
-		Param_dist[1].params[1] 		= sqrt(0.3);
+			// 2nd RV mean and variance	
+			Param_dist[1].Name  			= 'N';
+			Param_dist[1].Truncated  		= true;
+			Param_dist[1].trunc_interval[0] = 0;
+			Param_dist[1].trunc_interval[1] = 1000; 
+			Param_dist[1].params[0] 		= 3;
+			Param_dist[1].params[1] 		= sqrt(0.3);
 
-		error_check = RANDOMIZE(n_samples, Random_Samples, &Parameter_Mesh, Param_dist);
-		if (error_check == -1){return -1;}
+			
+			// IC parameters
+			IC_dist_params[0] = 1.75;  // mean
+			IC_dist_params[1] = sqrt(0.025); // std
 
-		std::cout << "Total number of random samples: " << Random_Samples << ".\n";
+			IC_dist_params[2] = 0.00;  // mean
+			IC_dist_params[3] = sqrt(0.025); // std
+		#endif
 
-	// --------------------------------------------------------------------------------------------
-	// --------------------------------------------------------------------------------------------
+	// CALL JOINT PDF BUILDING FUNCTIONS: (PARAMETERS AND INITIAL CONDITION)
+	error_check = RANDOMIZE(n_samples, Random_Samples, &Parameter_Mesh, Param_dist);
+	if (error_check == -1){return -1;}
 
-	// --------------------------------------------------------------------------------------------
-	// --------------------------------------------------------------------------------------------
-	// 2.- INITIAL PDF build up
-	thrust::host_vector<double> H_PDF(Grid_Nodes);	 // PDF values at the fixed, high-res grid (CPU)
-
-	double IC_dist_params[DIMENSIONS * 2];
-
-	// one pair per dimension
-	IC_dist_params[0] = 1.75;  // mean
-	IC_dist_params[1] = sqrt(0.025); // std
-
-	IC_dist_params[2] = 0.00;  // mean
-	IC_dist_params[3] = sqrt(0.025); // std
-
-	PDF_INITIAL_CONDITION(PtsPerDim, H_Mesh, H_PDF, IC_dist_params); // initialize the grid and the PDF at the grid nodes (change so as to change the parameters as well)
+	std::cout << "Total number of random samples: " << Random_Samples << ".\n";
+	
+	thrust::host_vector<double> H_PDF(Grid_Nodes);	 					// PDF values at the fixed, high-res grid (CPU)
+	PDF_INITIAL_CONDITION(PtsPerDim, H_Mesh, H_PDF, IC_dist_params); 	// initialize the grid and the PDF at the grid nodes (change so as to change the parameters as well)
 
 // --------------------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------
@@ -172,14 +199,12 @@ int PDF_EVOLUTION() {
 
 	std::vector<double>	store_PDFs(0);		 // H_PDF storage for post-processing
 
-	auto start = std::chrono::high_resolution_clock::now();
-
+auto start = std::chrono::high_resolution_clock::now();
 	
 	error_check = PDF_ITERATIONS(&store_PDFs, &Parameter_Mesh, H_Mesh, &H_PDF, LvlFine, LvlCoarse, PtsPerDim, Grid_Nodes, time_vector, deltaT, ReinitSteps);
-	// To do: CREATE TREE STRUCT FOR THE AMR-POINTS + conservative scheme
 	if (error_check == -1){	std::cout << "An error has occured. Exiting simulation.\n"; return error_check;}
 
-	auto end = std::chrono::high_resolution_clock::now();
+auto end = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<float> duration = end - start; // duration
 
 // --------------------------------------------------------------------------------------------
@@ -201,8 +226,12 @@ int PDF_EVOLUTION() {
 		file1.open("Simulation_Info.csv");
 		if (file1.is_open()) {
 			//file1 << "Total Grid Points," << "Points per dimension," << "Grid X min," << "Grid X max," << "Grid Y min," << "Grid Y max," << "Time values," << "Simulation cost" << "t0" << "deltaT" << "Reinitialization Steps" << "\n";
-			file1 << Grid_Nodes << "," << PtsPerDim << "," << H_Mesh[0].dim[0] << "," << H_Mesh[Grid_Nodes - 1].dim[0]
-				<< "," << H_Mesh[0].dim[1] << "," << H_Mesh[Grid_Nodes - 1].dim[1] << "," << time_vector.size() << "," << duration.count() << "," << "\n";
+			file1 << Grid_Nodes << "," << PtsPerDim << ",";
+			
+			for (unsigned d = 0; d < DIMENSIONS; d++){
+				file1 << H_Mesh[0].dim[d] << "," << H_Mesh[Grid_Nodes - 1].dim[d] << ",";
+			} 
+				file1 << time_vector.size() << "," << duration.count() << "," << "\n";
 
 			for (int i = 0; i < time_vector.size() - 1; i++) {
 				file1 << time_vector[i].time << ",";
@@ -270,10 +299,11 @@ __global__ void RungeKutta(	gridPoint* 			H_Mesh,
 	if (i < Adapt_Points * Random_Samples) {
 		int steps = 0;
 
+		// AUXILIARY DATA TO RUN THE ITERATIONS
 		// So, the total amount of advections are going to be: (n� particles x n� of samples)
 		const int i_sample = floorf(i / Adapt_Points);
+		const Param_vec parameter = parameters[i_sample];
 
-		// AUXILIARY DATA TO RUN THE ITERATIONS
 		gridPoint k0, k1, k2, k3, aux;
 		double	  Int1, Int2, Int3;
 
@@ -283,16 +313,16 @@ __global__ void RungeKutta(	gridPoint* 			H_Mesh,
 		while (steps < ReinitSteps) {
 
 			// Particle flow
-			k0 = VECTOR_FIELD(x0, t0, parameters[i_sample]);
+			k0 = VECTOR_FIELD(x0, t0, parameter);
 
 			aux = Mult_by_Scalar(deltaT / 2, k0);
-			k1 = VECTOR_FIELD(x0 + aux, t0 + deltaT / 2, parameters[i_sample]);
+			k1 = VECTOR_FIELD(x0 + aux, t0 + deltaT / 2, parameter);
 
 			aux = Mult_by_Scalar(deltaT / 2, k1);
-			k2 = VECTOR_FIELD(x0 + aux, t0 + deltaT / 2, parameters[i_sample]);
+			k2 = VECTOR_FIELD(x0 + aux, t0 + deltaT / 2, parameter);
 
 			aux = Mult_by_Scalar(deltaT, k2);
-			k3 = VECTOR_FIELD(x0 + aux, t0 + deltaT, parameters[i_sample]);
+			k3 = VECTOR_FIELD(x0 + aux, t0 + deltaT, parameter);
 
 			k1 = Mult_by_Scalar(2, k1);
 			k2 = Mult_by_Scalar(2, k2);
@@ -300,12 +330,12 @@ __global__ void RungeKutta(	gridPoint* 			H_Mesh,
 			aux = x0 + Mult_by_Scalar(deltaT / 6, (k0 + k3 + k1 + k2)); // New particle dim
 
 			// Integration of PDF
-			Int1 = DIVERGENCE_FIELD(x0, t0, parameters[i_sample]);
+			Int1 = DIVERGENCE_FIELD(x0, t0, parameter);
 
 			x0 	 = Mult_by_Scalar(0.5, (x0 + aux));
-			Int2 = DIVERGENCE_FIELD(x0, (2 * t0 + deltaT) / 2, parameters[i_sample]);
+			Int2 = DIVERGENCE_FIELD(x0, (2 * t0 + deltaT) / 2, parameter);
 
-			Int3 = DIVERGENCE_FIELD(aux, t0 + deltaT, parameters[i_sample]);
+			Int3 = DIVERGENCE_FIELD(aux, t0 + deltaT, parameter);
 
 			Int_PDF *= exp(-deltaT / 6 * (Int1 + 4 * Int2 + Int3)); // New particle value (change for the Hermite interpolation in the midpoint)
 
@@ -344,7 +374,7 @@ __global__ void RungeKutta(	gridPoint* 			H_Mesh,
 /// <param name="deltaT"> - timestep for the RK4 scheme</param>
 /// <param name="ReinitSteps"> - deltaT steps until next re-interpolation in high res. grid</param>
 /// <returns></returns>
-__host__ int PDF_ITERATIONS(std::vector<double>* store_PDFs,
+int PDF_ITERATIONS(std::vector<double>* store_PDFs,
 							const std::vector<Param_vec>* Parameter_Mesh,
 							const gridPoint* H_Mesh,
 							thrust::host_vector<double>* H_PDF,
@@ -387,11 +417,17 @@ __host__ int PDF_ITERATIONS(std::vector<double>* store_PDFs,
 // ------------------ DEFINITION OF THE INTERPOLATION VARIABLES AND ARRAYS ------------------ //
 	int Adapt_Points, Total_Particles, MaxNeighborNum;
 
-	const double disc_X = (H_Mesh[1].dim[0] - H_Mesh[0].dim[0]);	// H_Mesh discretization size
-	const double search_radius = 4.75 * disc_X;						// max radius to search ([4,6] appears to be optimal)
+	const double disc_X = (H_Mesh[1].dim[0] - H_Mesh[0].dim[0]);	// H_Mesh discretization size (per dimension)
 
-	const int	 max_steps = 1000;		 // max steps at the Conjugate Gradient (CG) algorithm
-	const double in_tolerance = pow(10, -8); // CG stop tolerance
+	#if (CASE == 1)
+		const double search_radius 	= 5 * disc_X;		// max radius to search ([4,6] appears to be optimal)
+	#endif
+	#if(CASE == 2)
+		const double search_radius 	= 4.75 * disc_X;	// max radius to search ([4,6] appears to be optimal)
+	#endif
+
+	const int	 max_steps 		= 1000;		 		// max steps at the Conjugate Gradient (CG) algorithm
+	const double in_tolerance 	= pow(10, -8); 		// CG stop tolerance
 
 	thrust::device_vector<int>		GPU_Index_array;
 	thrust::device_vector<double>	GPU_Mat_entries;

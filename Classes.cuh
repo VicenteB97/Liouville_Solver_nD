@@ -4,9 +4,17 @@
 
 // ------------------------------------------------------------------------------- //
 //  HERE ARE THE DEFINITIONS THAT CAN BE CHANGED ACCORDING TO THE PROBLEM TO STUDY //
-#define DIMENSIONS 2		// SPATIAL DIMENSIONS = NUMBER OF EQUATIONS OF RDE SYSTEM
-#define PARAM_DIMENSIONS 2	// PARAMETER SPACE DIMENSIONS = NUMBER OF PARAMETERS (ICs MUST NOT BE INCLUDED)
-#define IMPULSE true		// WHETHER DELTA-LIKE IMPULSE TERMS ARE TO BE ADDED
+#define CASE 2				// What case you want to simulate! 1 or 2 (1 is only ready to go with impulses, otherwise you should change the conditions appropriately)
+#if (CASE == 1)
+	#define DIMENSIONS 1		// SPATIAL DIMENSIONS = NUMBER OF EQUATIONS OF RDE SYSTEM
+	#define PARAM_DIMENSIONS 2	// PARAMETER SPACE DIMENSIONS = NUMBER OF PARAMETERS (ICs MUST NOT BE INCLUDED)
+	#define IMPULSE true		// WHETHER DELTA-LIKE IMPULSE TERMS ARE TO BE ADDED
+#endif
+#if(CASE == 2)
+	#define DIMENSIONS 2		// SPATIAL DIMENSIONS = NUMBER OF EQUATIONS OF RDE SYSTEM
+	#define PARAM_DIMENSIONS 2	// PARAMETER SPACE DIMENSIONS = NUMBER OF PARAMETERS (ICs MUST NOT BE INCLUDED)
+	#define IMPULSE true		// WHETHER DELTA-LIKE IMPULSE TERMS ARE TO BE ADDED
+#endif
 // ------------------------------------------------------------------------------- //
 // ------------------------------------------------------------------------------- //
 
@@ -26,6 +34,10 @@
 #include <thrust/functional.h>
 #include <thrust/transform.h>
 #include <thrust/fill.h>
+
+#include <boost/math/distributions/gamma.hpp>
+#include <boost/math/distributions/normal.hpp>
+#include <boost/math/distributions/uniform.hpp>
 
 #include <chrono>
 
@@ -105,6 +117,12 @@ public:
 	double Joint_PDF;
 };
 
+class Impulse_Param_vec {
+public:
+	double sample_vec[DIMENSIONS];
+	double Joint_PDF;
+};
+
 class Param_pair {
 public:
 	double sample, PDF;
@@ -117,6 +135,7 @@ public:
 	bool Truncated;
 	double trunc_interval[2];
 };
+
 //-------------------------------------------------------------------------//
 //-------------------------------------------------------------------------//
 //-------------------------------------------------------------------------//
@@ -170,6 +189,7 @@ __host__ __device__ double Distance(const gridPoint P1, const gridPoint P2) {
 
 	double out = 0;
 
+	#pragma unroll
 	for (unsigned int d = 0; d < DIMENSIONS; d++) {
 		out += (P1.dim[d] - P2.dim[d]) * (P1.dim[d] - P2.dim[d]);
 	}
@@ -184,6 +204,7 @@ __host__ __device__ double Distance(const gridPoint P1, const gridPoint P2) {
 __host__ __device__ gridPoint Mult_by_Scalar(double scalar, gridPoint Point) {
 	gridPoint out;
 
+	#pragma unroll
 	for (unsigned int d = 0; d < DIMENSIONS; d++) {
 		out.dim[d] = scalar * Point.dim[d];
 	}
