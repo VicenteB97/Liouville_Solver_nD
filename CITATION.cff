@@ -1,0 +1,11 @@
+cff-version: 1.0.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Bevia Escrig"
+  given-names: "Vicente J."
+  orcid: "https://orcid.org/0000-0002-6034-6324"
+title: "N-Dimensional Liouville Solver"
+version: 1.0.0
+doi: 10.5281/zenodo.7673679
+date-released: 2023-02-24
+url: "https://github.com/VicenteB97/Liouville_Solver_nD"
