@@ -58,8 +58,8 @@ int PDF_EVOLUTION() {
 	// ----------------------------------------------------------------------------------------------- //
 
 	#if (CASE == 1)
-		const gridPoint Domain_Center = {2};
-		const gridPoint Domain_Diameter = {4};
+		const gridPoint Domain_Center = {1.75};
+		const gridPoint Domain_Diameter = {3.5};
 	#endif
 	#if(CASE == 2)
 		const gridPoint Domain_Center = {0, 0};
@@ -140,21 +140,21 @@ int PDF_EVOLUTION() {
 			Param_dist[0].Truncated  		= true;			// TRUNCATED?
 			Param_dist[0].trunc_interval[0] = 0;			// min of trunc. interval
 			Param_dist[0].trunc_interval[1] = 1000; 		// max. of trunc. interval (if chosen large enough, automatically bounds to 6 std. deviations)
-			Param_dist[0].params[0] 		= 0.082;		// mean
-			Param_dist[0].params[1] 		= 0.005;		// std
+			Param_dist[0].params[0] 		= 0.03;			// mean
+			Param_dist[0].params[1] 		= 0.02;			// std
 
 			// 2nd RV mean and variance	
 			Param_dist[1].Name  			= 'U';
 			Param_dist[1].Truncated  		= true; 		// in uniforms, it doesn't really matter what you put
 			Param_dist[1].trunc_interval[0] = 0;
 			Param_dist[1].trunc_interval[1] = 1000; 
-			Param_dist[1].params[0] 		= 0.01;
-			Param_dist[1].params[1] 		= 0.005;
+			Param_dist[1].params[0] 		= 0.04;
+			Param_dist[1].params[1] 		= 0.02;
 
 			
 			// PARAMETERS FOR THE IC
 			IC_dist_params[0] = 0.17;  // mean
-			IC_dist_params[1] = 0.0075; // std
+			IC_dist_params[1] = 0.015; // std
 		#endif
 		#if(CASE == 2)
 		// 1st RV mean and variance

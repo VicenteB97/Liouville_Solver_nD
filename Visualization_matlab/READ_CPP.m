@@ -6,13 +6,9 @@ delete(gcp('nocreate'));
 
 %% CHANGE FOR THIS CURRENT COMPUTER
 
-Info=readcell('C:\Users\Imm-Vicente\source\repos\CMAKE_Liouville_Solver\build\Simulation_Info.csv');
-Data=readmatrix('C:\Users\Imm-Vicente\source\repos\CMAKE_Liouville_Solver\build\Mean_PDFs.csv');
+Info=readcell('C:\Users\Imm-Vicente\source\repos\Liouville_Solver_nD\SOURCE_FILES\build\Simulation_Info.csv');
+Data=readmatrix('C:\Users\Imm-Vicente\source\repos\Liouville_Solver_nD\SOURCE_FILES\build\Mean_PDFs.csv');
 
-% load('2D_Duffing.mat')
-
-% Info=readcell('C:\Users\Vicentin\source\repos\CMAKE_LIOUVILLE\build\Simulation_Info.csv');
-% Data=readmatrix('C:\Users\Vicentin\source\repos\CMAKE_LIOUVILLE\build\Mean_PDFs.csv');
 %% READ C++ OUTPUT
 Total_Pts           = Info{1,1};
 Pts_Per_Dimension   = Info{1,2};
@@ -23,7 +19,7 @@ X   =Info{1,3}:h_X:Info{1,4};
 h_Y =(Info{1,6}-Info{1,5})/(Pts_Per_Dimension-1); 
 Y   =Info{1,5}:h_X:Info{1,6};
 
-F_Output=zeros(Pts_Per_Dimension,Pts_Per_Dimension,Info{1,7});
+F_Output=zeros(Pts_Per_Dimension, Pts_Per_Dimension, Info{1,7});
 t=zeros(Info{1,7},1);
 
 Integral_values=zeros(Info{1,7},1);
@@ -32,19 +28,12 @@ parpool('threads');
 
 for k=1:Info{1,7}
     t(k)=Info{2,k};
-    %F_Output=zeros(Pts_Per_Dimension,Pts_Per_Dimension);
     parfor j=1:Pts_Per_Dimension
         for i=1:Pts_Per_Dimension
             i_aux=i+(j-1)*Pts_Per_Dimension+(k-1)*Total_Pts;
             F_Output(i,j,k) = Data(1,i_aux);
         end
     end
-
-%     [MeshId,val,GridPt,f0_Disc] = AMR(F_Output(:,:,k),9,1,X,Y,1e-6);
-% 
-%     figure(k)
-%     contour(X,Y,F_Output(:,:,k),15);colorbar;
-%     title(['Current time: ',num2str(t(k))]);drawnow;
     
     Integral_values(k)=h_X*h_Y*sum(F_Output(:,:,k),'all');
    
@@ -105,24 +94,22 @@ end
 
 close(h3);
 
-%% GRAPHS 2
+%% MARGINAL PDFs
+% First marginal plot
+% k=23;
+% Marginal_Variable=1; % 1 for X, and 2 for Y
+% Variable_Initial=0.4;
+% Variable_Final=0.6;
+% ShowPlot=1; % 1 true, 0 false
 
-% MARGINAL PDFs
-% k=min(length(t),5);
-
-for k=1:length(t)
-    figure(101)
-    plot(X,MargX(:,k)); hold on;
-    plot(Y,MargY(:,k)); hold off;
-    pause(1)
-end
-
-Marginal_Variable=1; % 1 for X, and 2 for Y
-Variable_Initial=0.4;
+% Second marginal plot
+k = 30;
+Marginal_Variable=2; % 1 for X, and 2 for Y
+Variable_Initial=0.6;
 Variable_Final=0.6;
 ShowPlot=1; % 1 true, 0 false
 
-% Marg=MarginalPlots(F_Output(:,:,k),X,Y,MargX(:,k),MargY(:,k),Marginal_Variable,Variable_Initial,Variable_Final,1,length(t));
+Marg=MarginalPlots(F_Output(:,:,k),X,Y,MargX(:,k),MargY(:,k),Marginal_Variable,Variable_Initial,Variable_Final,1,length(t));
 
 %%
 figure(4+length(t))

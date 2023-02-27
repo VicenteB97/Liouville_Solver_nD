@@ -6,17 +6,14 @@ delete(gcp('nocreate'));
 
 %% CHANGE FOR THIS CURRENT COMPUTER
 
-Info=readcell('C:\Users\Imm-Vicente\source\repos\CMAKE_Liouville_Solver\build\Simulation_Info.csv');
-Data=readmatrix('C:\Users\Imm-Vicente\source\repos\CMAKE_Liouville_Solver\build\Mean_PDFs.csv');
-
-% load('1D_Linear.mat')
-
-% Info=readcell('C:\Users\Vicentin\source\repos\CMAKE_LIOUVILLE\build\Simulation_Info.csv');
-% Data=readmatrix('C:\Users\Vicentin\source\repos\CMAKE_LIOUVILLE\build\Mean_PDFs.csv');
+Info=readcell('C:\Users\Imm-Vicente\source\repos\Liouville_Solver_nD\SOURCE_FILES\build\Simulation_Info.csv');
+Data=readmatrix('C:\Users\Imm-Vicente\source\repos\Liouville_Solver_nD\SOURCE_FILES\build\Mean_PDFs.csv');
 
 %% GATHER INFO
 Total_Points = Info{1,1};
+
 Time_values = Info{1,5};
+% Time_values = 27;
 
 time = zeros(Time_values,1);
 
@@ -49,17 +46,15 @@ w.FaceAlpha = 0.65;
 xlabel('VarX (X)')
 ylabel('Time (t)')
 zlabel('Probability Density')
-xlim([0,1.8])               % only if you analyze a part of the PDF cases
+xlim([0,1.8])
 ylim([0,time(end)])
 hold on;
 
 
 aux_time_counter=[];
 stats_output=[];
-for k=1:length(time)
-%         plot(X,f_output(:,k,1),'.-','DisplayName',['Time: ',num2str(time(k))]);
-        
-    stats_output = vertcat(stats_output,Stats(f_output(:,k),X,0.95)); % for the impulse
+for k=1:length(time)        
+    stats_output = vertcat(stats_output,Stats(f_output(:,k),X,0.95));
 
     aux_time_counter=horzcat(aux_time_counter,time(k));
 end
@@ -97,13 +92,13 @@ legend('CI amplitude','Std. Deviation');xlabel('Time (t)'); ylabel('VarX (X)'); 
 %%
 figure(5)
 subplot(3,1,1)
-plot(X,f_output(:,21,1),X,f_output(:,21)); legend('f(x,T_1^-)','f(x,T_1)');
-xlabel('X(t)');ylabel('Pr. density')
+plot(X,f_output(:,16),X,f_output(:,17)); legend('f(x,T_1^-)','f(x,T_1)');
+xlabel('X(t)');ylabel('Pr. density');xlim([0,3]);
 
 subplot(3,1,2)
-plot(X,f_output(:,35,1),X,f_output(:,35)); legend('f(x,T_2^-)','f(x,T_2)');
-xlabel('X(t)');ylabel('Pr. density')
+plot(X,f_output(:,27),X,f_output(:,28)); legend('f(x,T_2^-)','f(x,T_2)');
+xlabel('X(t)');ylabel('Pr. density');xlim([0,3]);
 
 subplot(3,1,3)
-plot(X,f_output(:,49,1),X,f_output(:,49)); legend('f(x,T_3^-)','f(x,T_3)');
-xlabel('X(t)');ylabel('Pr. density')
+plot(X,f_output(:,38),X,f_output(:,39)); legend('f(x,T_3^-)','f(x,T_3)');
+xlabel('X(t)');ylabel('Pr. density');xlim([0,3]);

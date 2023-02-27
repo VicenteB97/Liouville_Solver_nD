@@ -110,8 +110,8 @@ int PARAMETER_VEC_BUILD(const int n_Samples, Param_pair* PP, const Distributions
 			auto dist = boost::math::gamma_distribution(shape, scale);
 
 			if(Dist_params.Truncated){
-				double x0 = fmax(fmax(0, expectation - 6 * std_dev), Dist_params.trunc_interval[0]);
-				double xF = fmin(expectation + 6 * std_dev, Dist_params.trunc_interval[1]);
+				double x0 = fmaxf(fmaxf(0, expectation - 6 * std_dev), Dist_params.trunc_interval[0]);
+				double xF = fminf(expectation + 6 * std_dev, Dist_params.trunc_interval[1]);
 
 				// Re-scaling for the truncation of the random variables
 				double rescale_cdf = boost::math::cdf(dist, xF) - boost::math::cdf(dist, x0);
@@ -125,7 +125,7 @@ int PARAMETER_VEC_BUILD(const int n_Samples, Param_pair* PP, const Distributions
 				}
 			}
 			else{
-				double x0 = fmax(0, expectation - 6 * std_dev);
+				double x0 = fmaxf(0, expectation - 6 * std_dev);
 				double xF = expectation + 6 * std_dev;
 
 				double dx = (xF - x0) / (n_Samples - 1);

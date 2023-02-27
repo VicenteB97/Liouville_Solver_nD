@@ -15,11 +15,11 @@ The code was used to perform the computations in the numerical simulations in th
 / INCLUDE PAPERS WHEN IT IS PUBLISHED /
 
 INSTRUCTIONS TO REPLICATE EXPERIMENTS IN ARTICLE 1:
-1.- In "Classes.cuh", you must select either "#define CASE 1" for the 1D example, or "#define CASE 2" for the 2D example.
+1.- In "Classes.cuh", you must select either "#define CASE 1" for the 1D example, or "#define CASE 2" for the 2D example. (Re-compilation is necessary)
 2.- Next, go to the directory where the downloaded files are located. In the terminal, write "make total".
 3.- When the welcome screen appears, you have to select the following parameters for each case (press Enter after writing each parameter):
-  3.1 - 10, 0, 45, 0.25, 4, 20, 20
-  3.2 - 9, 0, 2.6, 0.05, 2, 7, 15
+  3.1 - 10, 0, 45, 0.25, 4, 15, 10
+  3.2 - 9, 0, 2.6, 0.05, 2, 7, 14
 4.- Press Enter and let the simulation finish
 5.- Press "Y" or "N" to save, or not, the simulation output. These .csv files will be stored inside the "build" directory built by CMake.
 6.- Use the "READ_CPP_1D.m" or "READ_CPP.m" files in Matlab/Octave to visualize the simulation output.

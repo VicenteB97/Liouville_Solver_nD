@@ -43,9 +43,9 @@ int Simul_Data_Def(std::vector<Time_Impulse_vec>& time_Vec, double& deltaT, int&
 	if (IMPULSE) {
 		
 		#if (CASE == 1)//	  time | Imp| mean_vec| st. dev.| samples
-			time_Vec.push_back({ 15, true,	{-0.5} ,	0.01 , 30 });	// Include time instants where impulses take place
-			time_Vec.push_back({ 25, true,	{-0.5} ,	0.01 , 30 });	// Include time instants where impulses take place
-			time_Vec.push_back({ 35, true,	{-0.5} ,	0.01 , 30 });	// Include time instants where impulses take place
+			time_Vec.push_back({ 15, true,	{-0.5} ,	0.02 , 30 });	// Include time instants where impulses take place
+			time_Vec.push_back({ 25, true,	{-0.5} ,	0.02 , 30 });	// Include time instants where impulses take place
+			time_Vec.push_back({ 35, true,	{-0.5} ,	0.02 , 30 });	// Include time instants where impulses take place
 		#endif
 		#if(CASE == 2)	//		time | Imp | mean_vec  |   st. dev. | 	samples
 			time_Vec.push_back({ 0.6, true,	{0,2.5} ,	{0, sqrt(0.02)} , {1,20} });	// Include time instants where impulses take place

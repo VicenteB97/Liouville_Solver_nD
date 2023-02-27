@@ -18,7 +18,7 @@ for k=1:length(pdf_list(1,:))
     
     maxIts=0;
     
-    while maxIts<100000 % to make sure there is no overflow due to slow convergence
+    while maxIts<25000 % to make sure there is no overflow due to slow convergence
         
         lambda_c=0.5*(lambda_0+lambda_1);
         
@@ -44,8 +44,8 @@ for k=1:length(pdf_list(1,:))
         elseif abs(error)<=tol
             output(k)=sortedPDF(idx);
             break;
-        elseif maxIts==100000-1
-            output(k)=sortedPDF(1);
+        elseif maxIts==25000-1
+            output(k)=1e-9;
         end
     end
 

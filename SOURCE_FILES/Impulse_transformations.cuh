@@ -130,7 +130,7 @@ int IMPULSE_TRANSFORM_PDF(	const gridPoint*				MESH,			// Fixed Mesh
 	// 2.1. - Find near particles
 	const int	 MaxNeighborNum	= fminf(200, Adapt_Points);
 	const double disc_X 		= (MESH[1].dim[0] - MESH[0].dim[0]);	// H_Mesh discretization size (per dimension)
-	const double search_radius 	= 4.95 * disc_X;						// max radius to search ([4,6] appears to be optimal)
+	const double search_radius 	= 4.75 * disc_X;						// max radius to search ([4,6] appears to be optimal)
 
 	const int	 max_steps 		= 1000;		 		// max steps at the Conjugate Gradient (CG) algorithm
 	const double in_tolerance 	= pow(10, -8); 	// CG stop tolerance
