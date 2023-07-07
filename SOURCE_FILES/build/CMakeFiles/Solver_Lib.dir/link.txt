@@ -1,0 +1,2 @@
+/usr/bin/ar qc libSolver_Lib.a CMakeFiles/Solver_Lib.dir/FULL_SIMULATION.cu.o
+/usr/bin/ranlib libSolver_Lib.a

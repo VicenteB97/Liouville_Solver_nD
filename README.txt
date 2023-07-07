@@ -11,18 +11,34 @@ GNU Make 4.3
 CMake version 3.22 (required to be 3.22 or above)
 Boost Library (used 1.81.0) (save it in the folder: /usr/include/)
 
-The code was used to perform the computations in the numerical simulations in the following contributions:
-/ INCLUDE PAPERS WHEN IT IS PUBLISHED /
+IMPORTANT NOTES:
+- To initialize the project, enter the "SOURCE_FILES" folder, and type "make " with the specific option you want:
+    - "make compile": erase the previous build and SIMULATION_OUTPUT folders and compiles the solution.
+    - "make total": Same as before, but runs the executable afterwards.
+    - "make update": Updates files in the build directory and executes the executable.
+  We recommend to use "Compile" and "Total" on the first time it is executed in a computer, and use "Update" afterwards.
+  The executable is generated in "/SOURCE_FILES/build".
 
-INSTRUCTIONS TO REPLICATE EXPERIMENTS IN ARTICLE 1:
-1.- In "Classes.cuh", you must select either "#define CASE 1" for the 1D example, or "#define CASE 2" for the 2D example. (Re-compilation is necessary)
-2.- Next, go to the directory where the downloaded files are located. In the terminal, write "make total".
-3.- When the welcome screen appears, you have to select the following parameters for each case (press Enter after writing each parameter):
-  3.1 - 10, 0, 45, 0.25, 4, 15, 10
-  3.2 - 9, 0, 2.6, 0.05, 2, 7, 14
-4.- Press Enter and let the simulation finish
-5.- Press "Y" or "N" to save, or not, the simulation output. These .csv files will be stored inside the "build" directory built by CMake.
-6.- Use the "READ_CPP_1D.m" or "READ_CPP.m" files in Matlab/Octave to visualize the simulation output.
+- To run the simulation (without the make commands), go to "SOURCE_FILES/build/" and then call the executable "./Simulation"
 
-Note that timing and memory limits are device-dependent. We advise to have, at least, 3 GB of VRAM available when performing the simulations.
-We are currently working in a way to dramatically reduce the memory usage.
+- Note that when you recompile, the "SIMULATION OUTPUT" folder is cleaned. Save your outputs somewhere else, or deactivate this feature
+  in the makefile document.
+
+- There are several examples in 1, 2 and even 3 dimensions with several combinations of parameters, impulse terms, etc. I believe it is
+  well-explained, but feel free to experiment with different combinations. Note that different combinations may imply that time-stepping,
+  number of parameter samples or even domain size must be changed.
+
+- DO NOT CHANGE NAMES OF VARIABLES.
+
+- The simulator will adapt to your GPU memory availability as long as you have the amount of memory necessary to hold the corresponding number
+  of variables for 1 parameter sample (that is, if there is memory for 1 parameter sample, there is memory for 400, for example).
+
+- Note that the variable used for storage will grow very fast when performing simulations in >2D for a large amount of timesteps.
+
+- We have added the possibility of storing full, or partial information in separate '.csv' files, where each file can be 1 GB at most. This
+  can also be changed in the 'Case_definition.cuh' file. 
+
+- There are Matlab scripts to visualize the information obtained from the simulation (currently it is separated for 1, 2 and 3D cases).
+  Feel free to experiment with the visualization tools.
+
+For any other doubts, feel free to ask for help at: vizenzo97@gmail.com or vibees@doctor.upv.es (until December)

@@ -1,0 +1,69 @@
+//////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////
+//														//
+//		Written by: Vicente José Bevia Escrig			//
+//		Mathematics Ph.D. student (2020-2024) at:		//
+//		Instituto de Matemática Multidisciplinar,		//
+//		Universitat Politècnica de València, Spain		//
+//														//
+//////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////
+
+#ifndef __CASE_DEFINITION_CUH__
+#define __CASE_DEFINITION_CUH__
+
+// -------------------------------------------------------------------------------- //
+//  HERE ARE THE DEFINITIONS THAT CAN BE CHANGED ACCORDING TO THE PROBLEM TO STUDY  //
+// -------------------------------------------------------------------------------- //
+
+// -----------------------------------------------------------------------//
+// -------------------- MODIFY!!! ----------------------------------------//
+// -----------------------------------------------------------------------//
+#define THREADS_P_BLK 128
+
+#define CASE "SIR System"
+
+#define RELATIVE_PATH "../../SIMULATION_OUTPUT/" // in this folder (make sure there is one with this name) we will output the simulation results
+
+#define OUTPUT_INFO 1           // 0 - just shows the number of particles of the Liouville timestep and global timestep timing
+                                // 1 - shows all the info on the GPU and the timings of each substep per Liouville timestep 
+
+#define TOLERANCE_AMR       0.0005
+#define TOLERANCE_ConjGrad  powf(10,-7)     // RECOMMENDED: This appears to give good results...no need to change it
+#define DISC_RADIUS         3.75
+
+#define DIMENSIONS   3
+#define DOMAIN_CTR  {0.5, 0.5, 0.5}
+#define DOMAIN_DIAM {1, 1, 1}
+
+inline const float	IC_MEAN[DIMENSIONS] = {0.75, 0.15, 0.1};	
+inline const float	IC_STD [DIMENSIONS] = {sqrtf(0.00025), sqrtf(0.00025), sqrtf(0.00025)};
+
+// explanation: p0 = \Delta (birth rate), p1 = \mu (death rate), p2 = \beta (S to I transmission), p3 = \gamma (I to R transmission)
+#define VEC_FIELD_1     parameter.sample_vec[0] - (parameter.sample_vec[1] + parameter.sample_vec[2]*X.dim[1])*X.dim[0]
+#define DIVERGENCE_1   -parameter.sample_vec[1] - parameter.sample_vec[2]*X.dim[1]
+
+#define VEC_FIELD_2    (parameter.sample_vec[2]*X.dim[0] - parameter.sample_vec[1] - parameter.sample_vec[3]*X.dim[2])*X.dim[1]
+#define DIVERGENCE_2    parameter.sample_vec[2]*X.dim[0] - parameter.sample_vec[1] - parameter.sample_vec[3]*X.dim[2]
+
+#define VEC_FIELD_3    (parameter.sample_vec[3]*X.dim[1] - parameter.sample_vec[1])*X.dim[2]
+#define DIVERGENCE_3    parameter.sample_vec[3]*X.dim[1] - parameter.sample_vec[1]
+
+#define VEC_FIELD      {VEC_FIELD_1, VEC_FIELD_2, VEC_FIELD_3}
+#define DIVERGENCE      DIVERGENCE_1 + DIVERGENCE_2 + DIVERGENCE_3
+
+#define PARAM_DIMENSIONS 4
+inline const char   _DIST_NAMES	 [PARAM_DIMENSIONS] = {'U','U','U','U'};
+inline const bool   _DIST_TRUNC	 [PARAM_DIMENSIONS] = {false, false, false, false};
+inline const float  _DIST_InfTVAL[PARAM_DIMENSIONS] = {0,0,0,0};
+inline const float  _DIST_SupTVAL[PARAM_DIMENSIONS] = {1,1,1,1};
+inline float 		_DIST_MEAN	 [PARAM_DIMENSIONS]	= {0,0,0.4,0.07};
+inline float 		_DIST_STD	 [PARAM_DIMENSIONS]	= {sqrtf(0.0001),sqrtf(0.0001),sqrtf(0.0001),sqrtf(0.0001)};
+
+#define IMPULSE_TYPE 0
+
+#define INCLUDE_XTRA_PARAMS false
+
+#endif
