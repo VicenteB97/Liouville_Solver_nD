@@ -169,7 +169,6 @@ auto end = std::chrono::high_resolution_clock::now();
 
 // We have added the capability of automatically detecting the number of 1 GB files where we can store the simulation output
 
-	const u_int64_t MAX_FILE_SIZE_B = 1024*1024*1024; // 1 GB per file
 	const u_int64_t MEM_2_STORE 	= store_PDFs.size() * sizeof(float);
 
 	u_int16_t number_of_files_needed  	= floor((MEM_2_STORE - 1) / MAX_FILE_SIZE_B) + 1;

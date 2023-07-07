@@ -6,7 +6,7 @@ compile:
 	cd build && cmake .. && cmake --build .
 
 total:
-	make compile && clear && ./Simulation
+	make compile && cd build && clear && ./Simulation
 
 update:
 	rm -rf ../SIMULATION_OUTPUT
