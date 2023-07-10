@@ -177,10 +177,10 @@ int IMPULSE_TRANSFORM_PDF(	const gridPoint*				MESH,			// Fixed Mesh
 	thrust::fill(GPU_PDF.begin(),GPU_PDF.end(), 0.00f);
 
 for (unsigned s = 0; s < Random_Samples; s++){
-	Threads = fminf(THREADS_P_BLK, Adapt_Points);
-	Blocks = floorf((Adapt_Points - 1) / Threads) + 1;				// To compute the interpolation results at the GPU
+	Threads = fminf(THREADS_P_BLK, Adapt_Points * Random_Samples);
+	Blocks = floorf((Adapt_Points * Random_Samples - 1) / Threads) + 1;				// To compute the interpolation results at the GPU
 
-	RESTART_GRID_FIND_GN_II<<< Blocks, Threads >>>( raw_pointer_cast(&Particle_Positions[0]),
+	RESTART_GRID_FIND_GN_II<TYPE><<< Blocks, Threads >>>( raw_pointer_cast(&Particle_Positions[0]),
 													raw_pointer_cast(&GPU_PDF[0]),
 													raw_pointer_cast(&GPU_lambdas[0]),
 													raw_pointer_cast(&Impulses[0]),
@@ -189,7 +189,7 @@ for (unsigned s = 0; s < Random_Samples; s++){
 													disc_X,
 													PtsPerDim,
 													Adapt_Points,
-													s,
+													Random_Samples,
 													rpc(D__Boundary,0));
 	gpuError_Check(cudaDeviceSynchronize());
 }			
@@ -199,7 +199,7 @@ for (unsigned s = 0; s < Random_Samples; s++){
 		Threads = fminf(THREADS_P_BLK, Grid_Nodes);
 		Blocks  = floorf((Grid_Nodes - 1) / Threads) + 1;
 		
-	CORRECTION<<<Blocks, Threads>>>(raw_pointer_cast(&GPU_PDF[0]), Grid_Nodes);
+	CORRECTION<TYPE><<<Blocks, Threads>>>(raw_pointer_cast(&GPU_PDF[0]), Grid_Nodes);
 	gpuError_Check(cudaDeviceSynchronize());
 	
 

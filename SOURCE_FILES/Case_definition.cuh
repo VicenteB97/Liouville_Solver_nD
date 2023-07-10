@@ -30,8 +30,10 @@
 // Choosing whether showing full or simplified timing information
 #define OUTPUT_INFO true
 
+#define TYPE float     // only supported values are 'float' and 'double'
+
 // AMR tolerance, Conjugate Gradient tolerance and number of discretization size for the radius of the RBFs
-#define TOLERANCE_AMR       0.00005
+#define TOLERANCE_AMR       0.05
 #define TOLERANCE_ConjGrad  powf(10,-7)     // RECOMMENDED: This appears to give good results...no need to change it
 #define DISC_RADIUS         3.15
 
@@ -40,8 +42,8 @@
 #define DOMAIN_CTR  {0.5, 0.5, 0.5}
 #define DOMAIN_DIAM {1, 1, 1}
 
-inline const float	IC_MEAN[DIMENSIONS] = {0.75, 0.15, 0.1};	
-inline const float	IC_STD [DIMENSIONS] = {sqrtf(0.0002), sqrtf(0.0002), sqrtf(0.0002)};
+inline const TYPE	IC_MEAN[DIMENSIONS] = {0.75, 0.15, 0.1};	
+inline const TYPE	IC_STD [DIMENSIONS] = {sqrtf(0.0002), sqrtf(0.0002), sqrtf(0.0002)};
 
 // Vector field definition
     // explanation: p0 = \Delta (birth rate), p1 = \mu (death rate), p2 = \beta (S to I transmission), p3 = \gamma (I to R transmission)
@@ -61,10 +63,10 @@ inline const float	IC_STD [DIMENSIONS] = {sqrtf(0.0002), sqrtf(0.0002), sqrtf(0.
 #define PARAM_DIMENSIONS 4
 inline const char   _DIST_NAMES	 [PARAM_DIMENSIONS] = {'U','U','U','U'};
 inline const bool   _DIST_TRUNC	 [PARAM_DIMENSIONS] = {false, false, false, false};
-inline const float  _DIST_InfTVAL[PARAM_DIMENSIONS] = {0,0,0,0};
-inline const float  _DIST_SupTVAL[PARAM_DIMENSIONS] = {1,1,1,1};
-inline float 		_DIST_MEAN	 [PARAM_DIMENSIONS]	= {0.025,0.025,0.3,0.2};
-inline float 		_DIST_STD	 [PARAM_DIMENSIONS]	= {sqrtf(0.0001),sqrtf(0.0001),sqrtf(0.0001),sqrtf(0.0001)};
+inline const TYPE  _DIST_InfTVAL[PARAM_DIMENSIONS] = {0,0,0,0};
+inline const TYPE  _DIST_SupTVAL[PARAM_DIMENSIONS] = {1,1,1,1};
+inline TYPE 		_DIST_MEAN	 [PARAM_DIMENSIONS]	= {0.025,0.025,0.3,0.2};
+inline TYPE 		_DIST_STD	 [PARAM_DIMENSIONS]	= {sqrtf(0.0001),sqrtf(0.0001),sqrtf(0.0001),sqrtf(0.0001)};
 
 // Impulse parameter information
 #define IMPULSE_TYPE 0

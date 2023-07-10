@@ -57,7 +57,7 @@ int32_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 	for (u_int32_t i = 0; i < Grid_Nodes; i++){
 		for (u_int32_t d = 0; d < DIMENSIONS; d++){
 			u_int32_t j 	 = floor(positive_rem(i, pow(PtsPerDim, d + 1))/pow(PtsPerDim, d));
-			H_Mesh[i].dim[d] = ((float) j / (PtsPerDim - 1) - 0.50f) * Domain_Diameter.dim[d] + Domain_Center.dim[d]; 
+			H_Mesh[i].dim[d] = ((TYPE) j / (PtsPerDim - 1) - 0.50f) * Domain_Diameter.dim[d] + Domain_Center.dim[d]; 
 		}
 	}
 
@@ -66,7 +66,7 @@ int32_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 // -------------------------------------------------------------------------------------------------------------- //
 	// Time simulation data Definition: -------------------------------------------------------------------------------
 	int32_t	ReinitSteps;
-	double	deltaT;
+	FIXED_TYPE	deltaT;
 
 	std::vector<Time_Impulse_vec> time_vector;
 	
@@ -91,7 +91,7 @@ int32_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 // 1.- PARAMETERS biuld up
 		int32_t n_samples[PARAM_DIMENSIONS];	// number of samples per parameter
 
-		float IC_dist_params[DIMENSIONS * 2];	// distribution parameters for the IC
+		TYPE IC_dist_params[DIMENSIONS * 2];	// distribution parameters for the IC
 		
 	// ----------------------------------------------------------------------------------------------- //
 	// ---------------------------------- OBTAIN INFO FROM TERMINAL ---------------------------------- //
@@ -117,7 +117,7 @@ int32_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 		Param_pair*		Parameter_Mesh 	= new Param_pair[PM_length];				// Full parameter array
 		Distributions* 	Param_dist  	= new Distributions[PARAM_DIMENSIONS];		// Array for storing the model parameters' distribution information
 	
-		thrust::host_vector<float> H_PDF(Grid_Nodes);	 							// PDF values at the fixed, high-res grid (CPU)
+		thrust::host_vector<TYPE> H_PDF(Grid_Nodes);	 							// PDF values at the fixed, high-res grid (CPU)
 
 		#pragma unroll
 		for (u_int32_t p = 0; p < PARAM_DIMENSIONS; p++){
@@ -173,6 +173,7 @@ auto end = std::chrono::high_resolution_clock::now();
 
 	const u_int64_t MEM_2_STORE = store_PDFs.size() * sizeof(float);
 
+	// u_int16_t number_of_files_needed  	= (u_int16_t)floorf((float)(MEM_2_STORE - 1) / MAX_FILE_SIZE_B) + 1;
 	u_int32_t number_of_frames_needed 	= MEM_2_STORE / Grid_Nodes / sizeof(float);
 	u_int32_t max_frames_file 			= MAX_FILE_SIZE_B / Grid_Nodes / sizeof(float);
 	u_int16_t number_of_files_needed  	= floor((number_of_frames_needed - 1) / max_frames_file) + 1;

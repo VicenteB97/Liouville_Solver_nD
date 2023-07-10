@@ -23,7 +23,7 @@
 
 using namespace thrust::placeholders; // this is useful for the multiplication of a device vector by a constant
 
-__device__ inline gridPoint VECTOR_FIELD(gridPoint X, float t, const Param_vec parameter, const u_int32_t mode, const double extra_param[]) {
+__device__ inline gridPoint VECTOR_FIELD(gridPoint X, TYPE t, const Param_vec parameter, const u_int32_t mode, const FIXED_TYPE extra_param[]) {
 	gridPoint output = VEC_FIELD;
 	
 	return output;
@@ -31,8 +31,8 @@ __device__ inline gridPoint VECTOR_FIELD(gridPoint X, float t, const Param_vec p
 //-------------------------------------------------------------------------
 
 //-------------------------------------------------------------------------
-__device__ inline float DIVERGENCE_FIELD(gridPoint X, float t, const Param_vec parameter, const u_int32_t mode, const double extra_param[]) {
-	float output = DIVERGENCE;
+__device__ inline TYPE DIVERGENCE_FIELD(gridPoint X, TYPE t, const Param_vec parameter, const u_int32_t mode, const FIXED_TYPE extra_param[]) {
+	TYPE output = DIVERGENCE;
 	
 	return output;
 }
@@ -72,7 +72,7 @@ __device__ inline float DIVERGENCE_FIELD(gridPoint X, float t, const Param_vec p
 /// @param Random_Samples Number of random parameter samples
 /// @return 
 __global__ void RungeKutta(	gridPoint* 			Particles,
-							float* 				PDF,
+							TYPE* 				PDF,
 							const Param_pair* 	parameters,
 							const int32_t* 		n_Samples,
 							float				t0,
@@ -81,7 +81,7 @@ __global__ void RungeKutta(	gridPoint* 			Particles,
 							const int32_t		Adapt_Points,
 							const int32_t		Random_Samples,
 							const u_int32_t		mode,
-							const double*		extra_param,
+							const FIXED_TYPE*		extra_param,
 							const gridPoint*	Domain_boundary) {
 
 	const u_int64_t i = blockDim.x * blockIdx.x + threadIdx.x;
@@ -94,10 +94,10 @@ __global__ void RungeKutta(	gridPoint* 			Particles,
 		const Param_vec parameter 	= _Gather_Param_Vec(i_sample, parameters, n_Samples);
 
 		gridPoint k0, k1, k2, k3, k_final, aux;
-		float	  Int1, Int2, Int3;
+		TYPE	  Int1, Int2, Int3;
 
 		gridPoint x0 	= Particles[i]; 	// register storing the initial particle loc.
-		float Int_PDF	= PDF[i];		// register storing the initial particle value
+		TYPE Int_PDF	= PDF[i];		// register storing the initial particle value
 
 		while (t0 < tF - deltaT / 2) {
 			// Particle flow
@@ -115,7 +115,7 @@ __global__ void RungeKutta(	gridPoint* 			Particles,
 			k1 = Mult_by_Scalar(2.00f, k1);
 			k2 = Mult_by_Scalar(2.00f, k2);
 
-			aux = x0 + Mult_by_Scalar((float) deltaT / 6.00f, (k0 + k3 + k1 + k2)); // New particle dim
+			aux = x0 + Mult_by_Scalar((TYPE) deltaT / 6.00f, (k0 + k3 + k1 + k2)); // New particle dim
 
 			// Integration of PDF: The following line corresponds to computing the approximation via a Hermite interpolation (we know initial and final points and their velocities)
 			Int1 = DIVERGENCE_FIELD(x0, t0, parameter, mode, extra_param);
@@ -123,11 +123,11 @@ __global__ void RungeKutta(	gridPoint* 			Particles,
 			k_final = VECTOR_FIELD(aux, t0 + deltaT, parameter, mode, extra_param);
 			x0 	 = Mult_by_Scalar(0.50f, (x0 + aux));
 			x0 	 = x0 + Mult_by_Scalar(0.125f, (k0 + k_final));
-			Int2 = DIVERGENCE_FIELD(x0, (float)(2.00f * t0 + deltaT) / 2.00f, parameter, mode, extra_param);
+			Int2 = DIVERGENCE_FIELD(x0, (TYPE)(2.00f * t0 + deltaT) / 2.00f, parameter, mode, extra_param);
 
-			Int3 = DIVERGENCE_FIELD(aux, (float)t0 + deltaT, parameter, mode, extra_param);
+			Int3 = DIVERGENCE_FIELD(aux, (TYPE)t0 + deltaT, parameter, mode, extra_param);
 
-			Int_PDF *= expf((float)-deltaT / 6.00f * (Int1 + 4.00f * Int2 + Int3)); // New particle value
+			Int_PDF *= expf((TYPE)-deltaT / 6.00f * (Int1 + 4.00f * Int2 + Int3)); // New particle value
 
 			// Reinit step
 			x0 = aux;
@@ -165,14 +165,14 @@ int32_t PDF_ITERATIONS( cudaDeviceProp* prop,
 						std::vector<float>* store_PDFs,
 						const Param_pair* Parameter_Mesh,
 						const gridPoint* H_Mesh,
-						thrust::host_vector<float>* H_PDF,
+						thrust::host_vector<TYPE>* H_PDF,
 						const int32_t* n_Samples,
 						const int32_t& LvlFine,
 						const int32_t& LvlCoarse,
 						const u_int32_t& PtsPerDim,
 						const u_int32_t& Grid_Nodes,
 						const std::vector<Time_Impulse_vec> time_vector,
-						const double& deltaT,
+						const FIXED_TYPE& deltaT,
 						const u_int32_t& ReinitSteps) {
 
 //--------------------------------------------------------------------------------------------//
@@ -183,9 +183,9 @@ int32_t PDF_ITERATIONS( cudaDeviceProp* prop,
 //--------------------------------------------------------------------------------------------//
 //--------------------------------------------------------------------------------------------//
 	std::vector<gridPoint>	AdaptGrid(0);			// Particle positions to be used for simulation (corresponding dim from AMR)
-	std::vector<float>		AdaptPDF(0);			// PDF value at the particle positions (corresponding values from AMR)
+	std::vector<TYPE>		AdaptPDF(0);			// PDF value at the particle positions (corresponding values from AMR)
 	std::vector<gridPoint>	Full_AdaptGrid(0);		// Final adapted grid (adapted grid x number of samples)
-	std::vector<float>		Full_AdaptPDF(0);		// Final adapted PDF (adapted grid x number of samples)
+	std::vector<TYPE>		Full_AdaptPDF(0);		// Final adapted PDF (adapted grid x number of samples)
 
 	int32_t Random_Samples  = 1;
 	int32_t aux_Samples 	= 0;
@@ -198,26 +198,26 @@ int32_t PDF_ITERATIONS( cudaDeviceProp* prop,
 	std::cout << "Total number of random samples: " << Random_Samples << ".\n";
 
 	thrust::device_vector<gridPoint>	GPU_Part_Position;		// Particle positions (for the GPU)
-	thrust::device_vector<float>		GPU_AdaptPDF;			// PDF value at Particle positions (for the GPU)
+	thrust::device_vector<TYPE>		GPU_AdaptPDF;			// PDF value at Particle positions (for the GPU)
 	thrust::device_vector<Param_pair>	GPU_Parameter_Mesh(Parameter_Mesh, Parameter_Mesh + aux_Samples);		// Parameter H_Mesh array (for the GPU)
 
 	thrust::device_vector<int32_t>		GPU_nSamples(n_Samples, n_Samples + PARAM_DIMENSIONS);
-	thrust::device_vector<float>		GPU_PDF = *H_PDF;					// PDF values at fixed Grid Nodes (for the GPU)
+	thrust::device_vector<TYPE>		GPU_PDF = *H_PDF;					// PDF values at fixed Grid Nodes (for the GPU)
 
 	// auxiliary variable that will be used for ensemble mean computation
-	float Sum_Rand_Params = 0;
+	TYPE Sum_Rand_Params = 0;
 	for (u_int32_t i = 0; i < Random_Samples; i++) {
 		Param_vec aux_PM = _Gather_Param_Vec(i, Parameter_Mesh, n_Samples);
 		Sum_Rand_Params += aux_PM.Joint_PDF;
 	}
 
-	const u_int64_t MAX_MEMORY_USABLE = 0.85*(prop->totalGlobalMem - aux_Samples * sizeof(Param_pair) - Grid_Nodes * sizeof(float));		// max memory to be used in bytes
+	const u_int64_t MAX_MEMORY_USABLE = 0.85*(prop->totalGlobalMem - aux_Samples * sizeof(Param_pair) - Grid_Nodes * sizeof(TYPE));		// max memory to be used in bytes
 
 
 // ------------------ DEFINITION OF THE INTERPOLATION VARIABLES AND ARRAYS ------------------ //
 	u_int32_t Adapt_Points, MaxNeighborNum;
 
-	const float disc_X = (H_Mesh[1].dim[0] - H_Mesh[0].dim[0]);	// H_Mesh discretization size (per dimension)
+	const TYPE disc_X = (H_Mesh[1].dim[0] - H_Mesh[0].dim[0]);	// H_Mesh discretization size (per dimension)
 
 	thrust::host_vector<gridPoint>	__H__Domain_Boundary(2);
 	#pragma unroll
@@ -227,10 +227,10 @@ int32_t PDF_ITERATIONS( cudaDeviceProp* prop,
 	}
 	thrust::device_vector<gridPoint> __D__Domain_Boundary = __H__Domain_Boundary;
 
-	const float search_radius 		= DISC_RADIUS * disc_X;		// max radius to search ([3,6] appears to be optimal)
+	const TYPE search_radius 		= DISC_RADIUS * disc_X;		// max radius to search ([3,6] appears to be optimal)
 
 	const u_int16_t	max_steps 		= 1000;		 				// max steps at the Conjugate Gradient (CG) algorithm
-	const float 	in_tolerance 	= TOLERANCE_ConjGrad; 		// CG stop tolerance
+	const TYPE 	in_tolerance 	= TOLERANCE_ConjGrad; 		// CG stop tolerance
 
 // --------------------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------
@@ -253,10 +253,10 @@ int32_t PDF_ITERATIONS( cudaDeviceProp* prop,
 	#endif
 	
 	#if INCLUDE_XTRA_PARAMS
-		thrust::device_vector<double>	Extra_Parameter(XTRA_PARAM_LENGTH);
+		thrust::device_vector<FIXED_TYPE>	Extra_Parameter(XTRA_PARAM_LENGTH);
 		thrust::copy(&XTRA_PARAM[0], &XTRA_PARAM[XTRA_PARAM_LENGTH], Extra_Parameter.begin());
 	#else
-		thrust::device_vector<double>	Extra_Parameter(0);
+		thrust::device_vector<FIXED_TYPE>	Extra_Parameter(0);
 	#endif
 
 	while (j < time_vector.size() - 1) {
@@ -362,7 +362,7 @@ int32_t PDF_ITERATIONS( cudaDeviceProp* prop,
 			MaxNeighborNum 	= fmin(pow(2 * DISC_RADIUS, DIMENSIONS), Adapt_Points);
 
 			// Total memory requirements for next Liouville step
-			const u_int64_t mem_requested_per_sample = (u_int64_t) Adapt_Points * (sizeof(float) * (6 + MaxNeighborNum) + sizeof(gridPoint) + sizeof(int32_t)*(MaxNeighborNum + 1) );
+			const u_int64_t mem_requested_per_sample = (u_int64_t) Adapt_Points * (sizeof(TYPE) * (6 + MaxNeighborNum) + sizeof(gridPoint) + sizeof(int32_t)*(MaxNeighborNum + 1) );
 
 			// Set number of random samples to work with, and number of blocks to use
 			u_int32_t Random_Samples_Blk_size 	= (u_int32_t) fmin	((u_int64_t)Random_Samples, MAX_MEMORY_USABLE / mem_requested_per_sample);
@@ -400,7 +400,7 @@ int32_t PDF_ITERATIONS( cudaDeviceProp* prop,
 				// ------------------ RESIZING OF THE INTERPOLATION MATRIX ------------------ //
 
 				thrust::device_vector<int32_t>		GPU_Index_array(MaxNeighborNum * Block_Particles);
-				thrust::device_vector<float>		GPU_Mat_entries(MaxNeighborNum * Block_Particles);
+				thrust::device_vector<TYPE>		GPU_Mat_entries(MaxNeighborNum * Block_Particles);
 				thrust::device_vector<int32_t>		GPU_Num_Neighbors(Block_Particles);
 				// -------------------------------------------------------------------------- //
 				// Determine threads and blocks for the simulation
@@ -454,23 +454,23 @@ int32_t PDF_ITERATIONS( cudaDeviceProp* prop,
 				#if OUTPUT_INFO
 				start_3 = std::chrono::high_resolution_clock::now();
 				
-				Exh_PP_Search << <Blocks, Threads >> > (rpc(GPU_Part_Position,0), 
-														rpc(GPU_Part_Position,0), 
-														rpc(GPU_Index_array,0), 
-														rpc(GPU_Mat_entries,0), 
-														rpc(GPU_Num_Neighbors,0), 
-														MaxNeighborNum, 
-														Adapt_Points, 
-														Block_Particles, 
-														search_radius,
-														rpc(__D__Domain_Boundary,0)); 
+				Exh_PP_Search<TYPE> << <Blocks, Threads >> > (rpc(GPU_Part_Position,0), 
+																rpc(GPU_Part_Position,0), 
+																rpc(GPU_Index_array,0), 
+																rpc(GPU_Mat_entries,0), 
+																rpc(GPU_Num_Neighbors,0), 
+																MaxNeighborNum, 
+																Adapt_Points, 
+																Block_Particles, 
+																search_radius,
+																rpc(__D__Domain_Boundary,0)); 
 				gpuError_Check(cudaDeviceSynchronize());
 						
 				end_3 = std::chrono::high_resolution_clock::now();
 				duration_3 = end_3 - start_3;
 				std::cout << "Exhaustive point serach took " << duration_3.count() << " seconds\n";
 				#else
-				Exh_PP_Search << <Blocks, Threads >> > (rpc(GPU_Part_Position,0), 
+				Exh_PP_Search<TYPE> << <Blocks, Threads >> > (rpc(GPU_Part_Position,0), 
 														rpc(GPU_Part_Position,0), 
 														rpc(GPU_Index_array,0), 
 														rpc(GPU_Mat_entries,0), 
@@ -484,13 +484,13 @@ int32_t PDF_ITERATIONS( cudaDeviceProp* prop,
 				#endif
 
 				// 2.- Iterative solution (Conjugate Gradient) to obtain coefficients of the RBFs
-				thrust::device_vector<float>	GPU_lambdas(Block_Particles);	// solution vector (RBF weights)
+				thrust::device_vector<TYPE>	GPU_lambdas(Block_Particles);	// solution vector (RBF weights)
 				thrust::fill(GPU_lambdas.begin(), GPU_lambdas.end(), 0.0f);		// this will serve as the initial condition
 
 				#if OUTPUT_INFO
 				start_3 = std::chrono::high_resolution_clock::now();
 
-				error_check = CONJUGATE_GRADIENT_SOLVE<float>(  GPU_lambdas, 
+				error_check = CONJUGATE_GRADIENT_SOLVE<TYPE>(  GPU_lambdas, 
 																GPU_Index_array, 
 																GPU_Mat_entries, 
 																GPU_Num_Neighbors, 
@@ -506,7 +506,7 @@ int32_t PDF_ITERATIONS( cudaDeviceProp* prop,
 				std::cout << "Conjugate Gradient took " << duration_3.count() << " seconds\n";
 				#else
 
-				error_check = CONJUGATE_GRADIENT_SOLVE<float>(  GPU_lambdas, 
+				error_check = CONJUGATE_GRADIENT_SOLVE<TYPE>(  GPU_lambdas, 
 																GPU_Index_array, 
 																GPU_Mat_entries, 
 																GPU_Num_Neighbors, 
@@ -521,7 +521,7 @@ int32_t PDF_ITERATIONS( cudaDeviceProp* prop,
 				// ----------------------------------------------------------------------------------- //
 				// THIS PART ONLY GRABS THE LAST "OPTIMAL" LAMBDA AND COMPUTES ITS "PROJECTION" INTO THE SUBSPACE
 				#if DIMENSIONS == 2
-					float temp = thrust::reduce(thrust::device,GPU_lambdas.begin(),GPU_lambdas.end());
+					TYPE temp = thrust::reduce(thrust::device,GPU_lambdas.begin(),GPU_lambdas.end());
 					thrust::transform(GPU_lambdas.begin(),GPU_lambdas.end(),GPU_lambdas.begin(), Random_Samples_Blk_size / temp * _1);
 				#endif
 				// ----------------------------------------------------------------------------------- //
@@ -534,50 +534,64 @@ int32_t PDF_ITERATIONS( cudaDeviceProp* prop,
 				#if OUTPUT_INFO
 				start_3 = std::chrono::high_resolution_clock::now();
 
-				for(u_int32_t s = Sample_idx_offset_init; s < Sample_idx_offset_final; s++){
-					// Re-define Threads and Blocks
-					Threads = fminf(THREADS_P_BLK, Adapt_Points);
-					Blocks  = floorf((Adapt_Points - 1) / Threads) + 1;
-					RESTART_GRID_FIND_GN<<< Blocks, Threads >>>(rpc(GPU_Part_Position,0),
-																rpc(GPU_PDF,0),
-																rpc(GPU_lambdas,0),
-																rpc(GPU_Parameter_Mesh,0),
-																rpc(GPU_nSamples,0),
-																search_radius,
-																H_Mesh[0],
-																disc_X,
-																PtsPerDim,
-																Adapt_Points,
-																s,
-																Sample_idx_offset_init,
-																rpc(__D__Domain_Boundary,0));
-					gpuError_Check(cudaDeviceSynchronize());
-				}
+				Threads = fminf(THREADS_P_BLK, Block_Particles);
+				Blocks  = floorf((Block_Particles - 1) / Threads) + 1;
+				RESTART_GRID_FIND_GN<TYPE><<< Blocks, Threads >>>(rpc(GPU_Part_Position,0),
+															rpc(GPU_PDF,0),
+															rpc(GPU_lambdas,0),
+															rpc(GPU_Parameter_Mesh,0),
+															rpc(GPU_nSamples,0),
+															search_radius,
+															H_Mesh[0],
+															disc_X,
+															PtsPerDim,
+															Adapt_Points,
+															Random_Samples_Blk_size,
+															Sample_idx_offset_init,
+															rpc(__D__Domain_Boundary,0));
+				gpuError_Check(cudaDeviceSynchronize());
+
+				// for(u_int32_t s = Sample_idx_offset_init; s < Sample_idx_offset_final; s++){
+				// 	// Re-define Threads and Blocks
+				// 	Threads = fminf(THREADS_P_BLK, Adapt_Points);
+				// 	Blocks  = floorf((Adapt_Points - 1) / Threads) + 1;
+				// 	RESTART_GRID_FIND_GN<TYPE><<< Blocks, Threads >>>(rpc(GPU_Part_Position,0),
+				// 												rpc(GPU_PDF,0),
+				// 												rpc(GPU_lambdas,0),
+				// 												rpc(GPU_Parameter_Mesh,0),
+				// 												rpc(GPU_nSamples,0),
+				// 												search_radius,
+				// 												H_Mesh[0],
+				// 												disc_X,
+				// 												PtsPerDim,
+				// 												Adapt_Points,
+				// 												s,
+				// 												Sample_idx_offset_init,
+				// 												rpc(__D__Domain_Boundary,0));
+				// 	gpuError_Check(cudaDeviceSynchronize());
+				// }
 						
 				end_3 = std::chrono::high_resolution_clock::now();
 				duration_3 = end_3 - start_3;
 				std::cout << "Remeshing took " << duration_3.count() << " seconds\n";
 
 				#else
-				for(u_int32_t s = Sample_idx_offset_init; s < Sample_idx_offset_final; s++){
-					// Re-define Threads and Blocks
-					Threads = fminf(THREADS_P_BLK, Adapt_Points);
-					Blocks  = floorf((Adapt_Points - 1) / Threads) + 1;
-					RESTART_GRID_FIND_GN<<< Blocks, Threads >>>(rpc(GPU_Part_Position,0),
-																rpc(GPU_PDF,0),
-																rpc(GPU_lambdas,0),
-																rpc(GPU_Parameter_Mesh,0),
-																rpc(GPU_nSamples,0),
-																search_radius,
-																H_Mesh[0],
-																disc_X,
-																PtsPerDim,
-																Adapt_Points,
-																s,
-																Sample_idx_offset_init,
-																rpc(__D__Domain_Boundary,0));
-					gpuError_Check(cudaDeviceSynchronize());
-				}
+				Threads = fminf(THREADS_P_BLK, Block_Particles);
+				Blocks  = floorf((Block_Particles - 1) / Threads) + 1;
+				RESTART_GRID_FIND_GN<TYPE><<< Blocks, Threads >>>(rpc(GPU_Part_Position,0),
+															rpc(GPU_PDF,0),
+															rpc(GPU_lambdas,0),
+															rpc(GPU_Parameter_Mesh,0),
+															rpc(GPU_nSamples,0),
+															search_radius,
+															H_Mesh[0],
+															disc_X,
+															PtsPerDim,
+															Adapt_Points,
+															Random_Samples_Blk_size,
+															Sample_idx_offset_init,
+															rpc(__D__Domain_Boundary,0));
+				gpuError_Check(cudaDeviceSynchronize());
 				#endif
 			}
 
@@ -588,7 +602,7 @@ int32_t PDF_ITERATIONS( cudaDeviceProp* prop,
 			// Re-define Threads and Blocks
 			u_int16_t Threads = fminf(THREADS_P_BLK, Grid_Nodes);
 			u_int64_t Blocks  = floorf((Grid_Nodes - 1) / Threads) + 1;
-			CORRECTION<<<Blocks, Threads>>>(rpc(GPU_PDF,0), Grid_Nodes);
+			CORRECTION<TYPE><<<Blocks, Threads>>>(rpc(GPU_PDF,0), Grid_Nodes);
 			gpuError_Check(cudaDeviceSynchronize());
 
 			thrust::transform(GPU_PDF.begin(), GPU_PDF.end(), GPU_PDF.begin(), 1.0f / Sum_Rand_Params * _1); // we use the thrust::placeholders here (@ the last input argument)

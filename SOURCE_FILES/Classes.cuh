@@ -43,6 +43,7 @@
 
 #define RELATIVE_PATH "../../SIMULATION_OUTPUT/"
 #define THREADS_P_BLK 128
+#define FIXED_TYPE double
 
 inline void gpuAssert (cudaError_t code, const char *file, int32_t line, bool abort = true){
 if (code != cudaSuccess) {
@@ -57,14 +58,14 @@ if (code != cudaSuccess) {
 // Grid points----------------------------------------------------
 class gridPoint {
 public:
-	float dim[DIMENSIONS];
+	TYPE dim[DIMENSIONS];
 
 	__host__ __device__ gridPoint operator+(const gridPoint& other) {
 
 		gridPoint out;
 
 		for (u_int32_t d = 0; d < DIMENSIONS; d++) {
-			float aux = dim[d];
+			TYPE aux = dim[d];
 			aux += other.dim[d];
 			out.dim[d] = aux;
 		}
@@ -76,7 +77,7 @@ public:
 		gridPoint out;
 
 		for (u_int32_t d = 0; d < DIMENSIONS; d++) {
-			float aux = dim[d];
+			TYPE aux = dim[d];
 			aux -= other.dim[d];
 			out.dim[d] = aux;
 		}
@@ -97,7 +98,7 @@ public:
 // Time + impulse: ----------------------------------------------
 class Time_Impulse_vec {
 public:
-	double 		time;
+	FIXED_TYPE 		time;
 	bool 		impulse;
 
 	bool operator < (const Time_Impulse_vec& other) const {
@@ -117,27 +118,27 @@ public:
 // Parameters
 class Param_vec {
 public:
-	float sample_vec[PARAM_DIMENSIONS];
-	float Joint_PDF;
+	TYPE sample_vec[PARAM_DIMENSIONS];
+	TYPE Joint_PDF;
 };
 
 class Impulse_Param_vec {
 public:
-	float sample_vec[DIMENSIONS];
-	float Joint_PDF;
+	TYPE sample_vec[DIMENSIONS];
+	TYPE Joint_PDF;
 };
 
 class Param_pair {
 public:
-	float sample, PDF;
+	TYPE sample, PDF;
 };
 
 class Distributions{
 public:
-	float params[2];
+	TYPE params[2];
 	char  Name;
 	bool  Truncated;
-	float trunc_interval[2];
+	TYPE trunc_interval[2];
 };
 
 //-------------------------------------------------------------------------//
@@ -163,9 +164,9 @@ __host__ __device__ inline u_int32_t positive_rem(const int32_t a, const int32_t
 
 // ------------------------------------------------------------------------ //
 // ------------------------------------------------------------------------ //
-__host__ __device__ inline float Distance(const gridPoint P1, const gridPoint P2) {
+__host__ __device__ inline TYPE Distance(const gridPoint P1, const gridPoint P2) {
 
-	float out = 0;
+	TYPE out = 0;
 
 	#pragma unroll
 	for (u_int32_t d = 0; d < DIMENSIONS; d++) {
@@ -179,7 +180,7 @@ __host__ __device__ inline float Distance(const gridPoint P1, const gridPoint P2
 
 // ------------------------------------------------------------------------ //
 // ------------------------------------------------------------------------ //
-__host__ __device__ inline gridPoint Mult_by_Scalar(float scalar, gridPoint Point) {
+__host__ __device__ inline gridPoint Mult_by_Scalar(TYPE scalar, gridPoint Point) {
 	gridPoint out;
 
 	#pragma unroll
@@ -204,7 +205,7 @@ __host__ __device__ inline Param_vec _Gather_Param_Vec(const u_int32_t index, co
 	#pragma unroll
 	for (u_int32_t d = 0; d < PARAM_DIMENSIONS; d++){
 		u_int32_t aux3 = n_Samples[d];
-		u_int32_t aux = floorf((float) positive_rem(index, aux3 * aux_samples_mult) / aux_samples_mult );
+		u_int32_t aux = floorf(positive_rem(index, aux3 * aux_samples_mult) / aux_samples_mult );
 
 		Output.sample_vec[d] = Parameter_Array[aux + aux_samples_sum].sample;
 		Output.Joint_PDF 	*= Parameter_Array[aux + aux_samples_sum].PDF;
@@ -225,6 +226,28 @@ __device__ inline bool __is_in_domain(const gridPoint particle, const gridPoint*
 	}
 
 	return out;
+}
+
+__device__ inline void __atomicAdd(double* address, double val)
+{
+	unsigned long long int* address_as_ull 	= (unsigned long long int*)address;
+	unsigned long long int old 				= *address_as_ull, assumed;
+	do {
+		assumed = old;
+		old = atomicCAS(address_as_ull, assumed, __double_as_longlong(val + __longlong_as_double(assumed)));
+	} 
+	while (assumed != old);
+}
+
+__device__ inline void __atomicAdd(float* address, float val){
+	float old = val;  
+	float new_old;
+	do
+	{
+		new_old = atomicExch(address, 0.0f);
+		new_old += old;
+	}
+	while ((old = atomicExch(address, new_old))!=0.0f);
 }
 
 #endif

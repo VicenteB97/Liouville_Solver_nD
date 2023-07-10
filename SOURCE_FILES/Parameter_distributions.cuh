@@ -23,7 +23,7 @@
 /// @param Mesh 
 /// @param PDF_value 
 /// @param IC_dist_parameters 
-int PDF_INITIAL_CONDITION(int Points_per_dimension, const gridPoint* Mesh, thrust::host_vector<float>& PDF_value, float* IC_dist_parameters) {
+int PDF_INITIAL_CONDITION(int Points_per_dimension, const gridPoint* Mesh, thrust::host_vector<TYPE>& PDF_value, TYPE* IC_dist_parameters) {
 
 	// Due to obvious reasons, we will not make the choice of IC distributions automatically, as with the model parameters
 	boost::math::normal dist[DIMENSIONS];
@@ -31,12 +31,12 @@ int PDF_INITIAL_CONDITION(int Points_per_dimension, const gridPoint* Mesh, thrus
 	//create the distributions per dimension:
 	#pragma unroll
 	for (unsigned d = 0; d < DIMENSIONS; d++){
-		dist[d] = boost::math::normal_distribution((double)IC_dist_parameters[2*d], (double)IC_dist_parameters[2*d + 1]);
+		dist[d] = boost::math::normal_distribution((FIXED_TYPE)IC_dist_parameters[2*d], (FIXED_TYPE)IC_dist_parameters[2*d + 1]);
 	}
 
 	#pragma omp parallel for
 	for (unsigned k = 0; k < PDF_value.size(); k++){
-		float aux = 1;
+		TYPE aux = 1;
 		for (unsigned d = 0; d < DIMENSIONS; d++){
 			aux *= boost::math::pdf(dist[d], Mesh[k].dim[d]);
 		}
@@ -59,7 +59,7 @@ int PDF_INITIAL_CONDITION(int Points_per_dimension, const gridPoint* Mesh, thrus
 /// @param Dist_params 
 int PARAMETER_VEC_BUILD(const int n_Samples, Param_pair* PP, const Distributions Dist_params) {
 
-	float expectation = Dist_params.params[0], std_dev = Dist_params.params[1];
+	TYPE expectation = Dist_params.params[0], std_dev = Dist_params.params[1];
 
 	if (n_Samples == 1) {
 		*PP = { expectation, 1 };
@@ -72,29 +72,29 @@ int PARAMETER_VEC_BUILD(const int n_Samples, Param_pair* PP, const Distributions
 
 			if (Dist_params.Truncated){
 				// Make the truncation intervals:
-				float x0 = fmaxf(expectation - 6 * std_dev, Dist_params.trunc_interval[0]);
-				float xF = fminf(expectation + 6 * std_dev, Dist_params.trunc_interval[1]);
+				TYPE x0 = fmaxf(expectation - 6 * std_dev, Dist_params.trunc_interval[0]);
+				TYPE xF = fminf(expectation + 6 * std_dev, Dist_params.trunc_interval[1]);
 
 				// Re-scaling for the truncation of the random variables
-				float rescale_cdf = boost::math::cdf(dist, xF) - boost::math::cdf(dist, x0);
+				TYPE rescale_cdf = boost::math::cdf(dist, xF) - boost::math::cdf(dist, x0);
 
 				// Mesh discretization
-				float dx = (xF - x0) / (n_Samples - 1);
+				TYPE dx = (xF - x0) / (n_Samples - 1);
 
 				for (int i = 0; i < n_Samples; i++) {
-					float x = x0 + i * dx;
+					TYPE x = x0 + i * dx;
 					PP[i] = { x, boost::math::pdf(dist, x) / rescale_cdf }; // other distributions could be used
 				}
 			}
 			else{
 				
-				float x0 = expectation - 6 * std_dev;
-				float xF = expectation + 6 * std_dev;
+				TYPE x0 = expectation - 6 * std_dev;
+				TYPE xF = expectation + 6 * std_dev;
 
-				float dx = (xF - x0) / (n_Samples - 1);
+				TYPE dx = (xF - x0) / (n_Samples - 1);
 
 				for (int i = 0; i < n_Samples; i++) {
-					float x = x0 + i * dx;
+					TYPE x = x0 + i * dx;
 					PP[i] = { x, boost::math::pdf(dist, x) }; // other distributions could be used
 				}
 			}
@@ -102,48 +102,48 @@ int PARAMETER_VEC_BUILD(const int n_Samples, Param_pair* PP, const Distributions
 		}
 		else if(Dist_params.Name == 'U'){
 
-			float x0 = expectation - sqrtf(3) * std_dev;
-			float xF = expectation + sqrtf(3) * std_dev;
+			TYPE x0 = expectation - sqrtf(3) * std_dev;
+			TYPE xF = expectation + sqrtf(3) * std_dev;
 
 			auto dist = boost::math::uniform_distribution(x0, xF);
 
-			float dx = (xF - x0) / (n_Samples - 1);
+			TYPE dx = (xF - x0) / (n_Samples - 1);
 			for (int i = 0; i < n_Samples; i++) {
-				float x = x0 + i * dx;
+				TYPE x = x0 + i * dx;
 				PP[i] = {x , boost::math::pdf(dist, x) }; // other distributions could be used
 			}
 			return 0;
 		}
 		else if(Dist_params.Name == 'G'){
 
-			float shape = pow(expectation / std_dev, 2);
-			float scale = pow(std_dev, 2) / expectation;
+			TYPE shape = pow(expectation / std_dev, 2);
+			TYPE scale = pow(std_dev, 2) / expectation;
 
 			auto dist = boost::math::gamma_distribution(shape, scale);
 
 			if(Dist_params.Truncated){
-				float x0 = fmaxf(fmaxf(0, expectation - 6 * std_dev), Dist_params.trunc_interval[0]);
-				float xF = fminf(expectation + 6 * std_dev, Dist_params.trunc_interval[1]);
+				TYPE x0 = fmaxf(fmaxf(0, expectation - 6 * std_dev), Dist_params.trunc_interval[0]);
+				TYPE xF = fminf(expectation + 6 * std_dev, Dist_params.trunc_interval[1]);
 
 				// Re-scaling for the truncation of the random variables
-				float rescale_cdf = boost::math::cdf(dist, xF) - boost::math::cdf(dist, x0);
+				TYPE rescale_cdf = boost::math::cdf(dist, xF) - boost::math::cdf(dist, x0);
 
 				// Mesh discretization
-				float dx = (xF - x0) / (n_Samples - 1);
+				TYPE dx = (xF - x0) / (n_Samples - 1);
 
 				for (int i = 0; i < n_Samples; i++) {
-					float x = x0 + i * dx;
+					TYPE x = x0 + i * dx;
 					PP[i] = { x, boost::math::pdf(dist, x) / rescale_cdf }; // other distributions could be used
 				}
 			}
 			else{
-				float x0 = fmaxf(0, expectation - 6 * std_dev);
-				float xF = expectation + 6 * std_dev;
+				TYPE x0 = fmaxf(0, expectation - 6 * std_dev);
+				TYPE xF = expectation + 6 * std_dev;
 
-				float dx = (xF - x0) / (n_Samples - 1);
+				TYPE dx = (xF - x0) / (n_Samples - 1);
 
 				for (int i = 0; i < n_Samples; i++) {
-					float x = x0 + i * dx;
+					TYPE x = x0 + i * dx;
 					PP[i] = { x, boost::math::pdf(dist, x) }; // other distributions could be used
 				}
 			}

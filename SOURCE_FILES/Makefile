@@ -13,3 +13,7 @@ update:
 	mkdir ../SIMULATION_OUTPUT
 	cd build && cmake .. && cmake --build . && clear && ./Simulation
 
+cleanup:
+	rm -rf build
+	rm ../SIMULATION_OUTPUT/*
+

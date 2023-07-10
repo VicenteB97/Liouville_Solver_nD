@@ -31,6 +31,8 @@
 // Choosing whether showing full or simplified timing information
 #define OUTPUT_INFO true
 
+#define TYPE float
+
 // AMR tolerance, Conjugate Gradient tolerance and number of discretization size for the radius of the RBFs
 #define TOLERANCE_AMR       0.00005
 #define TOLERANCE_ConjGrad  powf(10,-7)
@@ -40,8 +42,8 @@
 #define DIMENSIONS  1
 #define DOMAIN_CTR  {1.75f}
 #define DOMAIN_DIAM {3.5f}
-inline const float	IC_MEAN[DIMENSIONS] = {0.17f};	
-inline const float	IC_STD [DIMENSIONS] = {0.015f};	
+inline const TYPE	IC_MEAN[DIMENSIONS] = {0.17f};	
+inline const TYPE	IC_STD [DIMENSIONS] = {0.015f};	
 
 // Vector field definition
 #define VEC_FIELD {parameter.sample_vec[0] * X.dim[0] + parameter.sample_vec[1]}
@@ -51,10 +53,10 @@ inline const float	IC_STD [DIMENSIONS] = {0.015f};
 #define PARAM_DIMENSIONS 2
 inline const char  	_DIST_NAMES	 [PARAM_DIMENSIONS]	= {'G','U'};
 inline const bool  	_DIST_TRUNC	 [PARAM_DIMENSIONS]	= {true,true};
-inline const float 	_DIST_InfTVAL[PARAM_DIMENSIONS] = {0.0f, 0.0f};
-inline const float 	_DIST_SupTVAL[PARAM_DIMENSIONS] = {1000.0f, 1000.0f};
-inline float 		_DIST_MEAN	 [PARAM_DIMENSIONS]	= {0.03f, 0.04f};
-inline float 		_DIST_STD	 [PARAM_DIMENSIONS]	= {0.02f, 0.02f};
+inline const TYPE 	_DIST_InfTVAL[PARAM_DIMENSIONS] = {0.0f, 0.0f};
+inline const TYPE 	_DIST_SupTVAL[PARAM_DIMENSIONS] = {1000.0f, 1000.0f};
+inline TYPE 		_DIST_MEAN	 [PARAM_DIMENSIONS]	= {0.03f, 0.04f};
+inline TYPE 		_DIST_STD	 [PARAM_DIMENSIONS]	= {0.02f, 0.02f};
 
 // Impulse parameter information
 #define IMPULSE_TYPE 1
@@ -64,10 +66,10 @@ inline float 		_DIST_STD	 [PARAM_DIMENSIONS]	= {0.02f, 0.02f};
 	inline double 		D_JUMP_DIST_TIME 	[DELTA_JUMPS] 				= {15, 25, 35};
 	inline const char   D_JUMP_DIST_NAMES	[DELTA_JUMPS * DIMENSIONS] 	= {'U','U','U'};
 	inline const bool   D_JUMP_DIST_TRUNC	[DELTA_JUMPS * DIMENSIONS] 	= {true, true, true};
-	inline const float  D_JUMP_DIST_InfTVAL	[DELTA_JUMPS * DIMENSIONS] 	= {-1000, -1000, -1000};
-	inline const float  D_JUMP_DIST_SupTVAL	[DELTA_JUMPS * DIMENSIONS] 	= {0, 0, 0};
-	inline float 		D_JUMP_DIST_MEAN 	[DELTA_JUMPS * DIMENSIONS] 	= {-0.5, -0.5, -0.5};
-	inline float 		D_JUMP_DIST_STD  	[DELTA_JUMPS * DIMENSIONS] 	= {0.02f, 0.02f, 0.02f};
+	inline const TYPE  D_JUMP_DIST_InfTVAL	[DELTA_JUMPS * DIMENSIONS] 	= {-1000, -1000, -1000};
+	inline const TYPE  D_JUMP_DIST_SupTVAL	[DELTA_JUMPS * DIMENSIONS] 	= {0, 0, 0};
+	inline TYPE 		D_JUMP_DIST_MEAN 	[DELTA_JUMPS * DIMENSIONS] 	= {-0.5, -0.5, -0.5};
+	inline TYPE 		D_JUMP_DIST_STD  	[DELTA_JUMPS * DIMENSIONS] 	= {0.02f, 0.02f, 0.02f};
 	inline const int 	D_JUMP_DIST_SAMPLES [DELTA_JUMPS * DIMENSIONS] 	= {30, 30, 30};
 #endif
 

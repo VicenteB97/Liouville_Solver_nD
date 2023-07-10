@@ -3,11 +3,11 @@
 
 #include "Classes.cuh"
 
-int Simul_Data_Def(std::vector<Time_Impulse_vec>& time_vector, double& deltaT, int& ReinitSteps) {
+int Simul_Data_Def(std::vector<Time_Impulse_vec>& time_vector, FIXED_TYPE& deltaT, int& ReinitSteps) {
 // MODIFIABLE
 // 1.- Time values for output + impulse vectors
-	double t0 = 0;
-	double tF;
+	FIXED_TYPE t0 = 0;
+	FIXED_TYPE tF;
 	std::cout << "Choose end simulation time: ";
 	std::cin >> tF;
 	if (tF == -1){
@@ -62,12 +62,12 @@ int Simul_Data_Def(std::vector<Time_Impulse_vec>& time_vector, double& deltaT, i
 
 		std::sort(time_vector.begin(), time_vector.end());					// re-sort the time values of the vector
 		for (unsigned i = 0; i < time_vector.size() - 1; i++) {				// Update dt
-			double aux_dt = time_vector[i + 1].time - time_vector[i].time;	// auxiliary dt for next computation
+			FIXED_TYPE aux_dt = time_vector[i + 1].time - time_vector[i].time;	// auxiliary dt for next computation
 
-			if (aux_dt > (double)pow(10,-8)) {
+			if (aux_dt > (FIXED_TYPE)pow(10,-8)) {
 				deltaT = fmin(deltaT, aux_dt / ReinitSteps);				// update dt if the impulse time does not match the "normal" resampling instants
 			}
-			else if (aux_dt < (double)-pow(10, -8)) {
+			else if (aux_dt < (FIXED_TYPE)-pow(10, -8)) {
 				deltaT = fmin(deltaT, -aux_dt / ReinitSteps);
 			}
 			else if (time_vector[i].impulse == false && time_vector[i+1].impulse == true) {

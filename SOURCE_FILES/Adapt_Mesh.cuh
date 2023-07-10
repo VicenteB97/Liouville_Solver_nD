@@ -80,7 +80,7 @@ __global__ void D__Wavelet_Transform__F(T* 					PDF,
 	}
 }
 
-int ADAPT_MESH_REFINEMENT_nD(const thrust::host_vector<float>& H_PDF, thrust::device_vector<float>* D__PDF, std::vector<float>* AdaptPDF, const gridPoint* H_Mesh, std::vector<gridPoint>* AdaptGrid, const int LvlFine, const int LvlCoarse, const int PtsPerDim) {
+int ADAPT_MESH_REFINEMENT_nD(const thrust::host_vector<TYPE>& H_PDF, thrust::device_vector<TYPE>* D__PDF, std::vector<TYPE>* AdaptPDF, const gridPoint* H_Mesh, std::vector<gridPoint>* AdaptGrid, const int LvlFine, const int LvlCoarse, const int PtsPerDim) {
 	// Final AMR procedure
 
 	u_int32_t Total_Points = pow(PtsPerDim, DIMENSIONS);
@@ -97,7 +97,7 @@ int ADAPT_MESH_REFINEMENT_nD(const thrust::host_vector<float>& H_PDF, thrust::de
 		u_int16_t Threads = fmin(THREADS_P_BLK, pow(Points_at_level, DIMENSIONS));
 		u_int32_t Blocks  = floor((pow(Points_at_level, DIMENSIONS) - 1) / Threads) + 1;
 
-		D__Wavelet_Transform__F<float> <<<Blocks, Threads>>> (rpc((*D__PDF),0), rpc(D__Node_selection,0),PtsPerDim,Points_at_level,rescaling);
+		D__Wavelet_Transform__F<TYPE> <<<Blocks, Threads>>> (rpc((*D__PDF),0), rpc(D__Node_selection,0),PtsPerDim,Points_at_level,rescaling);
 		gpuError_Check(cudaDeviceSynchronize());
 		
 		rescaling *= 2;

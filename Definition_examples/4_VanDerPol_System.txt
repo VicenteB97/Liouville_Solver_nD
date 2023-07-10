@@ -30,6 +30,8 @@
 // Choosing whether showing full or simplified timing information
 #define OUTPUT_INFO true
 
+#define TYPE float
+
 // AMR tolerance, Conjugate Gradient tolerance and number of discretization size for the radius of the RBFs
 #define TOLERANCE_AMR       0.00001
 #define TOLERANCE_ConjGrad  powf(10,-7)
@@ -39,10 +41,10 @@
 #define DIMENSIONS  2
 #define DOMAIN_CTR  {0.00f, 0.00f}
 #define DOMAIN_DIAM {11.0f, 11.0f}
-// inline const float	IC_MEAN[DIMENSIONS] = {0, 0};	
-inline const float	IC_MEAN[DIMENSIONS] = {0, 2.5};	
-// inline const float	IC_STD [DIMENSIONS] = {sqrtf(0.0015f),sqrtf(0.0015f)};
-inline const float	IC_STD [DIMENSIONS] = {sqrtf(0.015f),sqrtf(0.015f)};
+// inline const TYPE	IC_MEAN[DIMENSIONS] = {0, 0};	
+inline const TYPE	IC_MEAN[DIMENSIONS] = {0, 2.5};	
+// inline const TYPE	IC_STD [DIMENSIONS] = {sqrtf(0.0015f),sqrtf(0.0015f)};
+inline const TYPE	IC_STD [DIMENSIONS] = {sqrtf(0.015f),sqrtf(0.015f)};
 
 // Vector field definition
 // explanation: 
@@ -58,10 +60,10 @@ inline const float	IC_STD [DIMENSIONS] = {sqrtf(0.015f),sqrtf(0.015f)};
 #define PARAM_DIMENSIONS 1
 inline const char   _DIST_NAMES	 [PARAM_DIMENSIONS] = {'U'};
 inline const bool   _DIST_TRUNC	 [PARAM_DIMENSIONS] = {true};
-inline const float  _DIST_InfTVAL[PARAM_DIMENSIONS] = {1.5};
-inline const float  _DIST_SupTVAL[PARAM_DIMENSIONS] = {3.5};
-inline float 		_DIST_MEAN	 [PARAM_DIMENSIONS]	= {2.5};
-inline float 		_DIST_STD	 [PARAM_DIMENSIONS]	= {sqrtf(0.1)};
+inline const TYPE  _DIST_InfTVAL[PARAM_DIMENSIONS] = {1.5};
+inline const TYPE  _DIST_SupTVAL[PARAM_DIMENSIONS] = {3.5};
+inline TYPE 		_DIST_MEAN	 [PARAM_DIMENSIONS]	= {2.5};
+inline TYPE 		_DIST_STD	 [PARAM_DIMENSIONS]	= {sqrtf(0.1)};
 
 #define IMPULSE_TYPE 0
 
