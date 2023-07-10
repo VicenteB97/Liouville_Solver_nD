@@ -78,19 +78,15 @@ int main() {
 		Intro_square_filler(temp, border_length, 2, 1);
 		std::cout << temp;
 
-		temp = "|		- Number of SMs: "; temp.append(std::to_string(prop.multiProcessorCount));
-		Intro_square_filler(temp, border_length, 2, 1);
-		std::cout << temp;
-
 		temp = "|		- Number of asynchronous engines: " ; temp.append(std::to_string(prop.asyncEngineCount));
 		Intro_square_filler(temp, border_length, 2, 1);
 		std::cout << temp;
 
-		temp = "|		- Max. threads per SM: "; temp.append(std::to_string(prop.maxThreadsPerMultiProcessor));
+		temp = "|		- Number of SMs: "; temp.append(std::to_string(prop.multiProcessorCount));
 		Intro_square_filler(temp, border_length, 2, 1);
 		std::cout << temp;
 
-		temp = "|		- Number of SMs: "; temp.append(std::to_string(prop.multiProcessorCount));
+		temp = "|		- Max. threads per SM: "; temp.append(std::to_string(prop.maxThreadsPerMultiProcessor));
 		Intro_square_filler(temp, border_length, 2, 1);
 		std::cout << temp;
 

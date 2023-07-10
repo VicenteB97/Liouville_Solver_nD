@@ -169,123 +169,136 @@ auto end = std::chrono::high_resolution_clock::now();
 
 // We have added the capability of automatically detecting the number of 1 GB files where we can store the simulation output
 
+	bool saving_active = true;		// see if saving is still active
+
 	const u_int64_t MEM_2_STORE 	= store_PDFs.size() * sizeof(float);
 
-	u_int16_t number_of_files_needed  	= floor((MEM_2_STORE - 1) / MAX_FILE_SIZE_B) + 1;
+	u_int16_t number_of_files_needed  	= (u_int16_t)floorf((MEM_2_STORE - 1) / MAX_FILE_SIZE_B) + 1;
 	u_int32_t number_of_frames_needed 	= MEM_2_STORE / Grid_Nodes / sizeof(float);
 	u_int32_t max_frames_file 			= MAX_FILE_SIZE_B / Grid_Nodes / sizeof(float);
-
+	
 	char ans;
-	std::cout << "Simulation time: " << duration.count() << " seconds. Total memory of simulation: " << (float) MEM_2_STORE / 1024/1024 << " MB. \n";
-	std::cout << number_of_files_needed << " files required for total storage. Total frames: " << number_of_frames_needed << ", with frames per file: " << max_frames_file << " \n";
-	std::cout << "Write? (Y = Yes(total), N = No, P = Partial): ";
-	std::cin >> ans;
-
-	while((ans != 'N') && (ans != 'n') && (ans != 'Y') && (ans != 'y') && (ans != 'P') && (ans != 'p')){
-		std::cout << "Incorrect option. Choose one of the following (NOT case sensitive: Y = Yes, N = No, P = Partial): ";
-		std::cin >> ans;
+	std::cout << "Simulation time: " << duration.count() << " seconds. ";
+	
+	if(number_of_files_needed == 0){
+		std::cout << "There has been a problem. No memory written. Exiting simulation.\n";
+		saving_active = false;
 	}
 
+	while(saving_active){	
+		std::cout << "Total memory of simulation: " << (float) MEM_2_STORE / 1024/1024 << " MB. \n";
+		std::cout << number_of_files_needed << " files required for total storage. Total frames: " << number_of_frames_needed << ", with frames per file: " << max_frames_file << " \n";
+		std::cout << "Write? (Y = Yes(total), N = No, P = Partial): ";
+		std::cin >> ans;
 
-	if ((ans != 'N') && (ans != 'n')) {
+		while((ans != 'N') && (ans != 'n') && (ans != 'Y') && (ans != 'y') && (ans != 'P') && (ans != 'p')){
+			std::cout << "Incorrect option. Choose one of the following (NOT case sensitive: Y = Yes, N = No, P = Partial): ";
+			std::cin >> ans;
+		}
 
-		int32_t frames_init = 0, frames_end = number_of_files_needed - 1;
-		bool condition = false;
 
-		if((ans == 'P') || (ans == 'p')){
-			while(!condition){
-				std::cout << "Initial frame (must be >= 0): ";
-				std::cin >> frames_init;
-				std::cout << "Final frame (must be < "<< number_of_frames_needed <<"): ";
-				std::cin >> frames_end;
+		if ((ans != 'N') && (ans != 'n')) {
 
-				if(frames_init < 0 || frames_end >= number_of_frames_needed || frames_init > frames_end){
+			int32_t frames_init = 0, frames_end = number_of_files_needed - 1;
+			bool condition = false;
 
-					if(frames_init == -1 || frames_end == -1){
-						std::cout << "Exiting simulation without saving simulation results...\n";
-						return -1;
+			if((ans == 'P') || (ans == 'p')){
+				while(!condition){
+					std::cout << "Initial frame (must be >= 0): ";
+					std::cin >> frames_init;
+					std::cout << "Final frame (must be < "<< number_of_frames_needed <<"): ";
+					std::cin >> frames_end;
+
+					if(frames_init < 0 || frames_end >= number_of_frames_needed || frames_init > frames_end){
+
+						if(frames_init == -1 || frames_end == -1){
+							std::cout << "Exiting simulation without saving simulation results...\n";
+							return -1;
+						}
+						std::cout << "Check numbers, something's not right...\n";
 					}
-					std::cout << "Check numbers, something's not right...\n";
-				}
-				else{
-					condition = true;
-					number_of_frames_needed = frames_end - frames_init + 1;
-					number_of_files_needed 	= floor((number_of_frames_needed * Grid_Nodes * sizeof(float) - 1) / MAX_FILE_SIZE_B) + 1;
+					else{
+						condition = true;
+						number_of_frames_needed = frames_end - frames_init + 1;
+						number_of_files_needed 	= floor((number_of_frames_needed * Grid_Nodes * sizeof(float) - 1) / MAX_FILE_SIZE_B) + 1;
+					}
 				}
 			}
-		}
-		else{
-			frames_init = 0, frames_end = number_of_files_needed - 1;
-		}
+			else{
+				frames_init = 0, frames_end = number_of_files_needed - 1;
+			}
 
-		for(u_int16_t k = 0; k < number_of_files_needed; k++){
+			for(u_int16_t k = 0; k < number_of_files_needed; k++){
 
-			u_int16_t frames_in_file = fmin(max_frames_file, number_of_frames_needed - k * max_frames_file);
+				u_int16_t frames_in_file = fmin(max_frames_file, number_of_frames_needed - k * max_frames_file);
 
-			std::string temp_str = std::to_string((u_int32_t)k);
+				std::string temp_str = std::to_string((u_int32_t)k);
 
-			std::string relavtive_pth = RELATIVE_PATH;
-			relavtive_pth.append("Simulation_info_");
-			relavtive_pth.append(temp_str);
-			relavtive_pth.append(".csv");
+				std::string relavtive_pth = RELATIVE_PATH;
+				relavtive_pth.append("Simulation_info_");
+				relavtive_pth.append(temp_str);
+				relavtive_pth.append(".csv");
 
-			std::ofstream file1(relavtive_pth, std::ios::out);
+				std::ofstream file1(relavtive_pth, std::ios::out);
 
-			if (file1.is_open()) {
-				//file1 << "Total Grid Points," << "Points per dimension," << "Grid X min," << "Grid X max," << "Grid Y min," << "Grid Y max," << "Time values," << "Simulation cost" << "t0" << "deltaT" << "Reinitialization Steps" << "\n";
-				file1 << Grid_Nodes << "," << PtsPerDim << ",";
-				
-				for (u_int16_t d = 0; d < DIMENSIONS; d++){
-					file1 << H_Mesh[0].dim[d] << "," << H_Mesh[Grid_Nodes - 1].dim[d] << ",";
-				} 
-					file1 << duration.count() << "\n";
+				if (file1.is_open()) {
+					//file1 << "Total Grid Points," << "Points per dimension," << "Grid X min," << "Grid X max," << "Grid Y min," << "Grid Y max," << "Time values," << "Simulation cost" << "t0" << "deltaT" << "Reinitialization Steps" << "\n";
+					file1 << Grid_Nodes << "," << PtsPerDim << ",";
+					
+					for (u_int16_t d = 0; d < DIMENSIONS; d++){
+						file1 << H_Mesh[0].dim[d] << "," << H_Mesh[Grid_Nodes - 1].dim[d] << ",";
+					} 
+						file1 << duration.count() << "\n";
 
-				#if IMPULSE_TYPE == 0 || IMPULSE_TYPE ==1
-					for (u_int32_t i = k * max_frames_file + frames_init; i < k*max_frames_file + frames_in_file + frames_init - 1; i++) {
-						file1 << time_vector[i].time << ",";
-					}
-					file1 << time_vector[k*max_frames_file + frames_in_file + frames_init - 1].time;
-
-				#elif IMPULSE_TYPE == 2
-					file1 << time_vector[k * max_frames_file + frames_init].time << ",";
-
-					for (u_int32_t i = k * max_frames_file + 1 + frames_init; i < k*max_frames_file + frames_init + frames_in_file; i++) {
-						if(abs(time_vector[i].time - time_vector[i-1].time)>pow(10,-7)){
+					#if IMPULSE_TYPE == 0 || IMPULSE_TYPE ==1
+						for (u_int32_t i = k * max_frames_file + frames_init; i < k*max_frames_file + frames_in_file + frames_init - 1; i++) {
 							file1 << time_vector[i].time << ",";
 						}
-						else if(i == k*max_frames_file + frames_in_file + frames_init - 1){
-							if(time_vector[i].time != time_vector[i-1].time){
-								file1 << time_vector[i].time;
+						file1 << time_vector[k*max_frames_file + frames_in_file + frames_init - 1].time;
+
+					#elif IMPULSE_TYPE == 2
+						file1 << time_vector[k * max_frames_file + frames_init].time << ",";
+
+						for (u_int32_t i = k * max_frames_file + 1 + frames_init; i < k*max_frames_file + frames_init + frames_in_file; i++) {
+							if(abs(time_vector[i].time - time_vector[i-1].time)>pow(10,-7)){
+								file1 << time_vector[i].time << ",";
+							}
+							else if(i == k*max_frames_file + frames_in_file + frames_init - 1){
+								if(time_vector[i].time != time_vector[i-1].time){
+									file1 << time_vector[i].time;
+								}
 							}
 						}
-					}
-				#endif
-				file1.close();
-			}
-			else {
-				std::cout << "Information file failed!!\n";
-			}
-
-			// Simulation Information
-			relavtive_pth = RELATIVE_PATH;
-			relavtive_pth.append("Mean_PDFs_");
-			relavtive_pth.append(temp_str);
-			relavtive_pth.append(".csv");
-
-			std::ofstream myfile(relavtive_pth, std::ios::out);
-
-			if (myfile.is_open()) {
-				for (u_int64_t i = (k*max_frames_file + frames_init)*Grid_Nodes; i < (k*max_frames_file + frames_init + frames_in_file)*Grid_Nodes - 1; i++) {
-					myfile << store_PDFs[i] << ",";
+					#endif
+					file1.close();
 				}
-				myfile << store_PDFs[(k*max_frames_file + frames_init + frames_in_file)*Grid_Nodes - 1];
-				myfile.close();
-				std::cout << "File " << k << " completed!\n";
-			}
-			else {
-				std::cout << "Simulation file " << k << " failed!!\n";
+				else {
+					std::cout << "Information file failed!!\n";
+				}
+
+				// Simulation Information
+				relavtive_pth = RELATIVE_PATH;
+				relavtive_pth.append("Mean_PDFs_");
+				relavtive_pth.append(temp_str);
+				relavtive_pth.append(".csv");
+
+				std::ofstream myfile(relavtive_pth, std::ios::out);
+
+				if (myfile.is_open()) {
+					for (u_int64_t i = (k*max_frames_file + frames_init)*Grid_Nodes; i < (k*max_frames_file + frames_init + frames_in_file)*Grid_Nodes - 1; i++) {
+						myfile << store_PDFs[i] << ",";
+					}
+					myfile << store_PDFs[(k*max_frames_file + frames_init + frames_in_file)*Grid_Nodes - 1];
+					myfile.close();
+					std::cout << "File " << k << " completed!\n";
+				}
+				else {
+					std::cout << "Simulation file " << k << " failed!!\n";
+				}
 			}
 		}
+
+		saving_active = false;
 	}
 
 
