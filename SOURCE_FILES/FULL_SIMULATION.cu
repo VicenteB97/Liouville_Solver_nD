@@ -171,11 +171,11 @@ auto end = std::chrono::high_resolution_clock::now();
 
 	bool saving_active = true;		// see if saving is still active
 
-	const u_int64_t MEM_2_STORE 	= store_PDFs.size() * sizeof(float);
+	const u_int64_t MEM_2_STORE = store_PDFs.size() * sizeof(float);
 
-	u_int16_t number_of_files_needed  	= (u_int16_t)floorf((MEM_2_STORE - 1) / MAX_FILE_SIZE_B) + 1;
 	u_int32_t number_of_frames_needed 	= MEM_2_STORE / Grid_Nodes / sizeof(float);
 	u_int32_t max_frames_file 			= MAX_FILE_SIZE_B / Grid_Nodes / sizeof(float);
+	u_int16_t number_of_files_needed  	= floor((number_of_frames_needed - 1) / max_frames_file) + 1;
 	
 	char ans;
 	std::cout << "Simulation time: " << duration.count() << " seconds. ";

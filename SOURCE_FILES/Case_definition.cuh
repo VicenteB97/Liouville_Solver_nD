@@ -63,7 +63,7 @@ inline const char   _DIST_NAMES	 [PARAM_DIMENSIONS] = {'U','U','U','U'};
 inline const bool   _DIST_TRUNC	 [PARAM_DIMENSIONS] = {false, false, false, false};
 inline const float  _DIST_InfTVAL[PARAM_DIMENSIONS] = {0,0,0,0};
 inline const float  _DIST_SupTVAL[PARAM_DIMENSIONS] = {1,1,1,1};
-inline float 		_DIST_MEAN	 [PARAM_DIMENSIONS]	= {0.025,0.025,0.4,0.1};
+inline float 		_DIST_MEAN	 [PARAM_DIMENSIONS]	= {0.025,0.025,0.3,0.2};
 inline float 		_DIST_STD	 [PARAM_DIMENSIONS]	= {sqrtf(0.0001),sqrtf(0.0001),sqrtf(0.0001),sqrtf(0.0001)};
 
 // Impulse parameter information
