@@ -31,17 +31,6 @@ void Intro_square_filler(std::string& message, const u_int16_t border_length, co
 }
 
 int main() {
-	// This file is going to have all the information regarding the steps to follow for solving the Liouville Equation associated to a RDE System
-
-	// DYNAMICS is going to have all the information about the vector field defined by the RDE System
-	// PARAMETER_DISTRIBUTIONS contains the definition of the PDFs of all the random/deterministic parameters involved in the RDE System
-	// ADAPT_MESH contains all that is related to the Adaptive Mesh Refinement (AMR) Procedure
-	// RANGE_SEARCH contains the definitions used for the SRS procedure
-	// MATRIX_VECTOR defines the special Matrix-vector multiplication scheme used in these computations
-
-	// FULL_SIMULATION is where everything is combined to compute the evolution of the initial PDF through time via the Liouville Equation
-
-	// Note: All the compuations are saved in a .xls document for post_processing in Matlab/Python
 	//----------------------------------------------------------------------------------------------------------------------------------------//
 	int deviceCount = 0;
 	cudaGetDeviceCount(&deviceCount);
