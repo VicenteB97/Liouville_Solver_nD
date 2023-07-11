@@ -16,8 +16,8 @@ Name_var3 = 'Z';
 
 %% CHANGE FOR YOUR CURRENT COMPUTER
 
-Info=readcell('Simulation_Info.csv');
-Data=readmatrix('Mean_PDFs.csv');
+Info=readcell  ('../SIMULATION_OUTPUT/Simulation_Info_0.csv');
+Data=readmatrix('../SIMULATION_OUTPUT/Mean_PDFs_0.csv');
 
 %%
 Total_Pts           = Info{1,1};
@@ -34,16 +34,16 @@ Z   =Info{1,7}:h_X:Info{1,8};
 
 F_Output=zeros(Pts_Per_Dimension, Pts_Per_Dimension, Pts_Per_Dimension);
 
-%% Graphics
+%%
 [x,y,z] = meshgrid(X,Y,Z);
+xslice = [];    % location of y-z planes
+yslice = [0:.05:1];    % location of x-z plane
+zslice = [0:.05:1];    % location of x-y planes
 
 timesteps = length(Data)/Total_Pts;
-skip = 3;
-Integral_vals = zeros(1,timesteps/skip);
-
-MargX = zeros(Pts_Per_Dimension, timesteps/skip);
-MargY = MargX;
-MargZ = MargX;
+skip = 1;
+Integral_vals = zeros(1,floor(timesteps/skip));
+iso_val       = zeros(1,floor(timesteps/skip));
 
 for l = 1:skip:timesteps
     fprintf(['At step: ',num2str(l),newline]);
@@ -58,29 +58,11 @@ for l = 1:skip:timesteps
 
     Integral_vals(l)=sum(F_Output,'all')*h_X*h_Y*h_Z;
 
-    figure(2*l)
+    figure(l)
     xlim([0,1]);xlabel('X');
     ylim([0,1]);ylabel('Y');
     zlim([0,1]);zlabel('Z');
-    isosurface(x,y,z,F_Output,max(F_Output,[],'all')/20);view(3);colorbar;grid on; grid minor;drawnow;
+%     contourslice(x,y,z,F_Output,xslice,yslice,zslice,10,'linear');view(3);drawnow;colorbar;
+    isosurface(x,y,z,F_Output,iso_val(1,l));view(3);colorbar;grid on; grid minor; lightangle(-45,45); drawnow;
     pause(1);
-
-    parfor i=1:Pts_Per_Dimension
-        MargX(i,l)=sum(F_Output(i,:,:),[2,3])*h_Y*h_Z;
-        MargY(i,l)=sum(F_Output(:,i,:),[1,3])*h_X*h_Z;
-        MargZ(i,l)=sum(F_Output(:,:,i),[1,2])*h_X*h_Y;
-    end
-
-    figure(2*l+1)
-    subplot(3,1,1)
-    plot(X,MargX(:,l));xlabel('X');ylabel('Density');
-    subplot(3,1,2)
-    plot(Y,MargY(:,l));xlabel('Y');ylabel('Density');
-    subplot(3,1,3)
-    plot(Z,MargZ(:,l));xlabel('Z');ylabel('Density');
-
-    grid on; drawnow;
 end
-
-%% Graphs 2
-% 

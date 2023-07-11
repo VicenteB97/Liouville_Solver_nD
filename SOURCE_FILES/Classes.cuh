@@ -228,26 +228,26 @@ __device__ inline bool __is_in_domain(const gridPoint particle, const gridPoint*
 	return out;
 }
 
-__device__ inline void __atomicAdd(double* address, double val)
+__device__ __forceinline__ void __atomicAdd(double *address, double val)
 {
-	unsigned long long int* address_as_ull 	= (unsigned long long int*)address;
-	unsigned long long int old 				= *address_as_ull, assumed;
-	do {
-		assumed = old;
-		old = atomicCAS(address_as_ull, assumed, __double_as_longlong(val + __longlong_as_double(assumed)));
-	} 
-	while (assumed != old);
+    // Doing it all as longlongs cuts one __longlong_as_double from the inner loop
+    unsigned long long *ptr = (unsigned long long *)address;
+    unsigned long long old, newdbl, ret = *ptr;
+    do {
+        old = ret;
+        newdbl = __double_as_longlong(__longlong_as_double(old)+val);
+    } while((ret = atomicCAS(ptr, old, newdbl)) != old);
 }
 
-__device__ inline void __atomicAdd(float* address, float val){
-	float old = val;  
-	float new_old;
-	do
-	{
-		new_old = atomicExch(address, 0.0f);
-		new_old += old;
-	}
-	while ((old = atomicExch(address, new_old))!=0.0f);
+__device__ __forceinline__ void __atomicAdd(float *address, float val)
+{
+    // Doing it all as longlongs cuts one __longlong_as_double from the inner loop
+    unsigned int *ptr = (unsigned int *)address;
+    unsigned int old, newint, ret = *ptr;
+    do {
+        old = ret;
+        newint = __float_as_int(__int_as_float(old)+val);
+    } while((ret = atomicCAS(ptr, old, newint)) != old);
 }
 
 #endif

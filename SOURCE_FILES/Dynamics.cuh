@@ -550,26 +550,6 @@ int32_t PDF_ITERATIONS( cudaDeviceProp* prop,
 															Sample_idx_offset_init,
 															rpc(__D__Domain_Boundary,0));
 				gpuError_Check(cudaDeviceSynchronize());
-
-				// for(u_int32_t s = Sample_idx_offset_init; s < Sample_idx_offset_final; s++){
-				// 	// Re-define Threads and Blocks
-				// 	Threads = fminf(THREADS_P_BLK, Adapt_Points);
-				// 	Blocks  = floorf((Adapt_Points - 1) / Threads) + 1;
-				// 	RESTART_GRID_FIND_GN<TYPE><<< Blocks, Threads >>>(rpc(GPU_Part_Position,0),
-				// 												rpc(GPU_PDF,0),
-				// 												rpc(GPU_lambdas,0),
-				// 												rpc(GPU_Parameter_Mesh,0),
-				// 												rpc(GPU_nSamples,0),
-				// 												search_radius,
-				// 												H_Mesh[0],
-				// 												disc_X,
-				// 												PtsPerDim,
-				// 												Adapt_Points,
-				// 												s,
-				// 												Sample_idx_offset_init,
-				// 												rpc(__D__Domain_Boundary,0));
-				// 	gpuError_Check(cudaDeviceSynchronize());
-				// }
 						
 				end_3 = std::chrono::high_resolution_clock::now();
 				duration_3 = end_3 - start_3;

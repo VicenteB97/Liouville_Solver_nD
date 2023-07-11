@@ -221,7 +221,7 @@ auto end = std::chrono::high_resolution_clock::now();
 					else{
 						condition = true;
 						number_of_frames_needed = frames_end - frames_init + 1;
-						number_of_files_needed 	= floor((number_of_frames_needed * Grid_Nodes * sizeof(float) - 1) / MAX_FILE_SIZE_B) + 1;
+						number_of_files_needed  = floor((number_of_frames_needed - 1) / max_frames_file) + 1;
 					}
 				}
 			}

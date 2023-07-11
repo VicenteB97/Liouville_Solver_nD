@@ -33,9 +33,9 @@
 #define TYPE float     // only supported values are 'float' and 'double'
 
 // AMR tolerance, Conjugate Gradient tolerance and number of discretization size for the radius of the RBFs
-#define TOLERANCE_AMR       0.05
-#define TOLERANCE_ConjGrad  powf(10,-7)     // RECOMMENDED: This appears to give good results...no need to change it
-#define DISC_RADIUS         3.15
+#define TOLERANCE_AMR       0.005
+#define TOLERANCE_ConjGrad  powf(10,-6)     // RECOMMENDED: This appears to give good results...no need to change it
+#define DISC_RADIUS         3.25
 
 // State variables information
 #define DIMENSIONS   3
