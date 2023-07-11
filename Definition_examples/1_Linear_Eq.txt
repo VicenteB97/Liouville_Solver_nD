@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 //////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////
@@ -76,83 +75,4 @@ inline TYPE 		_DIST_STD	 [PARAM_DIMENSIONS]	= {0.02f, 0.02f};
 
 #define INCLUDE_XTRA_PARAMS false
 
-=======
-//////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////
-//														//
-//		Written by: Vicente José Bevia Escrig			//
-//		Mathematics Ph.D. student (2020-2024) at:		//
-//		Instituto de Matemática Multidisciplinar,		//
-//		Universitat Politècnica de València, Spain		//
-//														//
-//////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////
-
-#ifndef __CASE_DEFINITION_CUH__
-#define __CASE_DEFINITION_CUH__
-
-// -------------------------------------------------------------------------------- //
-//  HERE ARE THE DEFINITIONS THAT CAN BE CHANGED ACCORDING TO THE PROBLEM TO STUDY  //
-// -------------------------------------------------------------------------------- //
-
-// -----------------------------------------------------------------------//
-// -------------------- MODIFY!!! ----------------------------------------//
-// -----------------------------------------------------------------------//
-
-// Name of the case being simulated
-#define CASE "Linear model"
-
-// This variable controls the size of the '.csv' files where the simulations are saved
-#define MAX_FILE_SIZE_B 1024*1024*1024
-
-// Choosing whether showing full or simplified timing information
-#define OUTPUT_INFO false
-
-#define TYPE float
-
-// AMR tolerance, Conjugate Gradient tolerance and number of discretization size for the radius of the RBFs
-#define TOLERANCE_AMR       0.00001
-#define TOLERANCE_ConjGrad  powf(10,-7)
-#define DISC_RADIUS         5
-
-// State variables information
-#define DIMENSIONS  1
-#define DOMAIN_CTR  {1.75f}
-#define DOMAIN_DIAM {3.5f}
-inline const TYPE	IC_MEAN[DIMENSIONS] = {0.17f};	
-inline const TYPE	IC_STD [DIMENSIONS] = {0.015f};	
-
-// Vector field definition
-#define VEC_FIELD {parameter.sample_vec[0] * X.dim[0] + parameter.sample_vec[1]}
-#define DIVERGENCE parameter.sample_vec[0]
-
-// Parameter information
-#define PARAM_DIMENSIONS 2
-inline const char  	_DIST_NAMES	 [PARAM_DIMENSIONS]	= {'G','U'};
-inline const bool  	_DIST_TRUNC	 [PARAM_DIMENSIONS]	= {true,true};
-inline const TYPE 	_DIST_InfTVAL[PARAM_DIMENSIONS] = {0.0f, 0.0f};
-inline const TYPE 	_DIST_SupTVAL[PARAM_DIMENSIONS] = {1000.0f, 1000.0f};
-inline TYPE 		_DIST_MEAN	 [PARAM_DIMENSIONS]	= {0.03f, 0.04f};
-inline TYPE 		_DIST_STD	 [PARAM_DIMENSIONS]	= {0.02f, 0.02f};
-
-// Impulse parameter information
-#define IMPULSE_TYPE 1
-#if IMPULSE_TYPE == 1
-	#define DELTA_JUMPS 3
-	//	time | Imp | mean_vec  |   st. dev. | 	samples
-	inline double 		D_JUMP_DIST_TIME 	[DELTA_JUMPS] 				= {15, 25, 35};
-	inline const char   D_JUMP_DIST_NAMES	[DELTA_JUMPS * DIMENSIONS] 	= {'U','U','U'};
-	inline const bool   D_JUMP_DIST_TRUNC	[DELTA_JUMPS * DIMENSIONS] 	= {true, true, true};
-	inline const TYPE  D_JUMP_DIST_InfTVAL	[DELTA_JUMPS * DIMENSIONS] 	= {-1000, -1000, -1000};
-	inline const TYPE  D_JUMP_DIST_SupTVAL	[DELTA_JUMPS * DIMENSIONS] 	= {0, 0, 0};
-	inline TYPE 		D_JUMP_DIST_MEAN 	[DELTA_JUMPS * DIMENSIONS] 	= {-0.5, -0.5, -0.5};
-	inline TYPE 		D_JUMP_DIST_STD  	[DELTA_JUMPS * DIMENSIONS] 	= {0.02f, 0.02f, 0.02f};
-	inline const int 	D_JUMP_DIST_SAMPLES [DELTA_JUMPS * DIMENSIONS] 	= {30, 30, 30};
-#endif
-
-#define INCLUDE_XTRA_PARAMS false
-
->>>>>>> 0ce8632090d35837bd24598e19635d3f7f85dce4
 #endif
