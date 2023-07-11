@@ -29,12 +29,12 @@
 #define MAX_FILE_SIZE_B 1024*1024*1024
 
 // Choosing whether showing full or simplified timing information
-#define OUTPUT_INFO true
+#define OUTPUT_INFO false
 
 #define TYPE float
 
 // AMR tolerance, Conjugate Gradient tolerance and number of discretization size for the radius of the RBFs
-#define TOLERANCE_AMR       0.00005
+#define TOLERANCE_AMR       0.00001
 #define TOLERANCE_ConjGrad  powf(10,-7)
 #define DISC_RADIUS         5
 
