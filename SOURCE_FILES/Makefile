@@ -1,22 +1,22 @@
 compile:
-	rm -rf ../BUILD
-	mkdir ../BUILD
+	rm -rf ../BUILD_FILES
+	mkdir ../BUILD_FILES
 	rm -rf ../SIMULATION_OUTPUT
 	mkdir ../SIMULATION_OUTPUT
-	cmake -B ../BUILD
-	cmake --build ../BUILD
+	cmake -B ../BUILD_FILES
+	cmake --build ../BUILD_FILES
 
 total:
-	make compile && cd ../BUILD && clear && ./Simulation
+	make compile && cd ../BUILD_FILES && clear && ./Simulation
 
 update:
 	rm -rf ../SIMULATION_OUTPUT
 	mkdir ../SIMULATION_OUTPUT
-	cmake -B ../BUILD
-	cmake --build ../BUILD && clear && cd ../BUILD && ./Simulation
+	cmake -B ../BUILD_FILES
+	cmake --build ../BUILD_FILES && clear && cd ../BUILD_FILES && ./Simulation
 
 cleanup:
-	rm -rf ../BUILD
+	rm -rf ../BUILD_FILES
 	rm ../SIMULATION_OUTPUT/*
 	rm -i ../Visualization_matlab/*.asv
 
