@@ -297,8 +297,8 @@ if (i < Adapt_Pts * Block_samples) {
 
 	Param_vec aux = _Gather_Param_Vec(Current_sample, Parameter_Mesh, n_Samples);
 
-	gridPoint 	particle 		= Particle_Positions[offset * Adapt_Pts + i];
-	T 		weighted_lambda = lambdas[offset * Adapt_Pts + i] * aux.Joint_PDF;
+	gridPoint 	particle 		= Particle_Positions[i];
+			T 	weighted_lambda = lambdas[i] * aux.Joint_PDF;
 
 	if(__is_in_domain(particle, Boundary)){
 		
@@ -318,7 +318,7 @@ if (i < Adapt_Pts * Block_samples) {
 		}	
 		
 		// store the lowest sparse index identification (remember we are alredy storing the transposed matrix. The one we will need for multiplication)
-		if (lowest_idx > 0 && lowest_idx < pow(PtsPerDimension, DIMENSIONS) && __is_in_domain(fixed_gridNode, Boundary)){
+		if (lowest_idx >= 0 && lowest_idx < pow(PtsPerDimension, DIMENSIONS) && __is_in_domain(fixed_gridNode, Boundary)){
 			dist = Distance(fixed_gridNode, particle) / search_radius;
 			if (dist <= 1){
 				dist = RBF(search_radius, dist) * weighted_lambda;
@@ -339,7 +339,7 @@ if (i < Adapt_Pts * Block_samples) {
 				temp_gridNode.dim[d] = temp_idx * grid_discretization_length + fixed_gridNode.dim[d];
 			}
 
-			if (idx > 0 && idx < pow(PtsPerDimension, DIMENSIONS) && __is_in_domain(temp_gridNode,Boundary))
+			if (idx >= 0 && idx < pow(PtsPerDimension, DIMENSIONS) && __is_in_domain(temp_gridNode,Boundary))
 			{
 				dist = Distance(temp_gridNode, particle) / search_radius;
 				if (dist <= 1){
@@ -400,14 +400,14 @@ if (i < Adapt_Pts * Block_samples) {
 		
 		#pragma unroll
 		for (u_int16_t d = 0; d < DIMENSIONS; d++){
-			int32_t temp_idx = roundf((T) (particle.dim[d] - lowest_node.dim[d]) / grid_discretization_length) - floorf((T) search_radius / grid_discretization_length);
+			int32_t temp_idx = roundf((float) (particle.dim[d] - lowest_node.dim[d]) / grid_discretization_length) - floorf((float) search_radius / grid_discretization_length);
 			lowest_idx += temp_idx * pow(PtsPerDimension, d);
 
 			fixed_gridNode.dim[d] += temp_idx * grid_discretization_length;
 		}	
 		
 		// store the lowest sparse index identification (remember we are alredy storing the transposed matrix. The one we will need for multiplication)
-		if (lowest_idx > 0 && lowest_idx < (int32_t) pow(PtsPerDimension, DIMENSIONS) && __is_in_domain(fixed_gridNode, Boundary)){
+		if (lowest_idx >= 0 && lowest_idx < pow(PtsPerDimension, DIMENSIONS) && __is_in_domain(fixed_gridNode, Boundary)){
 			dist = Distance(fixed_gridNode, particle) / search_radius;
 			if (dist <= 1){
 				dist = RBF(search_radius, dist) * weighted_lambda;
@@ -423,13 +423,13 @@ if (i < Adapt_Pts * Block_samples) {
 
 			#pragma unroll
 			for (u_int16_t d = 0; d < DIMENSIONS; d++){
-				int32_t temp_idx = (int32_t) floorf( positive_rem(j, (int32_t)pow(num_neighbors_per_dim, d + 1)) / pow(num_neighbors_per_dim, d) ); 
+				int32_t temp_idx = floorf( positive_rem(j, pow(num_neighbors_per_dim, d + 1)) / pow(num_neighbors_per_dim, d) ); 
 				idx += temp_idx * pow(PtsPerDimension, d);
 
 				temp_gridNode.dim[d] = temp_idx * grid_discretization_length + fixed_gridNode.dim[d];
 			}
 
-			if (idx > 0 && idx < (int32_t) pow(PtsPerDimension, DIMENSIONS) && __is_in_domain(temp_gridNode,Boundary))
+			if (idx >= 0 && idx < pow(PtsPerDimension, DIMENSIONS) && __is_in_domain(temp_gridNode,Boundary))
 			{
 				dist = Distance(temp_gridNode, particle) / search_radius;
 				if (dist <= 1){
@@ -449,12 +449,12 @@ template<class T>
 /// @param Grid_Nodes 
 /// @return 
 __global__ void CORRECTION(T* PDF, const int32_t Grid_Nodes){
-	const int32_t i = blockDim.x * blockIdx.x + threadIdx.x;
+	const u_int64_t i = blockDim.x * blockIdx.x + threadIdx.x;
 
 	if (i < Grid_Nodes){
 		PDF[i] = fmaxf(PDF[i], 0.00f);
 
-		if(PDF[i] < 0.0000001){PDF[i]=0;}
+		if(PDF[i] < 0.000001){PDF[i]=0;}
 	}
 }
 

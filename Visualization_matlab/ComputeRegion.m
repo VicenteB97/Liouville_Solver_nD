@@ -1,16 +1,17 @@
-function [FinalRegion_bound] = ComputeRegion(pdf,confidenceLvl,Len1,Len2,h)
+function [FinalRegion_bound,Int_output] = ComputeRegion(f_Disc,confidenceLvl,h,DIMENSIONS)
 if confidenceLvl==1
     FinalRegion_bound=1e-9;
+    Int_output = 1;
 else
 
-    %transform the matrix to a vector
-    sz_vec=size(pdf);
-    f_Disc=zeros(1,sz_vec(1)*sz_vec(2));
-    for j=1:sz_vec(2)
-        for i=1:sz_vec(1)
-            f_Disc(i+sz_vec(1)*j)=pdf(i,j);
-        end
-    end
+%     %transform the matrix to a vector
+%     sz_vec=size(pdf);
+%     f_Disc=zeros(1,sz_vec(1)*sz_vec(2));
+%     for j=1:sz_vec(2)
+%         for i=1:sz_vec(1)
+%             f_Disc(i+sz_vec(1)*j)=pdf(i,j);
+%         end
+%     end
     
     % First, we sort the values vector (using the GPU...much faster):
     f_disc_gpu=gpuArray(f_Disc);
@@ -44,12 +45,13 @@ else
             end
         end
     
-        IntegralC=IntegralB+h^2*sum(f_Disc(i_new:i_new2),["all"]);
+        IntegralC=IntegralB+h^DIMENSIONS*sum(f_disc_gpu(i_new:i_new2));
     
         error=IntegralC-confidenceLvl;
     
-        if maxIts >= 25000
+        if maxIts >= 10000
             FinalRegion_bound=1e-9;
+            Int_output = 1;
             fprintf('Error, max iterations overflow, debug figure or algorithm...\n')
             break;
         elseif error<0 && abs(error)>tol
@@ -60,8 +62,9 @@ else
         elseif error>0 && abs(error)>tol
             LambdaA=LambdaC;
             maxIts=maxIts+1;
-        elseif abs(error)<=tol || error == 0
+        elseif abs(error)<=tol
             FinalRegion_bound=f_Disc(1,i_new);
+            Int_output=IntegralC;
             break;
         end
     end

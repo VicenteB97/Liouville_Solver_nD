@@ -33,8 +33,8 @@
 #define TYPE float     // only supported values are 'float' and 'double'
 
 // AMR tolerance, Conjugate Gradient tolerance and number of discretization size for the radius of the RBFs
-#define TOLERANCE_AMR       0.05
-#define TOLERANCE_ConjGrad  powf(10,-7)     // RECOMMENDED: This appears to give good results...no need to change it
+#define TOLERANCE_AMR       0.005
+#define TOLERANCE_ConjGrad  powf(10,-6)     // RECOMMENDED: This appears to give good results...no need to change it
 #define DISC_RADIUS         3.15
 
 // State variables information
@@ -61,8 +61,8 @@ inline const TYPE	IC_STD [DIMENSIONS] = {sqrtf(0.0002), sqrtf(0.0002), sqrtf(0.0
 
 // Parameter information
 #define PARAM_DIMENSIONS 4
-inline const char   _DIST_NAMES	 [PARAM_DIMENSIONS] = {'U','U','U','U'};
-inline const bool   _DIST_TRUNC	 [PARAM_DIMENSIONS] = {false, false, false, false};
+inline const char   _DIST_NAMES	 [PARAM_DIMENSIONS] = {'U','U','N','G'};
+inline const bool   _DIST_TRUNC	 [PARAM_DIMENSIONS] = {false, false, true, true};
 inline const TYPE  _DIST_InfTVAL[PARAM_DIMENSIONS] = {0,0,0,0};
 inline const TYPE  _DIST_SupTVAL[PARAM_DIMENSIONS] = {1,1,1,1};
 inline TYPE 		_DIST_MEAN	 [PARAM_DIMENSIONS]	= {0.025,0.025,0.3,0.2};
