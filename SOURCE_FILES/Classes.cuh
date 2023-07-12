@@ -41,7 +41,7 @@
 #define gpuError_Check(ans) {gpuAssert((cudaError_t) ans, __FILE__, __LINE__);}
 #define rpc(ans,offset) raw_pointer_cast(&ans[offset])
 
-#define RELATIVE_PATH "../../SIMULATION_OUTPUT/"
+#define RELATIVE_PATH "../SIMULATION_OUTPUT/"
 #define THREADS_P_BLK 128
 #define FIXED_TYPE double
 
