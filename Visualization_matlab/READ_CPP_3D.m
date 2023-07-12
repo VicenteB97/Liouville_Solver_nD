@@ -18,8 +18,8 @@ DIMENSIONS=3;
 
 %% CHANGE FOR YOUR CURRENT COMPUTER
 
-Info=readcell  ('../SIMULATION_OUTPUT/Simulation_Info_6.csv');
-Data=readmatrix('../SIMULATION_OUTPUT/Mean_PDFs_6.csv');
+Info=readcell  ('../SIMULATION_OUTPUT/Simulation_Info_1.csv');
+Data=readmatrix('../SIMULATION_OUTPUT/Mean_PDFs_1.csv');
 
 %%
 Total_Pts           = Info{1,1};
@@ -53,7 +53,7 @@ for l = 1:skip:timesteps
         for j=1:Pts_Per_Dimension
             for i=1:Pts_Per_Dimension
                 i_aux=i+(j-1)*Pts_Per_Dimension+(k-1)*Pts_Per_Dimension^2+(l-1)*Total_Pts;
-                F_Output(i,j,k) = Data(1,i_aux);
+                F_Output(j,i,k) = Data(1,i_aux);
             end
         end
     end
