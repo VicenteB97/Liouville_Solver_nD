@@ -3,7 +3,7 @@ compile:
 	mkdir ../BUILD_FILES
 	rm -rf ../SIMULATION_OUTPUT
 	mkdir ../SIMULATION_OUTPUT
-	cmake -B ../BUILD_FILES
+	cmake -DCMAKE_TOOLCHAIN_FILE="target_toolchain.cmake" -S . -B ../BUILD_FILES
 	cmake --build ../BUILD_FILES
 
 total:
@@ -12,7 +12,7 @@ total:
 update:
 	rm -rf ../SIMULATION_OUTPUT
 	mkdir ../SIMULATION_OUTPUT
-	cmake -B ../BUILD_FILES
+	cmake -DCMAKE_TOOLCHAIN_FILE="target_toolchain.cmake" -S . -B ../BUILD_FILES
 	cmake --build ../BUILD_FILES && clear && cd ../BUILD_FILES && ./Simulation
 
 cleanup:
