@@ -1,22 +1,30 @@
-compile:
+win32_compile:
+	rmdir ..\BUILD_FILES
+	mkdir ..\BUILD_FILES
+	rmdir ..\SIMULATION_OUTPUT
+	mkdir ..\SIMULATION_OUTPUT
+	cmake -G "Visual Studio 17 2022" -A Win64 -S . -B ..\BUILD_FILES
+	cmake --build ..\BUILD_FILES
+
+Linx_compile:
 	rm -rf ../BUILD_FILES
 	mkdir ../BUILD_FILES
 	rm -rf ../SIMULATION_OUTPUT
-	mkdir ../SIMULATION_OUTPUT
-	cmake -DCMAKE_TOOLCHAIN_FILE="target_toolchain.cmake" -S . -B ../BUILD_FILES
+	mkdir ../SIMULARTION_OUTPUT
+	cmake -S . -B ../BUILD_FILES
 	cmake --build ../BUILD_FILES
 
-total:
-	make compile && cd ../BUILD_FILES && clear && ./Simulation
+win32_total:
+	make win32_compile && cd ..\BUILD_FILES && clear && ./Simulation
+
+Linx_total:
+	make Linx_compile && cd ../BUILD_FILES && clear && ./Simulation
 
 update:
-	rm -rf ../SIMULATION_OUTPUT
-	mkdir ../SIMULATION_OUTPUT
-	cmake -DCMAKE_TOOLCHAIN_FILE="target_toolchain.cmake" -S . -B ../BUILD_FILES
 	cmake --build ../BUILD_FILES && clear && cd ../BUILD_FILES && ./Simulation
 
 cleanup:
 	rm -rf ../BUILD_FILES
-	rm ../SIMULATION_OUTPUT/*
-	rm -i ../Visualization_matlab/*.asv
+	rm -rf ../SIMULATION_OUTPUT/*
+	rm ../Visualization_matlab/*.asv
 
