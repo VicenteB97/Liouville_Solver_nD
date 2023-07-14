@@ -10,7 +10,7 @@ Linx_compile:
 	rm -rf ../BUILD_FILES
 	mkdir ../BUILD_FILES
 	rm -rf ../SIMULATION_OUTPUT
-	mkdir ../SIMULARTION_OUTPUT
+	mkdir ../SIMULATION_OUTPUT
 	cmake -S . -B ../BUILD_FILES
 	cmake --build ../BUILD_FILES
 
