@@ -11,11 +11,9 @@ set(CMAKE_CXX_STANDARD          17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS        ON)
 
-set(CMAKE_CUDA_HOST_COMPILER nvcc)
-
 find_package(OpenMP)
 
-option(CMAKE_BUILD_TYPE    RELEASE)
+option(CMAKE_BUILD_TYPE    "RELEASE")
 option(COMPILE_EXECUTABLE "Include executable compiling" ON)
 
 add_subdirectory(Configured)
