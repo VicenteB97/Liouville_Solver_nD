@@ -64,7 +64,7 @@ public:
 
 		gridPoint out;
 
-		for (u_int32_t d = 0; d < DIMENSIONS; d++) {
+		for (uint32_t d = 0; d < DIMENSIONS; d++) {
 			TYPE aux = dim[d];
 			aux += other.dim[d];
 			out.dim[d] = aux;
@@ -76,7 +76,7 @@ public:
 	__host__ __device__ gridPoint operator-(const gridPoint& other) {
 		gridPoint out;
 
-		for (u_int32_t d = 0; d < DIMENSIONS; d++) {
+		for (uint32_t d = 0; d < DIMENSIONS; d++) {
 			TYPE aux = dim[d];
 			aux -= other.dim[d];
 			out.dim[d] = aux;
@@ -87,7 +87,7 @@ public:
 	__host__ __device__ bool operator==(const gridPoint& other) {
 		bool out = true;
 
-		for (u_int32_t d = 0; d < DIMENSIONS; d++) {
+		for (uint32_t d = 0; d < DIMENSIONS; d++) {
 			if (dim[d] != other.dim[d]) { out = false; }
 		}
 
@@ -108,7 +108,7 @@ public:
 
 class AMR_node_select{
 public:
-	u_int32_t node, AMR_selected;
+	uint32_t node, AMR_selected;
 
 	__host__ __device__ bool operator < (const AMR_node_select& other) const { // Note that we have changed order, for simpler work
 		return (AMR_selected > other.AMR_selected);
@@ -155,7 +155,7 @@ public:
 /// @param a This is the numerator
 /// @param b This is the denominator
 /// @return Returns mod(a,b)
-__host__ __device__ inline u_int32_t positive_rem(const int32_t a, const int32_t b){
+__host__ __device__ inline uint32_t positive_rem(const int32_t a, const int32_t b){
 	return (a % b + b) % b;
 } 
 // ------------------------------------------------------------------------ //
@@ -169,7 +169,7 @@ __host__ __device__ inline TYPE Distance(const gridPoint P1, const gridPoint P2)
 	TYPE out = 0;
 
 	#pragma unroll
-	for (u_int32_t d = 0; d < DIMENSIONS; d++) {
+	for (uint32_t d = 0; d < DIMENSIONS; d++) {
 		out += (P1.dim[d] - P2.dim[d]) * (P1.dim[d] - P2.dim[d]);
 	}
 
@@ -184,7 +184,7 @@ __host__ __device__ inline gridPoint Mult_by_Scalar(TYPE scalar, gridPoint Point
 	gridPoint out;
 
 	#pragma unroll
-	for (u_int32_t d = 0; d < DIMENSIONS; d++) {
+	for (uint32_t d = 0; d < DIMENSIONS; d++) {
 		out.dim[d] = scalar * Point.dim[d];
 	}
 
@@ -193,19 +193,19 @@ __host__ __device__ inline gridPoint Mult_by_Scalar(TYPE scalar, gridPoint Point
 // ------------------------------------------------------------------------ //
 // ------------------------------------------------------------------------ //
 
-__host__ __device__ inline Param_vec _Gather_Param_Vec(const u_int32_t index, const Param_pair* Parameter_Array, const int32_t* n_Samples){
+__host__ __device__ inline Param_vec _Gather_Param_Vec(const uint32_t index, const Param_pair* Parameter_Array, const int32_t* n_Samples){
 
 	Param_vec Output;
 
 	Output.Joint_PDF = 1;
 
-	u_int32_t aux_samples_mult = 1;
-	u_int32_t aux_samples_sum  = 0;
+	uint32_t aux_samples_mult = 1;
+	uint32_t aux_samples_sum  = 0;
 
 	#pragma unroll
-	for (u_int32_t d = 0; d < PARAM_DIMENSIONS; d++){
-		u_int32_t aux3 = n_Samples[d];
-		u_int32_t aux = floorf(positive_rem(index, aux3 * aux_samples_mult) / aux_samples_mult );
+	for (uint32_t d = 0; d < PARAM_DIMENSIONS; d++){
+		uint32_t aux3 = n_Samples[d];
+		uint32_t aux = floorf(positive_rem(index, aux3 * aux_samples_mult) / aux_samples_mult );
 
 		Output.sample_vec[d] = Parameter_Array[aux + aux_samples_sum].sample;
 		Output.Joint_PDF 	*= Parameter_Array[aux + aux_samples_sum].PDF;
@@ -218,7 +218,7 @@ __host__ __device__ inline Param_vec _Gather_Param_Vec(const u_int32_t index, co
 
 __device__ inline bool __is_in_domain(const gridPoint particle, const gridPoint* Boundary){
 	bool out = true;
-	u_int16_t d = 0;
+	uint16_t d = 0;
 
 	while(out && d < DIMENSIONS){
 		if(particle.dim[d] < Boundary[0].dim[d] || particle.dim[d] > Boundary[1].dim[d]){out = false;}
