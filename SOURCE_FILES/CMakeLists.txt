@@ -24,7 +24,8 @@ target_include_directories(${LIB_NAME} PUBLIC
     "./"
     "${CMAKE_BINARY_DIR}/configured_files/include")
    
-include_directories("${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}") # absolutely necessary for windows (because it's retarded')!
+# COMMENT THE FOLLOWING LINE WHEN COMPILING IN LINUX
+# include_directories("${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}") # absolutely necessary for windows (because it's retarded')!
 
 add_executable(${EXECUTABLE_NAME} 00_MAIN.cu)
 

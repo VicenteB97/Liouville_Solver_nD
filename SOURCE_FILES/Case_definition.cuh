@@ -25,7 +25,7 @@
 #define CASE "SIR System"
 
 // Operating system where the application will be run
-#define OP_SYS Windows
+#define IS_WINDOWS false
 
 // This variable controls the size of the '.csv' files where the simulations are saved
 #define MAX_FILE_SIZE_B 1024*1024*1024

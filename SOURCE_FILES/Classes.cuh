@@ -38,7 +38,7 @@
 #define gpuError_Check(ans) {gpuAssert((cudaError_t) ans, __FILE__, __LINE__);}
 #define rpc(ans,offset) raw_pointer_cast(&ans[offset])
 
-#if OP_SYS == Windows
+#if IS_WINDOWS
 	#define RELATIVE_PATH "../../SIMULATION_OUTPUT/"
 #else
 	#define RELATIVE_PATH "../SIMULATION_OUTPUT/"

@@ -305,11 +305,10 @@ auto end = std::chrono::high_resolution_clock::now();
 	delete[] H_Mesh;
 	delete[] Param_dist;
 	delete[] Parameter_Mesh;
-	//gpuError_Check(cudaDeviceReset());
 
-	std::cout << "Memory cleaned from program. You may now close the console and view the results. Thank you for using me.\n";
+	std::cout << "All memory cleaned from program. You may now close the console and view the results. Thank you for using me.\n";
 
-#if OP_SYS == Windows // This will prevent the console from closing in Windows
+#if IS_WINDOWS // This will prevent the console from closing in Windows
 	system("pause > nul");
 #endif
 	return error_check;
