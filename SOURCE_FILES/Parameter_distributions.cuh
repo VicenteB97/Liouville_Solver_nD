@@ -12,15 +12,9 @@
 
 #include "Classes.cuh"
 
-#if IS_WINDOWS
-	#include <boost\math\distributions\gamma.hpp>
-	#include <boost\math\distributions\normal.hpp>
-	#include <boost\math\distributions\uniform.hpp>
-#else
-	#include <boost/math/distributions/gamma.hpp>
-	#include <boost/math/distributions/normal.hpp>
-	#include <boost/math/distributions/uniform.hpp>
-#endif
+#include <boost/math/distributions/gamma.hpp>
+#include <boost/math/distributions/normal.hpp>
+#include <boost/math/distributions/uniform.hpp>
 // ----------------------------------------------------------------------------------- //
 // ----------------------------------------------------------------------------------- //
 // --------------------- TO BUILD THE INITIAL CONDITION! ----------------------------- //
