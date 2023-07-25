@@ -290,10 +290,10 @@ auto end = std::chrono::high_resolution_clock::now();
 					}
 					myfile << store_PDFs[(k*max_frames_file + frames_init + frames_in_file)*Grid_Nodes - 1];
 					myfile.close();
-					std::cout << "File " << k << " completed!\n";
+					std::cout << "File " << k << " completed!" << std::endl;
 				}
 				else {
-					std::cout << "Simulation file " << k << " failed!!\n";
+					std::cout << "Simulation file " << k << " failed!!" << std::endl;
 				}
 			}
 		}
@@ -305,8 +305,9 @@ auto end = std::chrono::high_resolution_clock::now();
 	delete[] H_Mesh;
 	delete[] Param_dist;
 	delete[] Parameter_Mesh;
+	gpuError_Check(cudaDeviceReset());
 
-	std::cout << "All memory cleaned from program. You may now close the console and view the results. Thank you for using me.\n";
+	std::cout << "All memory cleaned from program. You may now close the console and view the results. Thank you for using me." << std::endl;
 
 #if IS_WINDOWS // This will prevent the console from closing in Windows
 	system("pause > nul");
