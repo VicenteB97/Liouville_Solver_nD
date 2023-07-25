@@ -44,7 +44,7 @@ int16_t PDF_INITIAL_CONDITION(uint32_t Points_per_dimension, const gridPoint* Me
 	}
 
 	#pragma omp parallel for
-	for (uint32_t k = 0; k < PDF_value.size(); k++){
+	for (int32_t k = 0; k < PDF_value.size(); k++){
 		TYPE aux = 1;
 		for (uint32_t d = 0; d < DIMENSIONS; d++){
 			aux *= boost::math::pdf(dist[d], Mesh[k].dim[d]);

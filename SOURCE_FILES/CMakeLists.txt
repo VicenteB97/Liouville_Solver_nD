@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.22)
 
+set(CMAKE_HOST_SYSTEM Windows)
+
 # IMPORTANT: HERE WE DEFINE THE VARIABLES TO BE USED THROUGHOUT THE CMAKE FILE
 set(PROJCT_NAME     LIOUVILLE_EQ_SOLVER)
 set(EXECUTABLE_NAME Simulation)
@@ -25,11 +27,18 @@ target_include_directories(${LIB_NAME} PUBLIC
     "${CMAKE_BINARY_DIR}/configured_files/include")
    
 # COMMENT THE FOLLOWING LINE WHEN COMPILING IN LINUX
-# include_directories("${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}") # absolutely necessary for windows (because it's retarded')!
+if(CMAKE_HOST_SYSTEM MATCHES Windows)
+    include_directories("${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}") # absolutely necessary for windows (because it's retarded')!
+endif()
 
 add_executable(${EXECUTABLE_NAME} 00_MAIN.cu)
 
-target_compile_options(${LIB_NAME} PRIVATE $<$<COMPILE_LANGUAGE:CUDA>: -Xcompiler -fopenmp -lgomp>)
+if(CMAKE_HOST_SYSTEM MATCHES Windows)
+    target_compile_options(${LIB_NAME} PRIVATE $<$<COMPILE_LANGUAGE:CUDA>: -Xcompiler -openmp -lgomp>)
+elseif(CMAKE_HOST_SYSTEM MATCHES Linux)
+    target_compile_options(${LIB_NAME} PRIVATE $<$<COMPILE_LANGUAGE:CUDA>: -Xcompiler -fopenmp -lgomp>)
+endif()
+
 target_link_libraries(${EXECUTABLE_NAME} PRIVATE ${LIB_NAME} OpenMP::OpenMP_CXX)
 
 set_property(TARGET ${EXECUTABLE_NAME} PROPERTY CUDA_ARCHITECTURES 75)

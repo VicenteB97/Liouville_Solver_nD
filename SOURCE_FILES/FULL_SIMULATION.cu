@@ -54,7 +54,7 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 
 	// GENERAL DIMENSION Cartesian coordinate grid build up
 	#pragma omp parallel for
-	for (uint32_t i = 0; i < Grid_Nodes; i++){
+	for (int32_t i = 0; i < Grid_Nodes; i++){
 		for (uint32_t d = 0; d < DIMENSIONS; d++){
 			uint32_t j 	 = floor(positive_rem(i, pow(PtsPerDim, d + 1))/pow(PtsPerDim, d));
 			H_Mesh[i].dim[d] = ((TYPE) j / (PtsPerDim - 1) - 0.50f) * Domain_Diameter.dim[d] + Domain_Center.dim[d]; 
