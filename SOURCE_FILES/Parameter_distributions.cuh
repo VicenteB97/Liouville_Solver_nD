@@ -34,14 +34,14 @@ int16_t PDF_INITIAL_CONDITION(uint32_t Points_per_dimension, const gridPoint* Me
 
 	//create the distributions per dimension:
 	#pragma unroll
-	for (unsigned d = 0; d < DIMENSIONS; d++){
+	for (uint32_t d = 0; d < DIMENSIONS; d++){
 		dist[d] = boost::math::normal_distribution((FIXED_TYPE)IC_dist_parameters[2*d], (FIXED_TYPE)IC_dist_parameters[2*d + 1]);
 	}
 
 	#pragma omp parallel for
-	for (unsigned k = 0; k < PDF_value.size(); k++){
+	for (uint32_t k = 0; k < PDF_value.size(); k++){
 		TYPE aux = 1;
-		for (unsigned d = 0; d < DIMENSIONS; d++){
+		for (uint32_t d = 0; d < DIMENSIONS; d++){
 			aux *= boost::math::pdf(dist[d], Mesh[k].dim[d]);
 		}
 		PDF_value[k] = aux; // with positive and negative parts!
@@ -169,7 +169,7 @@ int32_t RANDOMIZE(const int32_t* 		n_samples,
 				Param_pair* 			Parameter_Mesh, 
 				const Distributions* 	Dist_Parameters) {
 
-	unsigned aux = 0;
+	uint32_t aux = 0;
 
 	#pragma unroll
 	for (uint16_t d = 0; d < PARAM_DIMENSIONS; d++){
