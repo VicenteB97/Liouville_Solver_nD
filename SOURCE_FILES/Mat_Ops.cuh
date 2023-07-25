@@ -77,7 +77,7 @@ __global__ void Exh_PP_Search(	const gridPoint* Search_Particles,
 	if (i < Total_Particles) {		
 		const gridPoint FP_aux	= Fixed_Particles[i];
 		int32_t			aux		= 1;
-		const u_int32_t	i_aux	= floorf(i / Adapt_Points);										// Tells me what parameter sample I'm at
+		const uint32_t	i_aux	= floorf(i / Adapt_Points);										// Tells me what parameter sample I'm at
 		const int32_t	k		= i * max_neighbor_num;
 		T				dist;
 
@@ -85,7 +85,7 @@ __global__ void Exh_PP_Search(	const gridPoint* Search_Particles,
 		Matrix_Entries[k]	= RBF(search_radius, 0);
 
 		if(__is_in_domain(FP_aux, Boundary)){
-			for (u_int32_t j = i_aux * Adapt_Points; j < (i_aux + 1) * Adapt_Points; j++) {		// neighborhood where I'm searching
+			for (uint32_t j = i_aux * Adapt_Points; j < (i_aux + 1) * Adapt_Points; j++) {		// neighborhood where I'm searching
 
 				dist = Distance(Search_Particles[j], FP_aux) / search_radius;	// normalized distance between particles
 
@@ -112,7 +112,7 @@ template<class T>
 /// @param Max_Length Length of the vectors
 /// @return 
 __global__ void UPDATE_VEC(T* x, const T* x0, const T scalar, const T* v, const int32_t Max_Length) {
-	const u_int64_t i = blockDim.x * blockIdx.x + threadIdx.x;
+	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
 
 	if (i < Max_Length) {
 		x[i] = x0[i] + scalar * v[i];
@@ -131,18 +131,18 @@ template<class T>
 /// @return 
 __global__ void MATRIX_VECTOR_MULTIPLICATION(T* X, const T* x0, const int32_t* Matrix_idxs, const T* Matrix_entries, const int32_t total_length, const int32_t* Interaction_Lengths, const int32_t Max_Neighbors) {
 
-	const u_int64_t i = blockDim.x * blockIdx.x + threadIdx.x;	// For each i, which represents the matrix row, we read the index positions and multiply against the particle weights
+	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;	// For each i, which represents the matrix row, we read the index positions and multiply against the particle weights
 
 	if (i < total_length) {						// total length = adapt_points * total_samples
 // 1.- Compute A*X0										
 	// 1.1.- Determine where my particles are!!
-		const u_int32_t n  = Interaction_Lengths[i];	// total neighbors to look at
-		const u_int32_t i0 = i * Max_Neighbors;		// where does my search index start
+		const uint32_t n  = Interaction_Lengths[i];	// total neighbors to look at
+		const uint32_t i0 = i * Max_Neighbors;		// where does my search index start
 
 		T 			a = 0;					// auxiliary value for sum (the diagonal is always 1 in our case)
-		u_int32_t 	p;						// auxiliary variable for indexing
+		uint32_t 	p;						// auxiliary variable for indexing
 	// 1.2.- Multiply row vec (from matrix) - column vec (possible solution)
-		for (u_int32_t j = i0; j < i0 + n; j++) {
+		for (uint32_t j = i0; j < i0 + n; j++) {
 			p = Matrix_idxs[j];
 			a += Matrix_entries[j] * x0[p];		// < n calls to global memory
 		}
@@ -171,13 +171,13 @@ __host__ int32_t CONJUGATE_GRADIENT_SOLVE(	thrust::device_vector<T>&		GPU_lambda
 											thrust::device_vector<T>&		GPU_AdaptPDF,
 											const int32_t					Total_Particles,
 											const int32_t					MaxNeighborNum,
-											const u_int16_t					max_steps,
+											const uint16_t					max_steps,
 											const T							in_tolerance) {
 
 
 	// Determine threads and blocks for the simulation
-	const u_int16_t Threads = (u_int32_t)fminf(THREADS_P_BLK, Total_Particles);
-	const u_int64_t Blocks  = (u_int32_t)floorf((Total_Particles - 1) / Threads) + 1;
+	const uint16_t Threads = (uint32_t)fminf(THREADS_P_BLK, Total_Particles);
+	const uint64_t Blocks  = (uint32_t)floorf((Total_Particles - 1) / Threads) + 1;
 
 	// ------------------ AUXILIARIES FOR THE INTEPROLATION PROC. ------------------------------- //
 	thrust::device_vector<T>	GPU_R	(Total_Particles);		// residual vector
@@ -284,16 +284,16 @@ __global__ void RESTART_GRID_FIND_GN(gridPoint*  	 Particle_Positions,
 									const int32_t	 	 PtsPerDimension,
 									const int32_t	 	 Adapt_Pts,
 									const int32_t	 	 Block_samples,
-									const u_int32_t 	 offset,
+									const uint32_t 	 offset,
 									const gridPoint* Boundary) {
 // OUTPUT: New values of the PDF at the fixed grid
 
-const u_int64_t i = blockDim.x * blockIdx.x + threadIdx.x;
+const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
 
 if (i < Adapt_Pts * Block_samples) {
-	u_int32_t num_neighbors_per_dim 	 = 2 * floorf(search_radius / grid_discretization_length) + 1;
-	u_int32_t num_neighbors_per_particle = pow(num_neighbors_per_dim, DIMENSIONS);
-	u_int32_t Current_sample			 = offset + floorf(i / Adapt_Pts);
+	uint32_t num_neighbors_per_dim 	 = 2 * floorf(search_radius / grid_discretization_length) + 1;
+	uint32_t num_neighbors_per_particle = pow(num_neighbors_per_dim, DIMENSIONS);
+	uint32_t Current_sample			 = offset + floorf(i / Adapt_Pts);
 
 	Param_vec aux = _Gather_Param_Vec(Current_sample, Parameter_Mesh, n_Samples);
 
@@ -310,7 +310,7 @@ if (i < Adapt_Pts * Block_samples) {
 		gridPoint	fixed_gridNode = lowest_node;
 		
 		#pragma unroll
-		for (u_int16_t d = 0; d < DIMENSIONS; d++){
+		for (uint16_t d = 0; d < DIMENSIONS; d++){
 			int32_t temp_idx = roundf((T) (particle.dim[d] - lowest_node.dim[d]) / grid_discretization_length) - floorf((T) search_radius / grid_discretization_length);
 			lowest_idx += temp_idx * pow(PtsPerDimension, d);
 
@@ -327,12 +327,12 @@ if (i < Adapt_Pts * Block_samples) {
 		}
 
 	// now, go through all the neighboring grid nodes and add the values to the PDF field
-		for(u_int32_t j = 1; j < num_neighbors_per_particle; j++){
+		for(uint32_t j = 1; j < num_neighbors_per_particle; j++){
 			int32_t idx = lowest_idx;
 			temp_gridNode = fixed_gridNode;
 
 			#pragma unroll
-			for (u_int32_t d = 0; d < DIMENSIONS; d++){
+			for (uint32_t d = 0; d < DIMENSIONS; d++){
 				int32_t temp_idx = floorf( positive_rem(j, pow(num_neighbors_per_dim, d + 1)) / pow(num_neighbors_per_dim, d) ); 
 				idx += temp_idx * pow(PtsPerDimension, d);
 
@@ -380,12 +380,12 @@ __global__ void RESTART_GRID_FIND_GN_II(gridPoint*  Particle_Positions,
 										const gridPoint* Boundary) {
 // OUTPUT: New values of the PDF at the fixed grid
 
-const u_int64_t i = blockDim.x * blockIdx.x + threadIdx.x;
+const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
 
 if (i < Adapt_Pts * Block_samples) {
-	u_int32_t num_neighbors_per_dim 	 = 2 * floorf(search_radius / grid_discretization_length) + 1;
-	u_int32_t num_neighbors_per_particle = pow(num_neighbors_per_dim, DIMENSIONS);
-	u_int32_t Current_sample			 = floorf(i / Adapt_Pts);
+	uint32_t num_neighbors_per_dim 	 = 2 * floorf(search_radius / grid_discretization_length) + 1;
+	uint32_t num_neighbors_per_particle = pow(num_neighbors_per_dim, DIMENSIONS);
+	uint32_t Current_sample			 = floorf(i / Adapt_Pts);
 
 	gridPoint 	particle 		= Particle_Positions[i];
 	T 		weighted_lambda = lambdas[i] * Impulse_weights[Current_sample].Joint_PDF;		// the specific sample weight
@@ -399,7 +399,7 @@ if (i < Adapt_Pts * Block_samples) {
 		gridPoint	fixed_gridNode = lowest_node;
 		
 		#pragma unroll
-		for (u_int16_t d = 0; d < DIMENSIONS; d++){
+		for (uint16_t d = 0; d < DIMENSIONS; d++){
 			int32_t temp_idx = roundf((float) (particle.dim[d] - lowest_node.dim[d]) / grid_discretization_length) - floorf((float) search_radius / grid_discretization_length);
 			lowest_idx += temp_idx * pow(PtsPerDimension, d);
 
@@ -416,13 +416,13 @@ if (i < Adapt_Pts * Block_samples) {
 		}
 
 	// now, go through all the neighboring grid nodes and add the values to the PDF field
-		for(u_int32_t j = 1; j < num_neighbors_per_particle; j++){
+		for(uint32_t j = 1; j < num_neighbors_per_particle; j++){
 
 			int32_t idx 	= lowest_idx;
 			temp_gridNode 	= fixed_gridNode;
 
 			#pragma unroll
-			for (u_int16_t d = 0; d < DIMENSIONS; d++){
+			for (uint16_t d = 0; d < DIMENSIONS; d++){
 				int32_t temp_idx = floorf( positive_rem(j, pow(num_neighbors_per_dim, d + 1)) / pow(num_neighbors_per_dim, d) ); 
 				idx += temp_idx * pow(PtsPerDimension, d);
 
@@ -449,7 +449,7 @@ template<class T>
 /// @param Grid_Nodes 
 /// @return 
 __global__ void CORRECTION(T* PDF, const int32_t Grid_Nodes){
-	const u_int64_t i = blockDim.x * blockIdx.x + threadIdx.x;
+	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
 
 	if (i < Grid_Nodes){
 		PDF[i] = fmaxf(PDF[i], 0.00f);

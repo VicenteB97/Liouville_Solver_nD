@@ -12,6 +12,10 @@
 
 #include "Classes.cuh"
 
+#include <boost\math\distributions\gamma.hpp>
+#include <boost\math\distributions\normal.hpp>
+#include <boost\math\distributions\uniform.hpp>
+
 // ----------------------------------------------------------------------------------- //
 // ----------------------------------------------------------------------------------- //
 // --------------------- TO BUILD THE INITIAL CONDITION! ----------------------------- //
@@ -23,7 +27,7 @@
 /// @param Mesh 
 /// @param PDF_value 
 /// @param IC_dist_parameters 
-int PDF_INITIAL_CONDITION(int Points_per_dimension, const gridPoint* Mesh, thrust::host_vector<TYPE>& PDF_value, TYPE* IC_dist_parameters) {
+int16_t PDF_INITIAL_CONDITION(uint32_t Points_per_dimension, const gridPoint* Mesh, thrust::host_vector<TYPE>& PDF_value, TYPE* IC_dist_parameters) {
 
 	// Due to obvious reasons, we will not make the choice of IC distributions automatically, as with the model parameters
 	boost::math::normal dist[DIMENSIONS];
@@ -168,7 +172,7 @@ int32_t RANDOMIZE(const int32_t* 		n_samples,
 	unsigned aux = 0;
 
 	#pragma unroll
-	for (u_int16_t d = 0; d < PARAM_DIMENSIONS; d++){
+	for (uint16_t d = 0; d < PARAM_DIMENSIONS; d++){
 		// call the parameter pair vec. function
 		Param_pair* PP = new Param_pair[n_samples[d]];
 

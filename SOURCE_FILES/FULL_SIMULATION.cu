@@ -17,7 +17,7 @@
 // --------------------------------------------------------- //
 
 //--------------------------------------------------------------------------------------------- //
-int32_t PDF_EVOLUTION(cudaDeviceProp* prop) {
+int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 	std::cout << "You are simulating the " << CASE <<". Simulation timing information is (1 = on, 0 = off): " << OUTPUT_INFO << ".\n\n";
 	std::cout << "You must choose: \n - FINEST / COARSEST MESH LEVEL \n - FINAL time \n - TIMESTEP";
 	std::cout << "\n - Reinitialization Steps \n - SAMPLES PER PARAMETER \n";
@@ -48,15 +48,15 @@ int32_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 	const gridPoint Domain_Center 	= DOMAIN_CTR;
 	const gridPoint Domain_Diameter = DOMAIN_DIAM;
 
-	const u_int32_t PtsPerDim  	= pow(2, LvlFine);
-	const u_int32_t Grid_Nodes 	= pow(PtsPerDim, DIMENSIONS);
+	const uint32_t PtsPerDim  	= pow(2, LvlFine);
+	const uint32_t Grid_Nodes 	= pow(PtsPerDim, DIMENSIONS);
 	gridPoint* H_Mesh 	 		= new gridPoint[Grid_Nodes];
 
 	// GENERAL DIMENSION Cartesian coordinate grid build up
 	#pragma omp parallel for
-	for (u_int32_t i = 0; i < Grid_Nodes; i++){
-		for (u_int32_t d = 0; d < DIMENSIONS; d++){
-			u_int32_t j 	 = floor(positive_rem(i, pow(PtsPerDim, d + 1))/pow(PtsPerDim, d));
+	for (uint32_t i = 0; i < Grid_Nodes; i++){
+		for (uint32_t d = 0; d < DIMENSIONS; d++){
+			uint32_t j 	 = floor(positive_rem(i, pow(PtsPerDim, d + 1))/pow(PtsPerDim, d));
 			H_Mesh[i].dim[d] = ((TYPE) j / (PtsPerDim - 1) - 0.50f) * Domain_Diameter.dim[d] + Domain_Center.dim[d]; 
 		}
 	}
@@ -73,7 +73,7 @@ int32_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 	// ----------------------------------------------------------------------------------------------- //
 	// ----------------------------------------------------------------------------------------------- //
 	// ----------------------------------------------------------------------------------------------- //
-	int32_t error_check = 0;
+	int16_t error_check = 0;
 
 	error_check = Simul_Data_Def(time_vector, deltaT, ReinitSteps);
 	if (error_check == -1){	std::cout << "Exiting simulation.\n"; return -1;}
@@ -96,7 +96,7 @@ int32_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 	// ----------------------------------------------------------------------------------------------- //
 	// ---------------------------------- OBTAIN INFO FROM TERMINAL ---------------------------------- //
 	// ----------------------------------------------------------------------------------------------- //
-		for (u_int32_t k = 0; k < PARAM_DIMENSIONS; k++) {
+		for (uint32_t k = 0; k < PARAM_DIMENSIONS; k++) {
 			std::cout << "How many samples for parameter " << k + 1 << " ? ";
 			std::cin >> n_samples[k];
 			while (n_samples[k] == 0){ 
@@ -109,8 +109,8 @@ int32_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 	// ----------------------------------------------------------------------------------------------- //
 	// ----------------------------------------------------------------------------------------------- //
 	// ----------------------------------------------------------------------------------------------- //
-		u_int32_t PM_length = 1;															// Total number of parameter samples we use
-		for (u_int32_t i = 0; i < PARAM_DIMENSIONS; i++){
+		uint32_t PM_length = 1;															// Total number of parameter samples we use
+		for (uint32_t i = 0; i < PARAM_DIMENSIONS; i++){
 			PM_length += n_samples[i];
 		}
 
@@ -120,7 +120,7 @@ int32_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 		thrust::host_vector<TYPE> H_PDF(Grid_Nodes);	 							// PDF values at the fixed, high-res grid (CPU)
 
 		#pragma unroll
-		for (u_int32_t p = 0; p < PARAM_DIMENSIONS; p++){
+		for (uint32_t p = 0; p < PARAM_DIMENSIONS; p++){
 			Param_dist[p].Name  			= _DIST_NAMES[p];		// N, G or U distributions
 			Param_dist[p].Truncated  		= _DIST_TRUNC[p];		// TRUNCATED?
 			Param_dist[p].trunc_interval[0] = _DIST_InfTVAL[p];		// min of trunc. interval
@@ -130,7 +130,7 @@ int32_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 		}
 
 		#pragma unroll
-		for (u_int32_t d = 0; d < DIMENSIONS; d++){
+		for (uint32_t d = 0; d < DIMENSIONS; d++){
 			IC_dist_params[2*d] 	= IC_MEAN[d];
 			IC_dist_params[2*d + 1] = IC_STD[d];
 		}
@@ -171,11 +171,11 @@ auto end = std::chrono::high_resolution_clock::now();
 
 	bool saving_active = true;		// see if saving is still active
 
-	const u_int64_t MEM_2_STORE = store_PDFs.size() * sizeof(float);
+	const uint64_t MEM_2_STORE = store_PDFs.size() * sizeof(float);
 	
-	u_int32_t number_of_frames_needed 	= MEM_2_STORE / Grid_Nodes / sizeof(float);
-	u_int32_t max_frames_file 			= MAX_FILE_SIZE_B / Grid_Nodes / sizeof(float);
-	u_int16_t number_of_files_needed  	= floor((number_of_frames_needed - 1) / max_frames_file) + 1;
+	uint32_t number_of_frames_needed 	= MEM_2_STORE / Grid_Nodes / sizeof(float);
+	uint32_t max_frames_file 			= MAX_FILE_SIZE_B / Grid_Nodes / sizeof(float);
+	uint16_t number_of_files_needed  	= floor((number_of_frames_needed - 1) / max_frames_file) + 1;
 	
 	char ans;
 	std::cout << "Simulation time: " << duration.count() << " seconds. ";
@@ -228,11 +228,11 @@ auto end = std::chrono::high_resolution_clock::now();
 				frames_init = 0, frames_end = number_of_files_needed - 1;
 			}
 
-			for(u_int16_t k = 0; k < number_of_files_needed; k++){
+			for(uint16_t k = 0; k < number_of_files_needed; k++){
 
-				u_int16_t frames_in_file = fmin(max_frames_file, number_of_frames_needed - k * max_frames_file);
+				uint16_t frames_in_file = fmin(max_frames_file, number_of_frames_needed - k * max_frames_file);
 
-				std::string temp_str = std::to_string((u_int32_t)k);
+				std::string temp_str = std::to_string((uint32_t)k);
 
 				std::string relavtive_pth = RELATIVE_PATH;
 				relavtive_pth.append("Simulation_info_");
@@ -245,13 +245,13 @@ auto end = std::chrono::high_resolution_clock::now();
 					//file1 << "Total Grid Points," << "Points per dimension," << "Grid X min," << "Grid X max," << "Grid Y min," << "Grid Y max," << "Time values," << "Simulation cost" << "t0" << "deltaT" << "Reinitialization Steps" << "\n";
 					file1 << Grid_Nodes << "," << PtsPerDim << ",";
 					
-					for (u_int16_t d = 0; d < DIMENSIONS; d++){
+					for (uint16_t d = 0; d < DIMENSIONS; d++){
 						file1 << H_Mesh[0].dim[d] << "," << H_Mesh[Grid_Nodes - 1].dim[d] << ",";
 					} 
 						file1 << duration.count() << "\n";
 
 					#if IMPULSE_TYPE == 0 || IMPULSE_TYPE ==1
-						for (u_int32_t i = k * max_frames_file + frames_init; i < k*max_frames_file + frames_in_file + frames_init - 1; i++) {
+						for (uint32_t i = k * max_frames_file + frames_init; i < k*max_frames_file + frames_in_file + frames_init - 1; i++) {
 							file1 << time_vector[i].time << ",";
 						}
 						file1 << time_vector[k*max_frames_file + frames_in_file + frames_init - 1].time;
@@ -259,7 +259,7 @@ auto end = std::chrono::high_resolution_clock::now();
 					#elif IMPULSE_TYPE == 2
 						file1 << time_vector[k * max_frames_file + frames_init].time << ",";
 
-						for (u_int32_t i = k * max_frames_file + 1 + frames_init; i < k*max_frames_file + frames_init + frames_in_file; i++) {
+						for (uint32_t i = k * max_frames_file + 1 + frames_init; i < k*max_frames_file + frames_init + frames_in_file; i++) {
 							if(abs(time_vector[i].time - time_vector[i-1].time)>pow(10,-7)){
 								file1 << time_vector[i].time << ",";
 							}
@@ -285,7 +285,7 @@ auto end = std::chrono::high_resolution_clock::now();
 				std::ofstream myfile(relavtive_pth, std::ios::out);
 
 				if (myfile.is_open()) {
-					for (u_int64_t i = (k*max_frames_file + frames_init)*Grid_Nodes; i < (k*max_frames_file + frames_init + frames_in_file)*Grid_Nodes - 1; i++) {
+					for (uint64_t i = (k*max_frames_file + frames_init)*Grid_Nodes; i < (k*max_frames_file + frames_init + frames_in_file)*Grid_Nodes - 1; i++) {
 						myfile << store_PDFs[i] << ",";
 					}
 					myfile << store_PDFs[(k*max_frames_file + frames_init + frames_in_file)*Grid_Nodes - 1];
@@ -305,7 +305,12 @@ auto end = std::chrono::high_resolution_clock::now();
 	delete[] H_Mesh;
 	delete[] Param_dist;
 	delete[] Parameter_Mesh;
-	gpuError_Check(cudaDeviceReset());
-	
+	//gpuError_Check(cudaDeviceReset());
+
+	std::cout << "Memory cleaned from program. You may now close the console and view the results. Thank you for using me.\n";
+
+#if OP_SYS == Windows // This will prevent the console from closing in Windows
+	system("pause > nul");
+#endif
 	return error_check;
 }

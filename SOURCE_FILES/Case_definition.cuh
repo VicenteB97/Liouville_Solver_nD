@@ -24,6 +24,9 @@
 // Name of the case being simulated
 #define CASE "SIR System"
 
+// Operating system where the application will be run
+#define OP_SYS Windows
+
 // This variable controls the size of the '.csv' files where the simulations are saved
 #define MAX_FILE_SIZE_B 1024*1024*1024
 
@@ -63,8 +66,8 @@ inline const TYPE	IC_STD [DIMENSIONS] = {sqrtf(0.0002), sqrtf(0.0002), sqrtf(0.0
 #define PARAM_DIMENSIONS 4
 inline const char   _DIST_NAMES	 [PARAM_DIMENSIONS] = {'U','U','N','G'};
 inline const bool   _DIST_TRUNC	 [PARAM_DIMENSIONS] = {false, false, true, true};
-inline const TYPE  _DIST_InfTVAL[PARAM_DIMENSIONS] = {0,0,0,0};
-inline const TYPE  _DIST_SupTVAL[PARAM_DIMENSIONS] = {1,1,1,1};
+inline const TYPE   _DIST_InfTVAL[PARAM_DIMENSIONS] = {0,0,0,0};
+inline const TYPE   _DIST_SupTVAL[PARAM_DIMENSIONS] = {1,1,1,1};
 inline TYPE 		_DIST_MEAN	 [PARAM_DIMENSIONS]	= {0.025,0.025,0.3,0.2};
 inline TYPE 		_DIST_STD	 [PARAM_DIMENSIONS]	= {sqrtf(0.0001),sqrtf(0.0001),sqrtf(0.0001),sqrtf(0.0001)};
 
