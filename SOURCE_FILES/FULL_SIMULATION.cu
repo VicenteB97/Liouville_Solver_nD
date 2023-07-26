@@ -228,6 +228,7 @@ auto end = std::chrono::high_resolution_clock::now();
 				frames_init = 0, frames_end = number_of_files_needed - 1;
 			}
 
+			#pragma omp parallel for
 			for(uint16_t k = 0; k < number_of_files_needed; k++){
 
 				uint16_t frames_in_file = fmin(max_frames_file, number_of_frames_needed - k * max_frames_file);
