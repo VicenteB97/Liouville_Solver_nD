@@ -89,6 +89,15 @@ int main() {
 		std::cout << border_mid << "\n";
 		std::cout << border << "\n";
 
-		return PDF_EVOLUTION(&prop);
+		int16_t ret_val = PDF_EVOLUTION(&prop);
+
+		std::cout << "Simulation finished with output code " << ret_val << std::endl;
+
+#if IS_WINDOWS // This will prevent the console from closing in Windows
+		system("pause");
+		// system("pause > nul");
+#endif
+
+		return ret_val;
 	}
 }

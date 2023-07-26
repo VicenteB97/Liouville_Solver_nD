@@ -44,7 +44,6 @@
 	#define RELATIVE_PATH "../SIMULATION_OUTPUT/"
 #endif
 
-#define THREADS_P_BLK 128
 #define FIXED_TYPE double
 
 inline void gpuAssert (cudaError_t code, const char *file, int32_t line, bool abort = true){
