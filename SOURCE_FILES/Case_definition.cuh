@@ -16,6 +16,7 @@
 
 // -------------------------------------------------------------------------------- //
 //  HERE ARE THE DEFINITIONS THAT CAN BE CHANGED ACCORDING TO THE PROBLEM TO STUDY  //
+//  Remember that you must also change the host system in the CMakeLists.txt file   //
 // -------------------------------------------------------------------------------- //
 
 // -----------------------------------------------------------------------//
