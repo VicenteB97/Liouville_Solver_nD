@@ -243,10 +243,14 @@ auto end = std::chrono::high_resolution_clock::now();
 
 				std::ofstream file1(relavtive_pth, std::ios::out);
 
-				if (file1.is_open()) {
-					//file1 << "Total Grid Points," << "Points per dimension," << "Grid X min," << "Grid X max," << "Grid Y min," << "Grid Y max," << "Time values," << "Simulation cost" << "t0" << "deltaT" << "Reinitialization Steps" << "\n";
+				if (!file1.is_open()) {
+					std::cout << "Information file " << k << "failed!!\n";
+					error_check = -1;
+					// break;
+				}
+				else{
 					file1 << Grid_Nodes << "," << PtsPerDim << ",";
-					
+						
 					for (uint16_t d = 0; d < DIMENSIONS; d++){
 						file1 << H_Mesh[0].dim[d] << "," << H_Mesh[Grid_Nodes - 1].dim[d] << ",";
 					} 
@@ -274,29 +278,26 @@ auto end = std::chrono::high_resolution_clock::now();
 					#endif
 					file1.close();
 				}
-				else {
-					std::cout << "Information file failed!!\n";
-				}
 
 				// Simulation Information
 				relavtive_pth = RELATIVE_PATH;
 				relavtive_pth.append("Mean_PDFs_");
 				relavtive_pth.append(temp_str);
-				relavtive_pth.append(".csv");
+				relavtive_pth.append(".bin");
 
-				std::ofstream myfile(relavtive_pth, std::ios::out);
+				std::ofstream myfile(relavtive_pth, std::ios::out | std::ios::binary);
 
-				if (myfile.is_open()) {
-					for (uint64_t i = (k*max_frames_file + frames_init)*Grid_Nodes; i < (k*max_frames_file + frames_init + frames_in_file)*Grid_Nodes - 1; i++) {
-						myfile << store_PDFs[i] << ",";
-					}
-					myfile << store_PDFs[(k*max_frames_file + frames_init + frames_in_file)*Grid_Nodes - 1];
+				if(!myfile.is_open()){
+					std::cout << "Simulation output file " << k << " failed!!" << std::endl;
+					error_check = -1;
+					// break;
+				}
+				else{
+					myfile.write((char *)&store_PDFs[(k*max_frames_file + frames_init)*Grid_Nodes], sizeof(float) * frames_in_file * Grid_Nodes);
 					myfile.close();
-					std::cout << "File " << k << " completed!" << std::endl;
+					std::cout << "Simulation output file " << k << " completed!" << std::endl;
 				}
-				else {
-					std::cout << "Simulation file " << k << " failed!!" << std::endl;
-				}
+				
 			}
 		}
 
