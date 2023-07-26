@@ -95,7 +95,6 @@ int main() {
 
 #if IS_WINDOWS // This will prevent the console from closing in Windows
 		system("pause");
-		// system("pause > nul");
 #endif
 
 		return ret_val;

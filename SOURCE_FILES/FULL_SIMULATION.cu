@@ -183,6 +183,7 @@ auto end = std::chrono::high_resolution_clock::now();
 	if(number_of_files_needed == 0){
 		std::cout << "There has been a problem. No memory written. Exiting simulation.\n";
 		saving_active = false;
+		error_check = -1;
 	}
 
 	while(saving_active){	
@@ -229,7 +230,7 @@ auto end = std::chrono::high_resolution_clock::now();
 			}
 
 			#pragma omp parallel for
-			for(uint16_t k = 0; k < number_of_files_needed; k++){
+			for(int16_t k = 0; k < number_of_files_needed; k++){
 
 				uint16_t frames_in_file = fmin(max_frames_file, number_of_frames_needed - k * max_frames_file);
 
@@ -301,7 +302,6 @@ auto end = std::chrono::high_resolution_clock::now();
 
 		saving_active = false;
 	}
-
 
 	delete[] H_Mesh;
 	delete[] Param_dist;
