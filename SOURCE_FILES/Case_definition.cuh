@@ -26,12 +26,12 @@
 #define CASE "SIR System"
 
 // Operating system where the application will be run
-#define IS_WINDOWS true
+#define IS_WINDOWS false
 
 //Define the number of threads per block (128 for consumer GPUs such as the RTX3060 or Quadro RTX4000)
 #define THREADS_P_BLK 128
 
-// This variable controls the size of the '.csv' files where the simulations are saved
+// This variable controls the size of the files where the simulations are saved
 #define MAX_FILE_SIZE_B 1024*1024*1024
 
 // Choosing whether showing full or simplified timing information
@@ -44,12 +44,18 @@
 #define TOLERANCE_ConjGrad  powf(10,-6)     // RECOMMENDED: This appears to give good results...no need to change it
 #define DISC_RADIUS         3.45
 
+// // DEFINE WHETHER WE WILL USE THE ADATIVE TIME STEPPING WITH "NO" POINT SEARCH PHASE
+// #define TIME_ADAPTIVE       true            // VAL: 0.07. 
+//                                             // Bounded by the inverse of the Lipschitz constant of the vector field (2 in our case)... 
+//                                             // and multiplied by the log-difference of the max distance and the initial distance (in this case,...
+//                                             // the "CFL" condition is over 11 times what we would obtain using FDM)
+
 // State variables information
 #define DIMENSIONS   3
 #define DOMAIN_CTR  {0.5, 0.5, 0.5}
 #define DOMAIN_DIAM {1, 1, 1}
 
-inline const TYPE	IC_MEAN[DIMENSIONS] = {0.75, 0.15, 0.1};	
+inline const TYPE	IC_MEAN[DIMENSIONS] = {0.75, 0.15, 0.1};
 inline const TYPE	IC_STD [DIMENSIONS] = {sqrtf(0.0002), sqrtf(0.0002), sqrtf(0.0002)};
 
 // Vector field definition

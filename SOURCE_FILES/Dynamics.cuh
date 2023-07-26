@@ -269,21 +269,18 @@ int32_t PDF_ITERATIONS( cudaDeviceProp* prop,
 		std::cout << "/ ------------------------------------------------------------------- /\n";
 	// 1.- Initial step Adaptive H_Mesh Refinement. First store the initial PDF with AMR performed
 
-	#if OUTPUT_INFO
-		auto start_3 = std::chrono::high_resolution_clock::now();
-		
+	auto start_3 = std::chrono::high_resolution_clock::now();
+	
 		error_check = ADAPT_MESH_REFINEMENT_nD(*H_PDF, &GPU_PDF, &AdaptPDF, H_Mesh, &AdaptGrid, LvlFine, LvlCoarse, PtsPerDim);
-		if(error_check == -1){return error_check;}
+		if(error_check == -1){break;}
 
 		auto end_3 = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<float> duration_3 = end_3 - start_3;
+	#if OUTPUT_INFO
 		std::cout << "AMR iteration took " << duration_3.count() << " seconds\n";
-	#else
-		error_check = ADAPT_MESH_REFINEMENT_nD(*H_PDF, &GPU_PDF, &AdaptPDF, H_Mesh, &AdaptGrid, LvlFine, LvlCoarse, PtsPerDim);
-		if(error_check == -1){return error_check;}
 	#endif
 
-	GPU_PDF.clear();
+		GPU_PDF.clear();
 
 		// 1.1.- COMPUTE THE TRANSFORMATION OF THE PDF (IF THERE IS ONE)
 		if (time_vector[j].impulse) {
@@ -292,32 +289,23 @@ int32_t PDF_ITERATIONS( cudaDeviceProp* prop,
 
 				std::cout << "RVT transformation at time: " << t0 << "\n";
 
+				start_3 = std::chrono::high_resolution_clock::now();
+				
+				error_check = IMPULSE_TRANSFORM_PDF(H_Mesh, 
+												&AdaptGrid, 
+												H_PDF, 
+												&AdaptPDF, 
+												time_vector[j],
+												jump, 
+												Grid_Nodes, 
+												PtsPerDim,
+												__D__Domain_Boundary);
+				
+				end_3 = std::chrono::high_resolution_clock::now();
+				duration_3 = end_3 - start_3;
+
 				#if OUTPUT_INFO
-					start_3 = std::chrono::high_resolution_clock::now();
-					
-					error_check = IMPULSE_TRANSFORM_PDF(H_Mesh, 
-													&AdaptGrid, 
-													H_PDF, 
-													&AdaptPDF, 
-													time_vector[j],
-													jump, 
-													Grid_Nodes, 
-													PtsPerDim,
-													__D__Domain_Boundary);
-					
-					end_3 = std::chrono::high_resolution_clock::now();
-					duration_3 = end_3 - start_3;
 					std::cout << "Delta Impulse took " << duration_3.count() << " seconds\n";
-				#else
-					error_check = IMPULSE_TRANSFORM_PDF(H_Mesh, 
-													&AdaptGrid, 
-													H_PDF, 
-													&AdaptPDF, 
-													time_vector[j],
-													jump, 
-													Grid_Nodes, 
-													PtsPerDim,
-													__D__Domain_Boundary);
 				#endif
 
 				
@@ -325,7 +313,7 @@ int32_t PDF_ITERATIONS( cudaDeviceProp* prop,
 				if (error_check != 0) {
 					//std::cout << "Something went wrong...\n";
 					std::cin.get();
-					return error_check;
+					break;
 				}
 				else {
 					//std::cout << "Transformation done...continuing with Liouville PDE\n";
@@ -398,7 +386,6 @@ int32_t PDF_ITERATIONS( cudaDeviceProp* prop,
 				std::cout << "Size of relevant PDF points (per sample): " << Adapt_Points << "\n";	// this allows to check if the info is passed to the GPU correctly
 
 				// ------------------ RESIZING OF THE INTERPOLATION MATRIX ------------------ //
-
 				thrust::device_vector<int32_t>		GPU_Index_array(MaxNeighborNum * Block_Particles);
 				thrust::device_vector<TYPE>			GPU_Mat_entries(MaxNeighborNum * Block_Particles);
 				thrust::device_vector<int32_t>		GPU_Num_Neighbors(Block_Particles);
@@ -410,10 +397,7 @@ int32_t PDF_ITERATIONS( cudaDeviceProp* prop,
 				// ------------------------------------------------------------------------------------ //
 				// -------------------------- POINT ADVECTION ----------------------------------------- //
 				// ------------------------------------------------------------------------------------ //
-				// Using RK4 for time integration of characteristic curves
-				#if OUTPUT_INFO
-				start_3 = std::chrono::high_resolution_clock::now();
-						
+			start_3 = std::chrono::high_resolution_clock::now();
 				RungeKutta << <Blocks, Threads >> >(rpc(GPU_Part_Position,0), 
 													rpc(GPU_AdaptPDF,0),
 													rpc(GPU_Parameter_Mesh, Sample_idx_offset_init), 
@@ -428,32 +412,19 @@ int32_t PDF_ITERATIONS( cudaDeviceProp* prop,
 													rpc(__D__Domain_Boundary,0));
 				gpuError_Check(cudaDeviceSynchronize()); // Here, the entire H_Mesh points (those that were selected) and PDF points (same) have been updated.
 						
-				end_3 = std::chrono::high_resolution_clock::now();
+			end_3 = std::chrono::high_resolution_clock::now();
+				duration_3 = end_3 - start_3;
+				// Using RK4 for time integration of characteristic curves
+			#if OUTPUT_INFO
 				duration_3 = end_3 - start_3;
 				std::cout << "Runge-Kutta iteration took " << duration_3.count() << " seconds\n";
-				#else
-				RungeKutta << <Blocks, Threads >> >(rpc(GPU_Part_Position,0), 
-													rpc(GPU_AdaptPDF,0),
-													rpc(GPU_Parameter_Mesh,Sample_idx_offset_init), 
-													rpc(GPU_nSamples,0), 
-													t0, 
-													deltaT, 
-													tF, 
-													Adapt_Points, 
-													Random_Samples_Blk_size,
-													mode,
-													rpc(Extra_Parameter,0),
-													rpc(__D__Domain_Boundary,0));
-				gpuError_Check(cudaDeviceSynchronize()); // Here, the entire H_Mesh points (those that were selected) and PDF points (same) have been updated.
-				#endif
+			#endif
 
 				// ----------------------------------------------------------------------------------- //
 				// -------------------------- INTERPOLATION ------------------------------------------ //
 				// ----------------------------------------------------------------------------------- //
 				// 1.- Build Matix in GPU (indexes, dists and neighbors) Using Exahustive search...
-				#if OUTPUT_INFO
-				start_3 = std::chrono::high_resolution_clock::now();
-				
+			start_3 = std::chrono::high_resolution_clock::now();
 				Exh_PP_Search<TYPE> << <Blocks, Threads >> > (rpc(GPU_Part_Position,0), 
 																rpc(GPU_Part_Position,0), 
 																rpc(GPU_Index_array,0), 
@@ -464,32 +435,18 @@ int32_t PDF_ITERATIONS( cudaDeviceProp* prop,
 																Block_Particles, 
 																search_radius,
 																rpc(__D__Domain_Boundary,0)); 
-				gpuError_Check(cudaDeviceSynchronize());
-						
-				end_3 = std::chrono::high_resolution_clock::now();
+				gpuError_Check(cudaDeviceSynchronize());		
+			end_3 = std::chrono::high_resolution_clock::now();
 				duration_3 = end_3 - start_3;
+			#if OUTPUT_INFO
 				std::cout << "Exhaustive point serach took " << duration_3.count() << " seconds\n";
-				#else
-				Exh_PP_Search<TYPE> << <Blocks, Threads >> > (rpc(GPU_Part_Position,0), 
-														rpc(GPU_Part_Position,0), 
-														rpc(GPU_Index_array,0), 
-														rpc(GPU_Mat_entries,0), 
-														rpc(GPU_Num_Neighbors,0), 
-														MaxNeighborNum, 
-														Adapt_Points, 
-														Block_Particles, 
-														search_radius,
-														rpc(__D__Domain_Boundary,0)); 
-				gpuError_Check(cudaDeviceSynchronize());
-				#endif
+			#endif
 
 				// 2.- Iterative solution (Conjugate Gradient) to obtain coefficients of the RBFs
 				thrust::device_vector<TYPE>	GPU_lambdas(Block_Particles);	// solution vector (RBF weights)
 				thrust::fill(GPU_lambdas.begin(), GPU_lambdas.end(), 0.0f);		// this will serve as the initial condition
 
-				#if OUTPUT_INFO
-				start_3 = std::chrono::high_resolution_clock::now();
-
+			start_3 = std::chrono::high_resolution_clock::now();
 				error_check = CONJUGATE_GRADIENT_SOLVE<TYPE>(  GPU_lambdas, 
 																GPU_Index_array, 
 																GPU_Mat_entries, 
@@ -499,24 +456,12 @@ int32_t PDF_ITERATIONS( cudaDeviceProp* prop,
 																MaxNeighborNum, 
 																max_steps, 
 																in_tolerance);
-				if (error_check == -1) { return error_check; }
-						
-				end_3 = std::chrono::high_resolution_clock::now();
+				if (error_check == -1) { break; }	
+			end_3 = std::chrono::high_resolution_clock::now();
 				duration_3 = end_3 - start_3;
+			#if OUTPUT_INFO
 				std::cout << "Conjugate Gradient took " << duration_3.count() << " seconds\n";
-				#else
-
-				error_check = CONJUGATE_GRADIENT_SOLVE<TYPE>(  GPU_lambdas, 
-																GPU_Index_array, 
-																GPU_Mat_entries, 
-																GPU_Num_Neighbors, 
-																GPU_AdaptPDF, 
-																Block_Particles, 
-																MaxNeighborNum, 
-																max_steps, 
-																in_tolerance);
-				if (error_check == -1) { return error_check; }
-				#endif
+			#endif
 
 				// ----------------------------------------------------------------------------------- //
 				// THIS PART ONLY GRABS THE LAST "OPTIMAL" LAMBDA AND COMPUTES ITS "PROJECTION" INTO THE SUBSPACE
@@ -530,12 +475,10 @@ int32_t PDF_ITERATIONS( cudaDeviceProp* prop,
 				// I'M GOING TO FIND THE NEAREST GRID NODES TO EACH PARTICLE
 				
 				GPU_PDF.resize(Grid_Nodes, 0);	// PDF is reset to 0, so that we may use atomic adding at the remeshing step
-
-				#if OUTPUT_INFO
-				start_3 = std::chrono::high_resolution_clock::now();
-
 				Threads = fminf(THREADS_P_BLK, Block_Particles);
 				Blocks  = floorf((Block_Particles - 1) / Threads) + 1;
+
+			start_3 = std::chrono::high_resolution_clock::now();
 				RESTART_GRID_FIND_GN<TYPE><<< Blocks, Threads >>>(	rpc(GPU_Part_Position,0),
 																	rpc(GPU_PDF,0),
 																	rpc(GPU_lambdas,0),
@@ -549,29 +492,12 @@ int32_t PDF_ITERATIONS( cudaDeviceProp* prop,
 																	Random_Samples_Blk_size,
 																	Sample_idx_offset_init,
 																	rpc(__D__Domain_Boundary,0));
-				gpuError_Check(cudaDeviceSynchronize());
-						
-				end_3 = std::chrono::high_resolution_clock::now();
+				gpuError_Check(cudaDeviceSynchronize());		
+			end_3 = std::chrono::high_resolution_clock::now();
 				duration_3 = end_3 - start_3;
+			#if OUTPUT_INFO
 				std::cout << "Remeshing took " << duration_3.count() << " seconds\n";
-
-				#else
-				Threads = fminf(THREADS_P_BLK, Block_Particles);
-				Blocks  = floorf((Block_Particles - 1) / Threads) + 1;
-				RESTART_GRID_FIND_GN<TYPE><<< Blocks, Threads >>>(	rpc(GPU_Part_Position,0),
-																	rpc(GPU_PDF,0),
-																	rpc(GPU_lambdas,0),
-																	rpc(GPU_Parameter_Mesh,0),
-																	rpc(GPU_nSamples,0),
-																	search_radius,
-																	H_Mesh[0],
-																	disc_X,
-																	PtsPerDim,
-																	Adapt_Points,
-																	Random_Samples_Blk_size,
-																	Sample_idx_offset_init,
-																	rpc(__D__Domain_Boundary,0));
-				gpuError_Check(cudaDeviceSynchronize());
+			#else
 				#endif
 			}
 
@@ -593,7 +519,7 @@ int32_t PDF_ITERATIONS( cudaDeviceProp* prop,
 			auto end_2 = std::chrono::high_resolution_clock::now();
 
 			std::chrono::duration<float> duration_2 = end_2 - start_2;
-			std::cout << "Liouville iteration took " << duration_2.count() << " seconds\n";
+			std::cout << "Total Liouville iteration took " << duration_2.count() << " seconds\n";
 			std::cout << "/ ------------------------------------------------------------------- /\n";
 
 			// Store info in cumulative variable

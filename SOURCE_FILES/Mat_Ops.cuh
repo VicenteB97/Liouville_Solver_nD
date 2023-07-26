@@ -100,6 +100,91 @@ __global__ void Exh_PP_Search(	const gridPoint* Search_Particles,
 	}
 }
 
+
+// ================================================================================================= //
+// ================================================================================================= //
+// ================================================================================================= //
+// ================================================================================================= //
+// ================================================================================================= //
+// ================================================================================================= //
+// ================================================================================================= //
+
+// __global__ void BIN_PARTICLES(	gridPoint* Particles, 
+// 								uint32_t* Bins, 
+// 								uint32_t* Bin_counter, 
+// 								const gridPoint* lowest_node, 
+// 								const double discretization_length, 
+// 								const uint32_t PtsPerDimension,
+// 								const uint32_t Particle_count){
+
+// 	uint64_t globalID = blockDim.x * blockIdx.x + threadIdx.x;
+
+// 	if(globalID < Particle_count){
+
+// 		// Find nearest grid node
+// 		uint32_t nearest_idx = 0;
+// 		#pragma unroll
+// 		for (uint16_t d = 0; d < DIMENSIONS; d++){
+// 			nearest_idx += roundf((T) (Particles.dim[d] - lowest_node.dim[d]) / discretization_length) * pow(PtsPerDimension, d);
+// 		}	
+
+// 		uint16_t counter_prev = atomicAdd(&Bin_counter[nearest_idx], 1);
+// 		Bins[nearest_idx + counter]
+// 	}
+
+// }
+
+// template<class T>
+// /// @brief Exhaustive PP search (in the respective parameter sample neighborhood)
+// /// @param Search_Particles 
+// /// @param Fixed_Particles 
+// /// @param Index_Array 
+// /// @param Matrix_Entries 
+// /// @param Num_Neighbors 
+// /// @param max_neighbor_num 
+// /// @param Adapt_Points 
+// /// @param Total_Particles 
+// /// @param search_radius 
+// /// @return 
+// __global__ void __BIN_Exh_PP_Search(const gridPoint* Search_Particles, 
+// 									const gridPoint* Fixed_Particles, 
+// 									int32_t* Index_Array, 
+// 									T* Matrix_Entries, 
+// 									int32_t* Num_Neighbors, 
+// 									const int32_t max_neighbor_num, 
+// 									const int32_t Adapt_Points, 
+// 									const int32_t Total_Particles, 
+// 									const T search_radius,
+// 									const gridPoint* Boundary) {
+
+// 	const int64_t i = blockDim.x * blockIdx.x + threadIdx.x;
+
+// 	if (i < Total_Particles) {		
+// 		const gridPoint FP_aux	= Fixed_Particles[i];
+// 		int32_t			aux		= 1;
+// 		const uint32_t	i_aux	= floorf(i / Adapt_Points);										// Tells me what parameter sample I'm at
+// 		const int32_t	k		= i * max_neighbor_num;
+// 		T				dist;
+
+// 		Index_Array[k]		= i;
+// 		Matrix_Entries[k]	= RBF(search_radius, 0);
+
+// 		if(__is_in_domain(FP_aux, Boundary)){
+// 			for (uint32_t j = i_aux * Adapt_Points; j < (i_aux + 1) * Adapt_Points; j++) {		// neighborhood where I'm searching
+
+// 				dist = Distance(Search_Particles[j], FP_aux) / search_radius;	// normalized distance between particles
+
+// 				if (dist <= 1 && aux < max_neighbor_num && j != i && __is_in_domain(Search_Particles[j], Boundary)) {
+// 					Index_Array[k + aux] = j;
+// 					Matrix_Entries[k + aux] = RBF(search_radius, dist);
+// 					aux++;
+// 				}
+// 			}
+// 			Num_Neighbors[i] = aux;
+// 		}
+// 	}
+// }
+
 //---------------------------------------------------------------------------------------------------------------------//
 //---------------------------------------------------------------------------------------------------------------------//
 
@@ -304,7 +389,7 @@ if (i < Adapt_Pts * Block_samples) {
 		
 		T dist;
 
-	// I want to compute the index of the lowest neighboring grid node and build its nearest neighbors
+	// I want to compute the index of the lowest neighboring grid node (imagine the lowest corner of a box) and build its nearest neighbors
 		int32_t 	lowest_idx = 0;
 		gridPoint	temp_gridNode;
 		gridPoint	fixed_gridNode = lowest_node;
@@ -393,7 +478,7 @@ if (i < Adapt_Pts * Block_samples) {
 	if(__is_in_domain(particle, Boundary)){
 		T dist;
 
-		// I want to compute the index of the lowest neighboring grid node and build its nearest neighbors
+		// I want to compute the index of the lowest neighboring grid node (imagine the lowest corner of a box) and build its nearest neighbors
 		int32_t 	lowest_idx = 0;
 		gridPoint	temp_gridNode;
 		gridPoint	fixed_gridNode = lowest_node;

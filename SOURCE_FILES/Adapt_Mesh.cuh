@@ -80,6 +80,7 @@ __global__ void D__Wavelet_Transform__F(T* 					PDF,
 	}
 }
 
+
 int16_t ADAPT_MESH_REFINEMENT_nD(const thrust::host_vector<TYPE>& H_PDF, thrust::device_vector<TYPE>* D__PDF, std::vector<TYPE>* AdaptPDF, const gridPoint* H_Mesh, std::vector<gridPoint>* AdaptGrid, const int LvlFine, const int LvlCoarse, const int PtsPerDim) {
 	// Final AMR procedure
 
@@ -114,12 +115,12 @@ int16_t ADAPT_MESH_REFINEMENT_nD(const thrust::host_vector<TYPE>& H_PDF, thrust:
 	AdaptGrid->resize(counter);
 	AdaptPDF ->resize(counter);
 
-	for(uint32_t k = 0; k < counter; k++){
+	#pragma omp parallel for
+	for(int32_t k = 0; k < counter; k++){
 		AdaptGrid->at(k) = H_Mesh[H__Node_selection[k].node];
 		AdaptPDF ->at(k) = H_PDF [H__Node_selection[k].node];
 	}
 
 	return 0;
 }
-
 #endif
