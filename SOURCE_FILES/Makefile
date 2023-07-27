@@ -11,14 +11,14 @@ compile_release:
 	mkdir ../BUILD_FILES
 	rm -rf ../SIMULATION_OUTPUT
 	mkdir ../SIMULATION_OUTPUT
-	cmake -DCMAKE_BUILD_TYPE=Debug -S . -B ../BUILD_FILES/Release 
+	cmake -DCMAKE_BUILD_TYPE=Release -S . -B ../BUILD_FILES/Release 
 	cmake --build ../BUILD_FILES/Release
 
 Total_debug:
-	make compile && cd ../BUILD_FILES/Debug && clear && ./Simulation
+	make compile_debug && cd ../BUILD_FILES/Debug && clear && ./Simulation
 
 Total_release:
-	make compile && cd ../BUILD_FILES/Release && clear && ./Simulation
+	make compile_release && cd ../BUILD_FILES/Release && clear && ./Simulation
 
 update_debug:
 	cmake --build ../BUILD_FILES/Debug && clear && cd ../BUILD_FILES/Debug && ./Simulation

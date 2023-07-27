@@ -26,16 +26,16 @@
 #define CASE "SIR System"
 
 // Operating system where the application will be run
-#define IS_WINDOWS true
+#define IS_WINDOWS false
 
 //Define the number of threads per block (128 for consumer GPUs such as the RTX3060 or Quadro RTX4000)
-#define THREADS_P_BLK 512
+#define THREADS_P_BLK 128
 
 // This variable controls the size of the files where the simulations are saved
 #define MAX_FILE_SIZE_B 1024*1024*1024
 
 // Choosing whether showing full or simplified timing information
-#define OUTPUT_INFO true
+#define OUTPUT_INFO false
 
 #define TYPE float     // only supported values are 'float' and 'double'
 

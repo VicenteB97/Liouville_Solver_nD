@@ -331,7 +331,8 @@ __host__ int32_t CONJUGATE_GRADIENT_SOLVE(	thrust::device_vector<T>&		GPU_lambda
 			#endif
 
 			flag = false;
-			return 0;
+			output = 0;
+			break;
 		}
 		else if (k > max_steps) {
 			std::cout << "No convergence was obtained after reaching max. allowed iterations. Last residual norm was: " << r_norm << "\n";
@@ -350,7 +351,7 @@ __host__ int32_t CONJUGATE_GRADIENT_SOLVE(	thrust::device_vector<T>&		GPU_lambda
 			k++;
 		}
 	}
-	return 0;
+	return output;
 }
 
 template<class T>
