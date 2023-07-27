@@ -76,20 +76,22 @@ __global__ void Exh_PP_Search(	const gridPoint* Search_Particles,
 
 	if (i < Total_Particles) {		
 		const gridPoint FP_aux	= Fixed_Particles[i];
-		int32_t			aux		= 1;
+		uint32_t			aux	= 1;
 		const uint32_t	i_aux	= floorf(i / Adapt_Points);										// Tells me what parameter sample I'm at
-		const int32_t	k		= i * max_neighbor_num;
+		const int64_t	k		= i * max_neighbor_num;
 		T				dist;
 
 		Index_Array[k]		= i;
 		Matrix_Entries[k]	= RBF(search_radius, 0);
 
 		if(__is_in_domain(FP_aux, Boundary)){
-			for (uint32_t j = i_aux * Adapt_Points; j < (i_aux + 1) * Adapt_Points; j++) {		// neighborhood where I'm searching
+			for (uint64_t j = i_aux * Adapt_Points; j < (i_aux + 1) * Adapt_Points; j++) {		// neighborhood where I'm searching
 
-				dist = Distance(Search_Particles[j], FP_aux) / search_radius;	// normalized distance between particles
+				gridPoint Temp_Particle = Search_Particles[j];
 
-				if (dist <= 1 && aux < max_neighbor_num && j != i && __is_in_domain(Search_Particles[j], Boundary)) {
+				dist = Distance(Temp_Particle, FP_aux) / search_radius;	// normalized distance between particles
+
+				if (dist <= 1 && aux < max_neighbor_num && j != i && __is_in_domain(Temp_Particle, Boundary)) {
 					Index_Array[k + aux] = j;
 					Matrix_Entries[k + aux] = RBF(search_radius, dist);
 					aux++;
@@ -264,6 +266,8 @@ __host__ int32_t CONJUGATE_GRADIENT_SOLVE(	thrust::device_vector<T>&		GPU_lambda
 	const uint16_t Threads = (uint32_t)fminf(THREADS_P_BLK, Total_Particles);
 	const uint64_t Blocks  = (uint32_t)floorf((Total_Particles - 1) / Threads) + 1;
 
+	int16_t output = 0;
+
 	// ------------------ AUXILIARIES FOR THE INTEPROLATION PROC. ------------------------------- //
 	thrust::device_vector<T>	GPU_R	(Total_Particles);		// residual vector
 	thrust::device_vector<T>	GPU_temp(Total_Particles);		// auxiliary vector for computation storage
@@ -334,7 +338,9 @@ __host__ int32_t CONJUGATE_GRADIENT_SOLVE(	thrust::device_vector<T>&		GPU_lambda
 			std::cout << "/-------------------------------------------------------------------/\n";
 
 			std::cin.get();
-			return -1;
+			output = -1;
+			flag = false;
+			break;
 		}
 		else {
 			beta = r_norm * r_norm / R0_norm;

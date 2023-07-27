@@ -29,7 +29,7 @@
 #define IS_WINDOWS true
 
 //Define the number of threads per block (128 for consumer GPUs such as the RTX3060 or Quadro RTX4000)
-#define THREADS_P_BLK 128
+#define THREADS_P_BLK 512
 
 // This variable controls the size of the files where the simulations are saved
 #define MAX_FILE_SIZE_B 1024*1024*1024
@@ -40,9 +40,9 @@
 #define TYPE float     // only supported values are 'float' and 'double'
 
 // AMR tolerance, Conjugate Gradient tolerance and number of discretization size for the radius of the RBFs
-#define TOLERANCE_AMR       0.01
+#define TOLERANCE_AMR       0.005
 #define TOLERANCE_ConjGrad  powf(10,-6)     // RECOMMENDED: This appears to give good results...no need to change it
-#define DISC_RADIUS         3.45
+#define DISC_RADIUS         4.45
 
 // // DEFINE WHETHER WE WILL USE THE ADATIVE TIME STEPPING WITH "NO" POINT SEARCH PHASE
 // #define TIME_ADAPTIVE       true            // VAL: 0.07. 
