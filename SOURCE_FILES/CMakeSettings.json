@@ -1,0 +1,33 @@
+﻿{
+  "configurations": [
+    {
+      "name": "x64-Debug",
+      "generator": "Ninja",
+      "configurationType": "Debug",
+      "inheritEnvironments": [ "msvc_x64_x64" ],
+      "buildRoot": "C:/Users/Vicente/source/repos/Liouville_Solver_nD/BUILD_FILES/Debug",
+      "installRoot": "$C:/Users/Vicente/source/repos/Liouville_Solver_nD/BUILD_FILES/${name}",
+      "cmakeCommandArgs": "",
+      "buildCommandArgs": "",
+      "ctestCommandArgs": "",
+      "variables": [
+        {
+          "name": "CMAKE_INSTALL_PREFIX",
+          "type": "PATH",
+          "value": "C:/Users/Vicente/Source/Repos/Liouville_Solver_nD/BUILD_FILES"
+        }
+      ]
+    },
+    {
+      "name": "x64-Release",
+      "generator": "Ninja",
+      "configurationType": "RelWithDebInfo",
+      "buildRoot": "C:/Users/Vicente/source/repos/Liouville_Solver_nD/BUILD_FILES/Release",
+      "installRoot": "${projectDir}\\out\\install\\${name}",
+      "cmakeCommandArgs": "",
+      "buildCommandArgs": "",
+      "ctestCommandArgs": "",
+      "inheritEnvironments": [ "msvc_x64_x64" ]
+    }
+  ]
+}
