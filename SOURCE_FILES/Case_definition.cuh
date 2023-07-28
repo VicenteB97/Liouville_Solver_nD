@@ -25,9 +25,6 @@
 // Name of the case being simulated
 #define CASE "SIR System"
 
-// Operating system where the application will be run
-// #define IS_WINDOWS false
-
 //Define the number of threads per block (128 for consumer GPUs such as the RTX3060 or Quadro RTX4000)
 #define THREADS_P_BLK 256
 
