@@ -1,6 +1,0 @@
-/mnt/c/Users/Vicentin/source/repos/Liouville_Solver_nD/BUILD_FILES/Release/CMakeFiles/Solver_Lib.dir
-/mnt/c/Users/Vicentin/source/repos/Liouville_Solver_nD/BUILD_FILES/Release/CMakeFiles/Simulation.dir
-/mnt/c/Users/Vicentin/source/repos/Liouville_Solver_nD/BUILD_FILES/Release/CMakeFiles/edit_cache.dir
-/mnt/c/Users/Vicentin/source/repos/Liouville_Solver_nD/BUILD_FILES/Release/CMakeFiles/rebuild_cache.dir
-/mnt/c/Users/Vicentin/source/repos/Liouville_Solver_nD/BUILD_FILES/Release/Configured/CMakeFiles/edit_cache.dir
-/mnt/c/Users/Vicentin/source/repos/Liouville_Solver_nD/BUILD_FILES/Release/Configured/CMakeFiles/rebuild_cache.dir
