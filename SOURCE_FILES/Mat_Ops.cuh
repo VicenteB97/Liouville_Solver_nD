@@ -65,7 +65,7 @@ __global__ void Exh_PP_Search(	const gridPoint* Search_Particles,
 								const gridPoint* Fixed_Particles, 
 								int32_t* Index_Array, 
 								T* Matrix_Entries, 
-								int32_t* Num_Neighbors, 
+								uint32_t* Num_Neighbors, 
 								const int32_t max_neighbor_num, 
 								const int32_t Adapt_Points, 
 								const int32_t Total_Particles, 
@@ -216,7 +216,7 @@ template<class T>
 /// @param Interaction_Lengths 
 /// @param Max_Neighbors 
 /// @return 
-__global__ void MATRIX_VECTOR_MULTIPLICATION(T* X, const T* x0, const int32_t* Matrix_idxs, const T* Matrix_entries, const int32_t total_length, const int32_t* Interaction_Lengths, const int32_t Max_Neighbors) {
+__global__ void MATRIX_VECTOR_MULTIPLICATION(T* X, const T* x0, const int32_t* Matrix_idxs, const T* Matrix_entries, const int32_t total_length, const uint32_t* Interaction_Lengths, const int32_t Max_Neighbors) {
 
 	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;	// For each i, which represents the matrix row, we read the index positions and multiply against the particle weights
 
@@ -254,7 +254,7 @@ template<class T>
 __host__ int32_t CONJUGATE_GRADIENT_SOLVE(	thrust::device_vector<T>&		GPU_lambdas,
 											thrust::device_vector<int32_t>& GPU_Index_array,
 											thrust::device_vector<T>&		GPU_Mat_entries,
-											thrust::device_vector<int32_t>& GPU_Num_Neighbors,
+											thrust::device_vector<uint32_t>& GPU_Num_Neighbors,
 											thrust::device_vector<T>&		GPU_AdaptPDF,
 											const int32_t					Total_Particles,
 											const int32_t					MaxNeighborNum,
