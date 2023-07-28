@@ -426,16 +426,16 @@ int32_t PDF_ITERATIONS(cudaDeviceProp* prop,
 				// ----------------------------------------------------------------------------------- //
 				// 1.- Build Matix in GPU (indexes, dists and neighbors) Using Exahustive search...
 				start_3 = std::chrono::high_resolution_clock::now();
-				Exh_PP_Search<TYPE> << <Blocks, Threads >> > (rpc(GPU_Part_Position, 0),
-					rpc(GPU_Part_Position, 0),
-					rpc(GPU_Index_array, 0),
-					rpc(GPU_Mat_entries, 0),
-					rpc(GPU_Num_Neighbors, 0),
-					MaxNeighborNum,
-					Adapt_Points,
-					Block_Particles,
-					search_radius,
-					rpc(__D__Domain_Boundary, 0));
+				Exh_PP_Search<TYPE> << <Blocks, Threads >> > (	rpc(GPU_Part_Position, 0),
+																rpc(GPU_Part_Position, 0),
+																rpc(GPU_Index_array, 0),
+																rpc(GPU_Mat_entries, 0),
+																rpc(GPU_Num_Neighbors, 0),
+																MaxNeighborNum,
+																Adapt_Points,
+																Block_Particles,
+																search_radius,
+																rpc(__D__Domain_Boundary, 0));
 				gpuError_Check(cudaDeviceSynchronize());
 				end_3 = std::chrono::high_resolution_clock::now();
 				duration_3 = end_3 - start_3;
