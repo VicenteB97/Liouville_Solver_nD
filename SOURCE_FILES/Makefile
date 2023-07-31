@@ -3,7 +3,7 @@ compile_debug:
 	mkdir ../BUILD_FILES
 	rm -rf ../SIMULATION_OUTPUT
 	mkdir ../SIMULATION_OUTPUT
-	cmake -DCMAKE_BUILD_TYPE=Release -S . -B ../BUILD_FILES/Debug
+	cmake -S . -B ../BUILD_FILES/Debug -DCMAKE_BUILD_TYPE=Debug
 	cmake --build ../BUILD_FILES/Debug
 
 compile_release:
@@ -11,7 +11,7 @@ compile_release:
 	mkdir ../BUILD_FILES
 	rm -rf ../SIMULATION_OUTPUT
 	mkdir ../SIMULATION_OUTPUT
-	cmake -DCMAKE_BUILD_TYPE=Release -S . -B ../BUILD_FILES/Release 
+	cmake -S . -B ../BUILD_FILES/Release -DCMAKE_BUILD_TYPE=Release
 	cmake --build ../BUILD_FILES/Release
 
 Total_debug:
