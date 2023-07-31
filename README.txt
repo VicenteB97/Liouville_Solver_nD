@@ -17,13 +17,18 @@ CMake version 3.25
 Boost Library (save the include folder in the include folder of MSVC)
 
 IMPORTANT NOTES:
-- To initialize the project, enter the "SOURCE_FILES" folder, and type "make " with the specific option you want:
-    - "make compile_X": erase the previous build and SIMULATION_OUTPUT folders and compiles the solution.
-    - "make total_X": Same as before, but runs the executable afterwards.
-    - "make update_X": Updates files in the build directory and executes the executable.
-  Use "Compile" and "Total" on the first time it is executed in a computer, and use "Update" afterwards.
-  The executable is generated in "../BUILD_FILES/X".
-  Check the Makefile for the different options for X.
+- Set the build system in the CMakeLists.txt file (Linux or Windows)
+- To initialize the project, enter the "SOURCE_FILES" folder, and:
+  - (LINUX) Type "make " with the specific option you want:
+      - "make compile_X": erase the previous build and SIMULATION_OUTPUT folders and compiles the solution.
+      - "make total_X": Same as before, but runs the executable afterwards.
+      - "make update_X": Updates files in the build directory and executes the executable.
+    Use "Compile" and "Total" on the first time it is executed in a computer, and use "Update" afterwards.
+    The executable is generated in "../BUILD_FILES/X".
+    Check the Makefile for the different options for X.
+
+  -(WINDOWS) Type cmake -S . -B ../BUILD_FILES -G "Visual Studio 17 2022" (or whatever version you have)
+  After it's done, type cmake --build ../BUILD_FILES --config Y (Y can be either 'Debug' or 'Release', without que quotes)
 
 - To run the simulation (without the make commands), go to "../BUILD_FILES/X" and then call the executable:
     - "./Simulation" for Linux/WSL
