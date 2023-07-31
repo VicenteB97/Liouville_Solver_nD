@@ -1,18 +1,11 @@
-function [FinalRegion_bound,Int_output] = ComputeRegion(f_Disc,confidenceLvl,h,DIMENSIONS)
+function [FinalRegion_bound,Int_output] = ComputeRegion(PDF,confidenceLvl,h,DIMENSIONS)
 if confidenceLvl==1
     FinalRegion_bound=1e-9;
     Int_output = 1;
 else
-
-%     %transform the matrix to a vector
-%     sz_vec=size(pdf);
-%     f_Disc=zeros(1,sz_vec(1)*sz_vec(2));
-%     for j=1:sz_vec(2)
-%         for i=1:sz_vec(1)
-%             f_Disc(i+sz_vec(1)*j)=pdf(i,j);
-%         end
-%     end
     
+    f_Disc = reshape(PDF.',1,[]);
+
     % First, we sort the values vector (using the GPU...much faster):
     f_disc_gpu=gpuArray(f_Disc);
     f_disc_gpu=sort(f_disc_gpu,'descend');
@@ -20,7 +13,9 @@ else
 
 %     f_Disc=sort(f_Disc,'descend');
     
-    tol=0.01;
+%     tol=0.01;
+    tol=0.05;
+
     % We are given the points as vectors, we are going to try and compute the
     % condidence region as a level set
     IntegralA=1;

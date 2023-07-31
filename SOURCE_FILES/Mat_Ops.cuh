@@ -445,53 +445,38 @@ if (i < Adapt_Pts * Block_samples) {
 }
 }
 
-template<class T>
-/// @brief 
-/// @param Particle_Positions 
-/// @param PDF 
-/// @param lambdas 
-/// @param Fixed_Mesh 
-/// @param Impulse_weights 
-/// @param search_radius 
-/// @param lowest_node 
-/// @param grid_discretization_length 
-/// @param PtsPerDimension 
-/// @param Adapt_Pts 
-/// @param Total_Particles 
-/// @return 
 __global__ void RESTART_GRID_FIND_GN_II(gridPoint*  Particle_Positions,
-										T* 		PDF,
-										T* 		lambdas,
+										float* 		PDF,
+										float* 		lambdas,
 										const Impulse_Param_vec* Impulse_weights,
-										const T 	search_radius,
+										const float 	search_radius,
 										const gridPoint lowest_node,
-										const T 	grid_discretization_length,
+										const float 	grid_discretization_length,
 										const int32_t	 	PtsPerDimension,
 										const int32_t	 	Adapt_Pts,
-										const int32_t	 	Block_samples,
+										const int32_t	 	Current_sample,
 										const gridPoint* Boundary) {
 // OUTPUT: New values of the PDF at the fixed grid
 
-const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
+const u_int64_t i = blockDim.x * blockIdx.x + threadIdx.x;
 
-if (i < Adapt_Pts * Block_samples) {
-	uint32_t num_neighbors_per_dim 	 = 2 * floorf(search_radius / grid_discretization_length) + 1;
-	uint32_t num_neighbors_per_particle = pow(num_neighbors_per_dim, DIMENSIONS);
-	uint32_t Current_sample			 = floorf(i / Adapt_Pts);
+if (i < Adapt_Pts) {
+	int32_t num_neighbors_per_dim 		= (int32_t) 2 * floorf(search_radius / grid_discretization_length) + 1;
+	int32_t num_neighbors_per_particle 	= (int32_t) pow(num_neighbors_per_dim, DIMENSIONS);
 
-	gridPoint 	particle 		= Particle_Positions[i];
-	T 		weighted_lambda = lambdas[i] * Impulse_weights[Current_sample].Joint_PDF;		// the specific sample weight
+	gridPoint 	particle 		= Particle_Positions[i + Current_sample * Adapt_Pts];
+	float 		weighted_lambda = lambdas[i + Current_sample * Adapt_Pts] * Impulse_weights[Current_sample].Joint_PDF;				// the specific sample weight
 
 	if(__is_in_domain(particle, Boundary)){
-		T dist;
+		float dist;
 
-		// I want to compute the index of the lowest neighboring grid node (imagine the lowest corner of a box) and build its nearest neighbors
+		// I want to compute the index of the lowest neighboring grid node and build its nearest neighbors
 		int32_t 	lowest_idx = 0;
 		gridPoint	temp_gridNode;
 		gridPoint	fixed_gridNode = lowest_node;
 		
 		#pragma unroll
-		for (uint16_t d = 0; d < DIMENSIONS; d++){
+		for (u_int16_t d = 0; d < DIMENSIONS; d++){
 			int32_t temp_idx = roundf((float) (particle.dim[d] - lowest_node.dim[d]) / grid_discretization_length) - floorf((float) search_radius / grid_discretization_length);
 			lowest_idx += temp_idx * pow(PtsPerDimension, d);
 
@@ -499,7 +484,7 @@ if (i < Adapt_Pts * Block_samples) {
 		}	
 		
 		// store the lowest sparse index identification (remember we are alredy storing the transposed matrix. The one we will need for multiplication)
-		if (lowest_idx >= 0 && lowest_idx < pow(PtsPerDimension, DIMENSIONS) && __is_in_domain(fixed_gridNode, Boundary)){
+		if (lowest_idx > 0 && lowest_idx < (int32_t) pow(PtsPerDimension, DIMENSIONS) && __is_in_domain(fixed_gridNode, Boundary)){
 			dist = Distance(fixed_gridNode, particle) / search_radius;
 			if (dist <= 1){
 				dist = RBF(search_radius, dist) * weighted_lambda;
@@ -508,20 +493,20 @@ if (i < Adapt_Pts * Block_samples) {
 		}
 
 	// now, go through all the neighboring grid nodes and add the values to the PDF field
-		for(uint32_t j = 1; j < num_neighbors_per_particle; j++){
+		for(u_int32_t j = 1; j < num_neighbors_per_particle; j++){
 
 			int32_t idx 	= lowest_idx;
 			temp_gridNode 	= fixed_gridNode;
 
 			#pragma unroll
-			for (uint16_t d = 0; d < DIMENSIONS; d++){
-				int32_t temp_idx = floorf( positive_rem(j, pow(num_neighbors_per_dim, d + 1)) / pow(num_neighbors_per_dim, d) ); 
+			for (u_int16_t d = 0; d < DIMENSIONS; d++){
+				int32_t temp_idx = (int32_t) floorf( positive_rem(j, (int32_t)pow(num_neighbors_per_dim, d + 1)) / pow(num_neighbors_per_dim, d) ); 
 				idx += temp_idx * pow(PtsPerDimension, d);
 
 				temp_gridNode.dim[d] = temp_idx * grid_discretization_length + fixed_gridNode.dim[d];
 			}
 
-			if (idx >= 0 && idx < pow(PtsPerDimension, DIMENSIONS) && __is_in_domain(temp_gridNode,Boundary))
+			if (idx > 0 && idx < (int32_t) pow(PtsPerDimension, DIMENSIONS) && __is_in_domain(temp_gridNode,Boundary))
 			{
 				dist = Distance(temp_gridNode, particle) / search_radius;
 				if (dist <= 1){

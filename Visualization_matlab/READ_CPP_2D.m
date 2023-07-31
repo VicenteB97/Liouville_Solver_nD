@@ -16,7 +16,6 @@ Name_var2 = 'A_E';
 %% CHANGE FOR YOUR CURRENT COMPUTER
 
 Info=readcell('../SIMULATION_OUTPUT/Simulation_Info_0.csv');
-Data=readmatrix('../SIMULATION_OUTPUT/Mean_PDFs_0.csv');
 
 Points_X = [0,1,2,3,4,5,6,7];
 Points_Y = [0.018,0.941,0.868,0.787,0.759,0.39,0.4,0.246];
@@ -31,7 +30,16 @@ X   =Info{1,3}:h_X:Info{1,4};
 h_Y =(Info{1,6}-Info{1,5})/(Pts_Per_Dimension-1); 
 Y   =Info{1,5}:h_X:Info{1,6};
 
-F_Output=zeros(Pts_Per_Dimension, Pts_Per_Dimension);
+timesteps = length(Info);
+%%
+fileID = fopen('../SIMULATION_OUTPUT/Mean_PDFs_0.bin');
+Data=fread(fileID,[Pts_Per_Dimension^2,timesteps],'float');
+fclose(fileID);
+
+%%
+[x,y] = meshgrid(X,Y);
+
+F_Output = reshape(Data,[Pts_Per_Dimension Pts_Per_Dimension timesteps]);
 
 aux = size(Info)-1;
 t=zeros(aux(2),1);
@@ -48,36 +56,30 @@ Stats_1D_Y  = zeros(length(t),6);
 for k=1:aux(2)
 
     t(k)=Info{2,k};
-    parfor j=1:Pts_Per_Dimension
-        for i=1:Pts_Per_Dimension
-            i_aux=i+(j-1)*Pts_Per_Dimension+(k-1)*Total_Pts;
-            F_Output(i,j) = Data(1,i_aux);
-        end
-    end
     
-    Integral_values(k)=h_X*h_Y*sum(F_Output(:,:),'all');
+    Integral_values(k)=h_X*h_Y*sum(F_Output(:,:,k),'all');
 
     f=figure(1); % show the interpolated function and the confidence region obtained with the bisection method
     
     % MARGINAL DENISTY
     for i=1:Pts_Per_Dimension
-        MargX(i,k) = sum(F_Output(i,:)).*h_X;
+        MargX(i,k) = sum(F_Output(i,:,k)).*h_X;
     end
     Stats_1D_X(k,:) = Stats(MargX(:,k),X,0.95);
     for i=1:Pts_Per_Dimension
-        MargY(i,k)  = sum(F_Output(:,i)).*h_Y;
+        MargY(i,k)  = sum(F_Output(:,i,k)).*h_Y;
     end
     Stats_1D_Y(k,:) = Stats(MargY(:,k),Y,0.95);
 
     % DO WE WANT AMR GRAPH?
     if Show_AMR
         % SHOW AMR IN EACH CASE
-        [MeshId,val,GridPt,f_Disc] = AMR(F_Output(:,:),log2(Pts_Per_Dimension),0,X,Y,3.5e-4);
+        [MeshId,val,GridPt,f_Disc] = AMR(F_Output(:,:,k),log2(Pts_Per_Dimension),0,X,Y,1e-5);
 
         % Function with the confidence region curve
         subplot(1,2,1)
-%         contour(X,Y,F_Output(:,:),25);view(0,90); grid on; grid minor;
-        mesh(X,Y,F_Output(:,:));view(0,90); grid on; grid minor;colormap('jet')
+%         contour(X,Y,F_Output(:,:,k),25);view(0,90); grid on; grid minor;
+        mesh(X,Y,F_Output(:,:,k));view(0,90); grid on; grid minor;colormap('jet')
         title(['Current time: ',num2str(t(k))]); colorbar;
         ylabel(Name_var1);xlabel(Name_var2);
         
@@ -88,9 +90,9 @@ for k=1:aux(2)
             confidenceLvl = 0.95;
             confidenceLvl = confidenceLvl * (Integral_values(k));
         
-            f_low = ComputeRegion(F_Output(:,:),confidenceLvl,X(end)-X(1),Y(end)-Y(1),h_X); % 1 for the ensemble region
-            [~,c]=contour(X,Y,F_Output(:,:),[f_low,f_low],'r','ShowText','off');
-            c.LineWidth=2;
+            f_low = ComputeRegion(F_Output(:,:,k),confidenceLvl,h_X,2);
+            [~,c] = contour(X,Y,F_Output(:,:,k),[f_low,f_low],'r','ShowText','off');
+            c.LineWidth = 2;
             c.ZLocation = f_low;
             
             hold off;
@@ -103,7 +105,7 @@ for k=1:aux(2)
         
         f.Position(3:4) = [1000,400]; % the correct form is 5:2 ( = 10:4 ...with 1.2 scaling in this case)
     else
-        mesh(X,Y,F_Output(:,:));view(0,90); grid on; grid minor;colormap('jet')
+        mesh(X,Y,F_Output(:,:,k));view(0,90); grid on; grid minor;colormap('jet')
         title(['Current time: ',num2str(t(k))]); colorbar;
         ylabel(Name_var1);xlabel(Name_var2);
         
@@ -114,8 +116,8 @@ for k=1:aux(2)
             confidenceLvl = 0.95;
             confidenceLvl = confidenceLvl * (Integral_values(k));
         
-            f_low = ComputeRegion(F_Output(:,:),confidenceLvl,X(end)-X(1),Y(end)-Y(1),h_X); % 1 for the ensemble region
-            [~,c]=contour(X,Y,F_Output(:,:),[f_low,f_low],'r','ShowText','off');
+            f_low = ComputeRegion(F_Output(:,:,k),confidenceLvl,h_X,2); % 1 for the ensemble region
+            [~,c]=contour(X,Y,F_Output(:,:,k),[f_low,f_low],'r','ShowText','off');
             c.LineWidth=2;
             c.ZLocation = f_low;
             
@@ -136,7 +138,7 @@ for k=1:aux(2)
     end
     
     % stats
-    Stats_2D(k,:)=StatInfo(F_Output(:,:),X,Y,h_X);
+    Stats_2D(k,:)=StatInfo(F_Output(:,:,k),X,Y,h_X);
 %     std_X(k)=sum((X(:)-Stats_2D(k,2)).^2.*MargX(:,k))*h_X;
 %     std_X(k)=sqrt(std_X(k));
 % 

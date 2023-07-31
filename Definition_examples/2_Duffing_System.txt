@@ -36,9 +36,9 @@
 #define TYPE float
 
 // AMR tolerance, Conjugate Gradient tolerance and number of discretization size for the radius of the RBFs
-#define TOLERANCE_AMR       0.00035
-#define TOLERANCE_ConjGrad  powf(10,-7)
-#define DISC_RADIUS         4.95
+#define TOLERANCE_AMR       0.0005
+#define TOLERANCE_ConjGrad  powf(10,-6)
+#define DISC_RADIUS         4.45
 
 // State variables information
 #define DIMENSIONS  2
