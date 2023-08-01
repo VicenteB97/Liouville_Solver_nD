@@ -17,32 +17,28 @@
 #include "Classes.cuh"
 
 #if DIMENSIONS == 1	//	You have to change this for the 1D normalized RBF
-	const FIXED_TYPE Mass_RBF = 0.333383333333333; // this is the: int_0^1 phi(r)dr 
+	#define Mass_RBF 0.333383333333333 // this is the: int_0^1 phi(r)dr 
 	/// @brief Radial Basis Function interpolation kernel
 	/// @param support_radius 
 	/// @param x Is the normalized distance, respect to the discretization
 	/// @return 
 	__device__ inline TYPE RBF(const TYPE support_radius, const TYPE x) {
-
 		return (TYPE)powf(fmaxf(0, 1 - x), 4) * (4 * x + 1) / (Mass_RBF *support_radius); // We multiply by this last factor to get the L1-normalized RBF
-
 	}
+
 #elif DIMENSIONS == 2
-	const FIXED_TYPE Mass_RBF = 0.071428571420238; // this is actually the: int_0^1 phi(r)r dr
+	#define Mass_RBF 0.071428571420238 // this is actually the: int_0^1 phi(r)r dr
 	/// @brief Radial Basis Function interpolation kernel
 	/// @param support_radius 
 	/// @param x Is the normalized distance, respect to the discretization
 	/// @return 
 	__device__ inline TYPE RBF(const TYPE support_radius, const TYPE x) {
-
 		return (TYPE)powf(fmaxf(0, 1 - x), 4.00f) * (4.00f * x + 1.00f) / (Mass_RBF * 2.00f * M_PI * powf(support_radius, (TYPE)DIMENSIONS)); // We multiply by this last factor to get the L1-normalized RBF
-
 	}
+	
 #elif DIMENSIONS == 3
 	__device__ inline TYPE RBF(const TYPE support_radius, const TYPE x) {
-
 		return (TYPE)powf(fmaxf(0, 1 - x), 4.00f) * (4.00f * x + 1.00f); // We multiply by this last factor to get the L1-normalized RBF
-
 	}
 #else
 	std::cout << "Error in 'Mat_Ops.cuh'. You are choosing an unavailable option. Go back to 'Case_definition.cuh' and re-check options for DIMENSIONS.\n"
@@ -72,7 +68,7 @@ __global__ void Exh_PP_Search(	const gridPoint* Search_Particles,
 								const T search_radius,
 								const gridPoint* Boundary) {
 
-	const int64_t i = blockDim.x * blockIdx.x + threadIdx.x;
+	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
 
 	if (i < Total_Particles) {		
 		const gridPoint FP_aux	= Fixed_Particles[i];
@@ -101,91 +97,6 @@ __global__ void Exh_PP_Search(	const gridPoint* Search_Particles,
 		}
 	}
 }
-
-
-// ================================================================================================= //
-// ================================================================================================= //
-// ================================================================================================= //
-// ================================================================================================= //
-// ================================================================================================= //
-// ================================================================================================= //
-// ================================================================================================= //
-
-// __global__ void BIN_PARTICLES(	gridPoint* Particles, 
-// 								uint32_t* Bins, 
-// 								uint32_t* Bin_counter, 
-// 								const gridPoint* lowest_node, 
-// 								const double discretization_length, 
-// 								const uint32_t PtsPerDimension,
-// 								const uint32_t Particle_count){
-
-// 	uint64_t globalID = blockDim.x * blockIdx.x + threadIdx.x;
-
-// 	if(globalID < Particle_count){
-
-// 		// Find nearest grid node
-// 		uint32_t nearest_idx = 0;
-// 		#pragma unroll
-// 		for (uint16_t d = 0; d < DIMENSIONS; d++){
-// 			nearest_idx += roundf((T) (Particles.dim[d] - lowest_node.dim[d]) / discretization_length) * pow(PtsPerDimension, d);
-// 		}	
-
-// 		uint16_t counter_prev = atomicAdd(&Bin_counter[nearest_idx], 1);
-// 		Bins[nearest_idx + counter]
-// 	}
-
-// }
-
-// template<class T>
-// /// @brief Exhaustive PP search (in the respective parameter sample neighborhood)
-// /// @param Search_Particles 
-// /// @param Fixed_Particles 
-// /// @param Index_Array 
-// /// @param Matrix_Entries 
-// /// @param Num_Neighbors 
-// /// @param max_neighbor_num 
-// /// @param Adapt_Points 
-// /// @param Total_Particles 
-// /// @param search_radius 
-// /// @return 
-// __global__ void __BIN_Exh_PP_Search(const gridPoint* Search_Particles, 
-// 									const gridPoint* Fixed_Particles, 
-// 									int32_t* Index_Array, 
-// 									T* Matrix_Entries, 
-// 									int32_t* Num_Neighbors, 
-// 									const int32_t max_neighbor_num, 
-// 									const int32_t Adapt_Points, 
-// 									const int32_t Total_Particles, 
-// 									const T search_radius,
-// 									const gridPoint* Boundary) {
-
-// 	const int64_t i = blockDim.x * blockIdx.x + threadIdx.x;
-
-// 	if (i < Total_Particles) {		
-// 		const gridPoint FP_aux	= Fixed_Particles[i];
-// 		int32_t			aux		= 1;
-// 		const uint32_t	i_aux	= floorf(i / Adapt_Points);										// Tells me what parameter sample I'm at
-// 		const int32_t	k		= i * max_neighbor_num;
-// 		T				dist;
-
-// 		Index_Array[k]		= i;
-// 		Matrix_Entries[k]	= RBF(search_radius, 0);
-
-// 		if(__is_in_domain(FP_aux, Boundary)){
-// 			for (uint32_t j = i_aux * Adapt_Points; j < (i_aux + 1) * Adapt_Points; j++) {		// neighborhood where I'm searching
-
-// 				dist = Distance(Search_Particles[j], FP_aux) / search_radius;	// normalized distance between particles
-
-// 				if (dist <= 1 && aux < max_neighbor_num && j != i && __is_in_domain(Search_Particles[j], Boundary)) {
-// 					Index_Array[k + aux] = j;
-// 					Matrix_Entries[k + aux] = RBF(search_radius, dist);
-// 					aux++;
-// 				}
-// 			}
-// 			Num_Neighbors[i] = aux;
-// 		}
-// 	}
-// }
 
 //---------------------------------------------------------------------------------------------------------------------//
 //---------------------------------------------------------------------------------------------------------------------//
@@ -458,7 +369,7 @@ __global__ void RESTART_GRID_FIND_GN_II(gridPoint*  Particle_Positions,
 										const gridPoint* Boundary) {
 // OUTPUT: New values of the PDF at the fixed grid
 
-const u_int64_t i = blockDim.x * blockIdx.x + threadIdx.x;
+const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
 
 if (i < Adapt_Pts) {
 	int32_t num_neighbors_per_dim 		= (int32_t) 2 * floorf(search_radius / grid_discretization_length) + 1;
@@ -476,7 +387,7 @@ if (i < Adapt_Pts) {
 		gridPoint	fixed_gridNode = lowest_node;
 		
 		#pragma unroll
-		for (u_int16_t d = 0; d < DIMENSIONS; d++){
+		for (uint16_t d = 0; d < DIMENSIONS; d++){
 			int32_t temp_idx = roundf((float) (particle.dim[d] - lowest_node.dim[d]) / grid_discretization_length) - floorf((float) search_radius / grid_discretization_length);
 			lowest_idx += temp_idx * pow(PtsPerDimension, d);
 
@@ -493,13 +404,13 @@ if (i < Adapt_Pts) {
 		}
 
 	// now, go through all the neighboring grid nodes and add the values to the PDF field
-		for(u_int32_t j = 1; j < num_neighbors_per_particle; j++){
+		for(uint32_t j = 1; j < num_neighbors_per_particle; j++){
 
 			int32_t idx 	= lowest_idx;
 			temp_gridNode 	= fixed_gridNode;
 
 			#pragma unroll
-			for (u_int16_t d = 0; d < DIMENSIONS; d++){
+			for (uint16_t d = 0; d < DIMENSIONS; d++){
 				int32_t temp_idx = (int32_t) floorf( positive_rem(j, (int32_t)pow(num_neighbors_per_dim, d + 1)) / pow(num_neighbors_per_dim, d) ); 
 				idx += temp_idx * pow(PtsPerDimension, d);
 
