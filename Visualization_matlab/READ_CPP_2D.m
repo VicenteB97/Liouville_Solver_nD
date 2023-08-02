@@ -53,7 +53,7 @@ Stats_2D    = zeros(length(t),5);
 Stats_1D_X  = zeros(length(t),6);
 Stats_1D_Y  = zeros(length(t),6);
 
-for k=1:aux(2)
+for k=1:timesteps
 
     t(k)=Info{2,k};
     
@@ -190,11 +190,11 @@ plot(t(:),Stats_2D(:,4),'.-',t(:),Stats_2D(:,5),'-');xlabel('Time');legend('Auto
 
 %% Graphs 2
 figure(2)
-time = t(1:20:end);
+time = t(1:end);
 
 temp_Y = zeros(length(Y),length(time));
 
-temp_Y(:,:)= MargY(:,1:20:end);
+temp_Y(:,:)= MargY(:,1:end);
 [X_mesh,T_mesh]=meshgrid(Y,time);
 w=waterfall(X_mesh,T_mesh,temp_Y(:,:)');
 w.EdgeColor = 'b';

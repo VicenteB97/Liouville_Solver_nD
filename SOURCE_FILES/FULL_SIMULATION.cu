@@ -171,9 +171,9 @@ auto end = std::chrono::high_resolution_clock::now();
 
 	bool saving_active = true;		// see if saving is still active
 
-	const uint64_t MEM_2_STORE = store_PDFs.size() * sizeof(float);
+	const uint64_t MEM_2_STORE = store_PDFs.size();
 	
-	uint32_t number_of_frames_needed 	= MEM_2_STORE / Grid_Nodes / sizeof(float);
+	uint32_t number_of_frames_needed 	= MEM_2_STORE / Grid_Nodes;
 	uint32_t max_frames_file 			= MAX_FILE_SIZE_B / Grid_Nodes / sizeof(float);
 	uint16_t number_of_files_needed  	= floor((number_of_frames_needed - 1) / max_frames_file) + 1;
 	
