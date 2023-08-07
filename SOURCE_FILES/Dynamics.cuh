@@ -211,7 +211,7 @@ int32_t PDF_ITERATIONS(cudaDeviceProp* prop,
 		Sum_Rand_Params += aux_PM.Joint_PDF;
 	}
 
-	const uint64_t MAX_MEMORY_USABLE = 0.85 * (prop->totalGlobalMem - aux_Samples * sizeof(Param_pair) - Grid_Nodes * sizeof(TYPE));		// max memory to be used in bytes
+	const uint64_t MAX_MEMORY_USABLE = 0.9 * (prop->totalGlobalMem - aux_Samples * sizeof(Param_pair) - Grid_Nodes * sizeof(TYPE));		// max memory to be used in bytes
 
 
 	// ------------------ DEFINITION OF THE INTERPOLATION VARIABLES AND ARRAYS ------------------ //

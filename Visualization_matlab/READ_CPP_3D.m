@@ -19,7 +19,7 @@ conf_lvl = 0.95;
 
 %% CHANGE FOR YOUR CURRENT COMPUTER
 
-Info=readcell  ('../SIMULATION_OUTPUT/Simulation_Info_0.csv');
+Info=readcell  ('../SIMULATION_OUTPUT/Simulation_Info_2.csv');
 
 Total_Pts           = Info{1,1};
 Pts_Per_Dimension   = Info{1,2};
@@ -37,7 +37,7 @@ Z   =Info{1,7}:h_X:Info{1,8};
 timesteps = length(Info);
 
 %%
-fileID = fopen('../SIMULATION_OUTPUT/Mean_PDFs_0.bin');
+fileID = fopen('../SIMULATION_OUTPUT/Mean_PDFs_2.bin');
 Data=fread(fileID,[Pts_Per_Dimension^3,timesteps],'float');
 fclose(fileID);
 
@@ -71,6 +71,7 @@ for l = 1:skip:timesteps
     xlim([0,1]);xlabel(Name_var2);
     ylim([0,1]);ylabel(Name_var1);
     zlim([0,1]);zlabel(Name_var3);
+    title(['Confidence surface at time ', num2str(Info{2,l})]);
     isosurface(x,y,z,F_Output(:,:,:,l),iso_val(l,1));view(3);colorbar;grid on; grid minor; lightangle(-45,45); drawnow;
 
     figure(100+l)
@@ -80,5 +81,6 @@ for l = 1:skip:timesteps
     plot(Y,Marg_Y,'r.-');xlabel(Name_var2);ylabel('Probability Density'); drawnow;
     subplot(3,1,3)
     plot(Z,Marg_Z,'r.-');xlabel(Name_var3);ylabel('Probability Density'); drawnow;
-    pause(1);
+    sgtitle(['Marginal PDFs at time ', num2str(Info{2,l})]);
+    pause(0.5);
 end
