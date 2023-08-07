@@ -91,10 +91,8 @@ int main() {
 
 		int16_t ret_val = PDF_EVOLUTION(&prop);
 
-		std::cout << "Simulation finished with output code " << ret_val << std::endl;
-
-		std::cout << "Press any key to exit simulation program...";
-		std::cin.ignore();	// this part is done so that it ignores a mysterious endline character that appears after the previous line
+		std::cout << "Simulation finished with output code " << ret_val << ". Press any key to continue...";
+		std::cin.ignore(); 
 		std::cin.get();
 
 		return ret_val;

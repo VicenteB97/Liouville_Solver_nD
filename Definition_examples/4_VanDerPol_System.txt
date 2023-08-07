@@ -31,14 +31,14 @@
 #define MAX_FILE_SIZE_B 1024*1024*1024
 
 // Choosing whether showing full or simplified timing information
-#define OUTPUT_INFO false
+#define OUTPUT_INFO true
 
 #define TYPE float
 
 // AMR tolerance, Conjugate Gradient tolerance and number of discretization size for the radius of the RBFs
 #define TOLERANCE_AMR       0.00001
-#define TOLERANCE_ConjGrad  powf(10,-6)
-#define DISC_RADIUS         3.49
+#define TOLERANCE_ConjGrad  powf(10,-7)
+#define DISC_RADIUS         3.95
 
 // State variables information
 #define DIMENSIONS  2
@@ -57,7 +57,7 @@ inline const TYPE	IC_STD [DIMENSIONS] = {sqrtf(0.015f),sqrtf(0.015f)};
 #define D_2     parameter.sample_vec[0]*(1 - powf(X.dim[0], 2))
 
 #define VEC_FIELD {VF_1, VF_2}
-#define DIVERGENCE D_1+D_2
+#define DIVERGENCE D_1 + D_2
 
 // Parameter information
 #define PARAM_DIMENSIONS 1
