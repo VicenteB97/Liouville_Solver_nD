@@ -93,9 +93,9 @@ int main() {
 
 		std::cout << "Simulation finished with output code " << ret_val << std::endl;
 
-#if IS_WINDOWS // This will prevent the console from closing in Windows
-		system("pause");
-#endif
+		std::cout << "Press any key to exit simulation program...";
+		std::cin.ignore();	// this part is done so that it ignores a mysterious endline character that appears after the previous line
+		std::cin.get();
 
 		return ret_val;
 	}
