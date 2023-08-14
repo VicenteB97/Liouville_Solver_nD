@@ -6,8 +6,8 @@
       "description": "Target Windows with the Visual Studio development environment.",
       "hidden": true,
       "generator": "Visual Studio 17 2022",
-      "binaryDir": "${sourceDir}/../${presetName}",
-      "installDir": "${sourceDir}/../${presetName}",
+      "binaryDir": "${sourceDir}/../BUILD_FILES",
+      "installDir": "${sourceDir}/../BUILD_FILES",
       "cacheVariables": {
         "CMAKE_C_COMPILER": "cl.exe",
         "CMAKE_CXX_COMPILER": "cl.exe"
