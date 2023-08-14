@@ -17,7 +17,7 @@
 #include "Simulation_parameters.cuh"
 #include "Parameter_distributions.cuh"
 #include "Adapt_Mesh.cuh"
-#include "Mat_Ops.cuh"
+#include "Interpolation.cuh"
 #include "Impulse_transformations.cuh"
 #include "Integrator.cuh"
 
