@@ -20,7 +20,7 @@ option(COMPILE_EXECUTABLE  "Include executable compiling" ON)
 
 add_subdirectory(Configured)
 
-add_library(${LIB_NAME} STATIC FULL_SIMULATION.cu)
+add_library(${LIB_NAME} STATIC IVP_SOLVER.cu)
 
 target_include_directories(${LIB_NAME} PUBLIC
     "./"

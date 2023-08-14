@@ -249,4 +249,24 @@ __device__ __forceinline__ void __atomicAdd(float *address, float val)
     } while((ret = atomicCAS(ptr, old, newint)) != old);
 }
 
+// +===========================================================================+ //
+// +===========================================================================+ //
+// +===========================================================================+ //
+// +===========================================================================+ //
+
+__device__ inline gridPoint VECTOR_FIELD(gridPoint X, TYPE t, const Param_vec parameter, const uint32_t mode, const FIXED_TYPE extra_param[]) {
+	gridPoint output = VEC_FIELD;
+
+	return output;
+}
+//-------------------------------------------------------------------------
+
+//-------------------------------------------------------------------------
+__device__ inline TYPE DIVERGENCE_FIELD(gridPoint X, TYPE t, const Param_vec parameter, const uint32_t mode, const FIXED_TYPE extra_param[]) {
+	TYPE output = DIVERGENCE;
+
+	return output;
+}
+
+
 #endif
