@@ -42,18 +42,18 @@
 /// @param ReinitSteps 
 /// @return 
 int32_t PDF_ITERATIONS(cudaDeviceProp* prop,
-	std::vector<float>* store_PDFs,
-	const Param_pair* Parameter_Mesh,
-	const gridPoint* H_Mesh,
-	thrust::host_vector<TYPE>* H_PDF,
-	const int32_t* n_Samples,
-	const int32_t& LvlFine,
-	const int32_t& LvlCoarse,
-	const uint32_t& PtsPerDim,
-	const uint32_t& Grid_Nodes,
-	const std::vector<Time_Impulse_vec> time_vector,
-	const FIXED_TYPE& deltaT,
-	const uint32_t& ReinitSteps) {
+						std::vector<float>* store_PDFs,
+						const Param_pair* Parameter_Mesh,
+						const gridPoint* H_Mesh,
+						thrust::host_vector<TYPE>* H_PDF,
+						const int32_t* n_Samples,
+						const int32_t& LvlFine,
+						const int32_t& LvlCoarse,
+						const uint32_t& PtsPerDim,
+						const uint32_t& Grid_Nodes,
+						const std::vector<Time_Impulse_vec> time_vector,
+						const FIXED_TYPE& deltaT,
+						const uint32_t& ReinitSteps) {
 
 	//--------------------------------------------------------------------------------------------//
 	//--------------------------------------------------------------------------------------------//
@@ -70,7 +70,7 @@ int32_t PDF_ITERATIONS(cudaDeviceProp* prop,
 	int32_t Random_Samples = 1;
 	int32_t aux_Samples = 0;
 
-	for (uint16_t i = 0; i < PARAM_DIMENSIONS; i++) {
+	for (uint32_t i = 0; i < PARAM_DIMENSIONS; i++) {
 		Random_Samples *= n_Samples[i];
 		aux_Samples += n_Samples[i];
 	}
@@ -101,7 +101,7 @@ int32_t PDF_ITERATIONS(cudaDeviceProp* prop,
 
 	thrust::host_vector<gridPoint>	__H__Domain_Boundary(2);
 #pragma unroll
-	for (uint16_t d = 0; d < DIMENSIONS; d++) {
+	for (uint32_t d = 0; d < DIMENSIONS; d++) {
 		__H__Domain_Boundary[0].dim[d] = H_Mesh[0].dim[d];
 		__H__Domain_Boundary[1].dim[d] = H_Mesh[Grid_Nodes - 1].dim[d];
 	}
@@ -109,7 +109,7 @@ int32_t PDF_ITERATIONS(cudaDeviceProp* prop,
 
 	const TYPE search_radius = DISC_RADIUS * disc_X;		// max radius to search ([3,6] appears to be optimal)
 
-	const uint16_t	max_steps = 1000;		 				// max steps at the Conjugate Gradient (CG) algorithm
+	const uint32_t	max_steps = 1000;		 				// max steps at the Conjugate Gradient (CG) algorithm
 	const TYPE 	in_tolerance = TOLERANCE_ConjGrad; 		// CG stop tolerance
 
 	// --------------------------------------------------------------------------------------------
@@ -266,12 +266,12 @@ int32_t PDF_ITERATIONS(cudaDeviceProp* prop,
 				std::cout << "Size of relevant PDF points (per sample): " << Adapt_Points << "\n";	// this allows to check if the info is passed to the GPU correctly
 
 				// ------------------ RESIZING OF THE INTERPOLATION MATRIX ------------------ //
-				thrust::device_vector<int32_t>		GPU_Index_array(MaxNeighborNum * Block_Particles);
-				thrust::device_vector<TYPE>			GPU_Mat_entries(MaxNeighborNum * Block_Particles);
-				thrust::device_vector<uint32_t>		GPU_Num_Neighbors(Block_Particles);
+				thrust::device_vector<int32_t>		GPU_Index_array(MaxNeighborNum * Block_Particles, -1);
+				thrust::device_vector<TYPE>			GPU_Mat_entries(MaxNeighborNum * Block_Particles, 0);
+				thrust::device_vector<uint32_t>		GPU_Num_Neighbors(Block_Particles, 0);
 				// -------------------------------------------------------------------------- //
 				// Determine threads and blocks for the simulation
-				uint16_t Threads = fmin(THREADS_P_BLK, Block_Particles);
+				uint32_t Threads = fmin(THREADS_P_BLK, Block_Particles);
 				uint64_t Blocks = floor((Block_Particles - 1) / Threads) + 1;
 
 				// ------------------------------------------------------------------------------------ //
@@ -305,7 +305,7 @@ int32_t PDF_ITERATIONS(cudaDeviceProp* prop,
 				// ----------------------------------------------------------------------------------- //
 				// 1.- Build Matix in GPU (indexes, dists and neighbors) Using Exahustive search...
 				start_3 = std::chrono::high_resolution_clock::now();
-				Exh_PP_Search<TYPE> << <Blocks, Threads >> > (	rpc(GPU_Part_Position, 0),
+				Exh_PP_Search<TYPE> << <Blocks, Threads >> > (rpc(GPU_Part_Position, 0),
 																rpc(GPU_Part_Position, 0),
 																rpc(GPU_Index_array, 0),
 																rpc(GPU_Mat_entries, 0),
@@ -316,6 +316,20 @@ int32_t PDF_ITERATIONS(cudaDeviceProp* prop,
 																search_radius,
 																rpc(__D__Domain_Boundary, 0));
 				gpuError_Check(cudaDeviceSynchronize());
+
+				/*error_check = _CS_Neighbor_Search<TYPE>(GPU_Part_Position,
+														GPU_Index_array,
+														GPU_Mat_entries,
+														PtsPerDim,
+														Adapt_Points,
+														H_Mesh[0],
+														MaxNeighborNum,
+														search_radius,
+														disc_X,
+														__D__Domain_Boundary);*/
+
+				if (error_check == -1) { break; }
+
 				end_3 = std::chrono::high_resolution_clock::now();
 				duration_3 = end_3 - start_3;
 #if OUTPUT_INFO
@@ -386,7 +400,7 @@ int32_t PDF_ITERATIONS(cudaDeviceProp* prop,
 			AdaptPDF.clear();
 			// Correction of any possible negative PDF values
 			// Re-define Threads and Blocks
-			uint16_t Threads = fminf(THREADS_P_BLK, Grid_Nodes);
+			uint32_t Threads = fminf(THREADS_P_BLK, Grid_Nodes);
 			uint64_t Blocks = floorf((Grid_Nodes - 1) / Threads) + 1;
 			CORRECTION<TYPE> << <Blocks, Threads >> > (rpc(GPU_PDF, 0), Grid_Nodes);
 			gpuError_Check(cudaDeviceSynchronize());

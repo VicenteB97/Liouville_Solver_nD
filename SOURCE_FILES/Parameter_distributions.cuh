@@ -171,7 +171,7 @@ int32_t RANDOMIZE(const int32_t* 		n_samples,
 	uint32_t aux = 0;
 
 	#pragma unroll
-	for (uint16_t d = 0; d < PARAM_DIMENSIONS; d++){
+	for (uint32_t d = 0; d < PARAM_DIMENSIONS; d++){
 		// call the parameter pair vec. function
 		Param_pair* PP = new Param_pair[n_samples[d]];
 

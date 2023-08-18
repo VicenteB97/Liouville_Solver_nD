@@ -175,7 +175,7 @@ auto end = std::chrono::high_resolution_clock::now();
 	
 	uint32_t number_of_frames_needed 	= MEM_2_STORE / Grid_Nodes / sizeof(float);
 	uint32_t max_frames_file 			= MAX_FILE_SIZE_B / Grid_Nodes / sizeof(float);
-	uint16_t number_of_files_needed  	= floor((number_of_frames_needed - 1) / max_frames_file) + 1;
+	uint32_t number_of_files_needed  	= floor((number_of_frames_needed - 1) / max_frames_file) + 1;
 	
 	char ans;
 	std::cout << "Simulation time: " << duration.count() << " seconds. ";
@@ -232,7 +232,7 @@ auto end = std::chrono::high_resolution_clock::now();
 			#pragma omp parallel for
 			for(int16_t k = 0; k < number_of_files_needed; k++){
 
-				uint16_t frames_in_file = fmin(max_frames_file, number_of_frames_needed - k * max_frames_file);
+				uint32_t frames_in_file = fmin(max_frames_file, number_of_frames_needed - k * max_frames_file);
 
 				std::string temp_str = std::to_string((uint32_t)k);
 
@@ -251,7 +251,7 @@ auto end = std::chrono::high_resolution_clock::now();
 				else{
 					file1 << Grid_Nodes << "," << PtsPerDim << ",";
 						
-					for (uint16_t d = 0; d < DIMENSIONS; d++){
+					for (uint32_t d = 0; d < DIMENSIONS; d++){
 						file1 << H_Mesh[0].dim[d] << "," << H_Mesh[Grid_Nodes - 1].dim[d] << ",";
 					} 
 						file1 << duration.count() << "\n";

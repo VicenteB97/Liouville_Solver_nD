@@ -19,6 +19,219 @@
 __device__ inline TYPE RBF(const TYPE support_radius, const TYPE x);
 
 template<class T>
+__global__ void Bin_Insertion_Count(uint32_t*		Bin_locations,
+									uint32_t*		Bin_count,
+									uint32_t*		Bin_local_accSum,
+									const gridPoint* Search_Particles,
+									const T			grid_discretization,
+									const uint32_t	Total_Particles,
+									const uint32_t	PtsPerDimension,
+									const gridPoint lowest_node){
+		
+	const uint64_t globalId = blockDim.x * blockIdx.x + threadIdx.x;
+
+	if (globalId < Total_Particles) {
+		gridPoint temp = Search_Particles[globalId];
+
+		// Find the Bin where it belongs
+		uint32_t bin_idx = temp.GetBin(grid_discretization, 0, lowest_node, PtsPerDimension);
+
+		// Now, we've got the nearest bin index. This tells the idx of the bin center containing a given particle
+		Bin_locations[globalId] = bin_idx;
+
+		//Add one to the number of particles inside the current bin, and store the previous value!
+		Bin_local_accSum[globalId] = __atomicAdd(&Bin_count[bin_idx], 1);
+	}
+}
+
+template<class T>
+__global__ void Count_sort(const gridPoint* fixed_Particles, 
+							gridPoint* Particles_2sort, 
+							const uint32_t* Bin_count, 
+							const uint32_t* Bin_locations,
+							const uint32_t* Bin_local_accSum,	
+							const uint32_t Total_Particles) {
+
+	const uint64_t globalID = blockDim.x * blockIdx.x + threadIdx.x;
+
+	if (globalID < Total_Particles) {
+
+		// read bin location
+		uint32_t my_bin_idx = Bin_locations[globalID];
+
+		// read local cumulative sum
+		uint32_t my_count_loc = Bin_local_accSum[globalID];
+
+		// read the prefix sum of the bin!
+		uint32_t pref_sum_idx = Bin_count[my_bin_idx];
+
+		// Add to ordered particle array
+		uint32_t final_idx = pref_sum_idx + my_count_loc;
+		Particles_2sort[final_idx] = fixed_Particles[globalID];
+	}
+}
+
+template<class T>
+__global__ void Neighbor_search(gridPoint*		Search_Particles,
+								const uint32_t* Bin_count,
+								int32_t*		Index_Array,
+								T*				Matrix_Entries,
+								const uint32_t	max_neighbor_num,
+								const gridPoint lowest_node, 
+								const uint32_t	Total_Particles,
+								const uint32_t	PtsPerDimension,
+								const T			search_distance,			// This tells us how many discretizations we have to move back to find initial bin to search from
+								const T			grid_discretization,
+								const gridPoint* Boundary) {
+
+	const uint64_t globalID = blockDim.x * blockIdx.x + threadIdx.x;
+
+	// MAYBE: We could use shared memory to access particles nearby (same/near bins)!
+
+	if (globalID < Total_Particles) {
+		
+		// Read the input from the sorted Particle array
+		gridPoint fixed_GP = Search_Particles[globalID];
+
+		// If the particle is not in the domain, we ignore it
+		if (fixed_GP.is_in_domain(Boundary)) { return; }
+
+// Go through the corresponding bins and their particles! Note that we've got to visit some nodes in every direction
+// That includes left and right (1D) + up and down (if 2D) + front and behind (if 3D) + ...
+// But! Since we know the particles assigned in each bin and how many particles there are in each bin, we can visit efficiently!
+		
+		uint64_t aux = 0;
+		uint64_t temp_ID = globalID * max_neighbor_num;
+
+		// Now, we go to the lowest bin and we search all the way up!
+		const uint32_t Bin_offset = floorf(search_distance / grid_discretization);
+
+		// We find the lowest corner in the neighboring bins (Hence, the Bin_offset variable)
+		uint32_t bin_idx = fixed_GP.GetBin(grid_discretization, -Bin_offset, lowest_node, PtsPerDimension);
+
+		for (uint32_t k = 0; k < powf(2 * Bin_offset + 1, DIMENSIONS); k++) { // Start at 1, so we don't revisit the initial bin!
+			// First: find the global index of the bin 2 search!
+			uint64_t aux_index = bin_idx;
+
+			#pragma unroll
+			for (uint32_t d = 0; d < DIMENSIONS; d++) {
+				aux_index += floorf(positive_rem(k, powf(2 * Bin_offset + 1, d + 1)) / powf(2 * Bin_offset + 1, d)) * powf(PtsPerDimension, d);
+			}
+
+			// Now that we have the bin to search, all we have to do is go through the particles that are in the corresponding bin:
+			uint32_t startIdx	= Bin_count[aux_index];
+			uint32_t endIdx		= Bin_count[aux_index + 1];
+
+			// Add the points in the current bin
+			for (uint32_t m = startIdx; m < endIdx; m++) {
+
+				gridPoint	temp_GP = Search_Particles[m];
+				TYPE		dist = fixed_GP.Distance(temp_GP) / search_distance;
+
+				if (dist <= 1 && temp_GP.is_in_domain(Boundary)) {
+					// include particle index into COO-sparse information
+					// include RBF-distance value into matrix values
+					// add count to number of neighbors (maybe optional)
+					Index_Array[temp_ID + aux] = m;
+					Matrix_Entries[temp_ID + aux] = RBF(search_distance, dist);
+					aux++;
+				}
+			}
+		}
+	}
+}
+
+// Counting sort! This operation orders the grid indeces and it sets the number of nodes inside each bin
+template<class T>
+int16_t _CS_Neighbor_Search(thrust::device_vector<gridPoint>& Search_Particles,
+							thrust::device_vector<int32_t>& Index_Array,
+							thrust::device_vector<T>& Matrix_Entries,
+							const uint32_t PtsPerDimension, 
+							const uint32_t Adapt_Points, 
+							const gridPoint lowest_node,
+							const uint32_t max_neighbor_num,
+							const T search_radius,
+							const T grid_discretization,
+							const thrust::device_vector<gridPoint>& Boundary) {
+
+	// We need our particles
+	uint32_t Total_Particles = Search_Particles.size();
+	uint32_t Grid_Nodes		 = pow(PtsPerDimension, DIMENSIONS);
+
+	thrust::device_vector<uint32_t> Bin_locations(Adapt_Points);
+	thrust::device_vector<uint32_t> Bin_localSum(Adapt_Points);
+
+	thrust::device_vector<gridPoint> temp_Particles(Adapt_Points); // this one will store the ordered particles!
+	thrust::device_vector<uint32_t> Bin_count(Grid_Nodes);
+
+	// Bin the particles!
+	uint32_t Threads = fmin(THREADS_P_BLK, Adapt_Points);
+	uint32_t Blocks = floor((Adapt_Points - 1) / Threads) + 1;
+
+	for (uint32_t k = 0; k < Total_Particles / Adapt_Points; k++) { // We've got to repeat this once per random sample...we'll see another way out...
+
+		uint32_t offset = k * Adapt_Points;
+
+		// maybe you have to load the lowest node as a thrust vector
+		Bin_Insertion_Count<T> << <Threads, Blocks >> > (rpc(Bin_locations, 0), 
+														rpc(Bin_count, 0), 
+														rpc(Bin_localSum, 0), 
+														rpc(Search_Particles, offset), 
+														grid_discretization, 
+														Adapt_Points, 
+														PtsPerDimension, 
+														lowest_node);
+		gpuError_Check(cudaDeviceSynchronize());
+
+		// Prefix sum of the bin-count array, which gives the cumulative points in each bin
+		thrust::exclusive_scan(thrust::device, Bin_count.begin(), Bin_count.end(), Bin_count.begin(), 0);
+
+		/*thrust::host_vector<uint32_t> debug_1 = Bin_locations;
+		thrust::host_vector<uint32_t> debug_2 = Bin_count;
+		thrust::host_vector<uint32_t> debug_3 = Bin_localSum;
+
+		std::fstream file("Debug_file.csv", std::ios::out);
+		assert(file.is_open());
+
+		std::string temp_str = "Loc: ";
+		for (uint32_t k = 0; k < Adapt_Points; k++) {
+			temp_str.append(std::to_string(debug_1[k]));
+			temp_str.append(", Count: ");
+			temp_str.append(std::to_string(debug_2[k]));
+			temp_str.append(", Local count: ");
+			temp_str.append(std::to_string(debug_3[k]));
+			file << temp_str << "\n";
+		}*/
+
+		// Counting sort...we want to sort Search_Particles!
+		Count_sort<T> << <Threads, Blocks >> > (rpc(Search_Particles, offset), 
+												rpc(temp_Particles, 0), 
+												rpc(Bin_count, 0), 
+												rpc(Bin_locations, 0), 
+												rpc(Bin_localSum, 0), 
+												Adapt_Points);
+		gpuError_Check(cudaDeviceSynchronize());
+
+		// Search_Particles = temp_Particles; // now our initial particle array is sorted by bin position!
+		thrust::copy(temp_Particles.begin(), temp_Particles.end(), &Search_Particles[offset]);
+
+		Neighbor_search<T> << <Threads, Blocks >> >(rpc(Search_Particles, offset),
+													rpc(Bin_count, 0),
+													rpc(Index_Array, offset),
+													rpc(Matrix_Entries, offset),
+													max_neighbor_num,
+													lowest_node,
+													Adapt_Points,
+													PtsPerDimension,
+													search_radius,
+													grid_discretization,
+													rpc(Boundary, 0));
+		gpuError_Check(cudaDeviceSynchronize());
+	}
+	return 0;
+}
+
+template<class T>
 /// @brief Exhaustive PP search (in the respective parameter sample neighborhood)
 /// @param Search_Particles 
 /// @param Fixed_Particles 
@@ -107,12 +320,12 @@ __global__ void MATRIX_VECTOR_MULTIPLICATION(T* X, const T* x0, const int32_t* M
 	if (i < total_length) {						// total length = adapt_points * total_samples
 // 1.- Compute A*X0										
 	// 1.1.- Determine where my particles are!!
-		const uint32_t n  = Interaction_Lengths[i];	// total neighbors to look at
+		const uint32_t n = Interaction_Lengths[i];	// total neighbors to look at
 		const uint32_t i0 = i * Max_Neighbors;		// where does my search index start
 
 		T 			a = 0;					// auxiliary value for sum (the diagonal is always 1 in our case)
 		uint32_t 	p;						// auxiliary variable for indexing
-	// 1.2.- Multiply row vec (from matrix) - column vec (possible solution)
+		// 1.2.- Multiply row vec (from matrix) - column vec (possible solution)
 		for (uint32_t j = i0; j < i0 + n; j++) {
 			p = Matrix_idxs[j];
 			a += Matrix_entries[j] * x0[p];		// < n calls to global memory
@@ -142,12 +355,12 @@ __host__ int32_t CONJUGATE_GRADIENT_SOLVE(	thrust::device_vector<T>&		GPU_lambda
 											thrust::device_vector<T>&		GPU_AdaptPDF,
 											const int32_t					Total_Particles,
 											const int32_t					MaxNeighborNum,
-											const uint16_t					max_steps,
+											const int32_t					max_steps,
 											const T							in_tolerance) {
 
 
 	// Determine threads and blocks for the simulation
-	const uint16_t Threads = (uint32_t)fminf(THREADS_P_BLK, Total_Particles);
+	const uint32_t Threads = (uint32_t)fminf(THREADS_P_BLK, Total_Particles);
 	const uint64_t Blocks  = (uint32_t)floorf((Total_Particles - 1) / Threads) + 1;
 
 	int16_t output = 0;
@@ -286,7 +499,7 @@ if (i < Adapt_Pts * Block_samples) {
 		gridPoint	fixed_gridNode = lowest_node;
 		
 		#pragma unroll
-		for (uint16_t d = 0; d < DIMENSIONS; d++){
+		for (uint32_t d = 0; d < DIMENSIONS; d++){
 			int32_t temp_idx = roundf((T) (particle.dim[d] - lowest_node.dim[d]) / grid_discretization_length) - floorf((T) search_radius / grid_discretization_length);
 			lowest_idx += temp_idx * pow(PtsPerDimension, d);
 
@@ -360,7 +573,7 @@ if (i < Adapt_Pts) {
 		gridPoint	fixed_gridNode = lowest_node;
 		
 		#pragma unroll
-		for (uint16_t d = 0; d < DIMENSIONS; d++){
+		for (uint32_t d = 0; d < DIMENSIONS; d++){
 			int32_t temp_idx = roundf((float) (particle.dim[d] - lowest_node.dim[d]) / grid_discretization_length) - floorf((float) search_radius / grid_discretization_length);
 			lowest_idx += temp_idx * pow(PtsPerDimension, d);
 
@@ -383,7 +596,7 @@ if (i < Adapt_Pts) {
 			temp_gridNode 	= fixed_gridNode;
 
 			#pragma unroll
-			for (uint16_t d = 0; d < DIMENSIONS; d++){
+			for (uint32_t d = 0; d < DIMENSIONS; d++){
 				int32_t temp_idx = (int32_t) floorf( positive_rem(j, (int32_t)pow(num_neighbors_per_dim, d + 1)) / pow(num_neighbors_per_dim, d) ); 
 				idx += temp_idx * pow(PtsPerDimension, d);
 

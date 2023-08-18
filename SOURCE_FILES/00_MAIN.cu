@@ -22,10 +22,10 @@
 
 int16_t PDF_EVOLUTION(cudaDeviceProp* prop);
 
-void Intro_square_filler(std::string& message, const uint16_t border_length, const uint16_t number_of_tabs, const uint16_t offset){
+void Intro_square_filler(std::string& message, const uint32_t border_length, const uint32_t number_of_tabs, const uint32_t offset){
 
-	uint16_t msg_length = message.size() + number_of_tabs*8 - 1 - offset;
-	for (uint16_t k = 0; k < border_length - msg_length; k++){
+	uint32_t msg_length = message.size() + number_of_tabs*8 - 1 - offset;
+	for (uint32_t k = 0; k < border_length - msg_length; k++){
 		message.append(" ");
 	}
 	message.append("|\n");
@@ -48,7 +48,7 @@ int main() {
 		std::string border_mid 	= "|==========================================================================================|";
 		std::cout << border <<"\n";
 		std::cout << border_mid <<"\n";
-		const uint16_t border_length = border.size();
+		const uint32_t border_length = border.size();
 
 		std::string temp = "|	Wecome to the Liouville Eq. simulator. You are using version number "; temp.append(project_version);
 		Intro_square_filler(temp, border_length, 1, 0);

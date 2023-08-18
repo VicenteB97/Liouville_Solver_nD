@@ -70,7 +70,6 @@ public:
 		}
 
 		return out;
-
 	}
 	__host__ __device__ gridPoint operator-(const gridPoint& other) {
 		gridPoint out;
@@ -92,6 +91,32 @@ public:
 
 		return out;
 	}
+
+	__host__ __device__ inline TYPE Distance(const gridPoint& other) {
+		TYPE dist = 0;
+		for (uint32_t d = 0; d < DIMENSIONS; d++) {
+			dist += (dim[d] - other.dim[d]) * (dim[d] - other.dim[d]);
+		}
+		return dist;
+	};
+
+	__device__ inline bool is_in_domain(const gridPoint* Boundary) {
+		for (uint32_t d = 0; d < DIMENSIONS; d++) {
+			if (dim[d] < Boundary[0].dim[d] || dim[d] > Boundary[1].dim[d]) { return false; }
+		}
+		return true;
+	};
+
+	// This function tells us what is the first bin to search if we consider an offset (radius, actually) of bin_offset
+	__host__ __device__ uint32_t GetBin(const TYPE discretization, const int16_t bin_offset, const gridPoint& lowest_node, const uint32_t PtsPerDimension) {
+		uint32_t bin_idx = 0;
+#pragma unroll
+		for (uint32_t d = 0; d < DIMENSIONS; d++) {
+			int32_t temp_idx = (int32_t)roundf((dim[d] - lowest_node.dim[d]) / discretization) + bin_offset;
+			bin_idx += temp_idx * powf(PtsPerDimension, d);
+		}
+		return bin_idx;
+	};
 };
 
 // Time + impulse: ----------------------------------------------
@@ -217,7 +242,7 @@ __host__ __device__ inline Param_vec _Gather_Param_Vec(const uint32_t index, con
 
 __device__ inline bool __is_in_domain(const gridPoint particle, const gridPoint* Boundary){
 	bool out = true;
-	uint16_t d = 0;
+	uint32_t d = 0;
 
 	while(out && d < DIMENSIONS){
 		if(particle.dim[d] < Boundary[0].dim[d] || particle.dim[d] > Boundary[1].dim[d]){out = false;}
@@ -249,6 +274,18 @@ __device__ __forceinline__ void __atomicAdd(float *address, float val)
     } while((ret = atomicCAS(ptr, old, newint)) != old);
 }
 
+__device__ __forceinline__ uint32_t __atomicAdd(uint32_t* address, uint32_t val)
+{
+	// Doing it all as longlongs cuts one __longlong_as_double from the inner loop
+	unsigned int* ptr = (unsigned int*)address;
+	unsigned int old, newint, ret = *ptr;
+	do {
+		old = ret;
+		newint = old + val;
+	} while ((ret = atomicCAS(ptr, old, newint)) != old);
+
+	return (uint32_t)old; //if you want a return value!
+}
 // +===========================================================================+ //
 // +===========================================================================+ //
 // +===========================================================================+ //
