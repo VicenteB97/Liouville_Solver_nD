@@ -13,6 +13,7 @@
 #include "device_launch_parameters.h"
 
 #include <fstream>
+#include <iostream>
 #include <vector>
 #include <cmath>
 #include <numeric>
@@ -97,7 +98,7 @@ public:
 		for (uint32_t d = 0; d < DIMENSIONS; d++) {
 			dist += (dim[d] - other.dim[d]) * (dim[d] - other.dim[d]);
 		}
-		return dist;
+		return sqrtf(dist);
 	};
 
 	__device__ inline bool is_in_domain(const gridPoint* Boundary) {
@@ -274,18 +275,21 @@ __device__ __forceinline__ void __atomicAdd(float *address, float val)
     } while((ret = atomicCAS(ptr, old, newint)) != old);
 }
 
-__device__ __forceinline__ uint32_t __atomicAdd(uint32_t* address, uint32_t val)
-{
-	// Doing it all as longlongs cuts one __longlong_as_double from the inner loop
-	unsigned int* ptr = (unsigned int*)address;
-	unsigned int old, newint, ret = *ptr;
-	do {
-		old = ret;
-		newint = old + val;
-	} while ((ret = atomicCAS(ptr, old, newint)) != old);
+/*__device__ __forceinline__ uint32_t __atomicAdd_ret(uint32_t* address, uint32_t value){
 
-	return (uint32_t)old; //if you want a return value!
-}
+	// unsigned *ptr =  
+
+	uint32_t ret = atomicExch(address, 0);
+
+	uint32_t old = ret + value;
+
+	while ((old = atomicExch(address, old)) != 0){
+		old = atomicExch(address, 0) + old;
+	}
+
+	return ret;
+
+};*/
 // +===========================================================================+ //
 // +===========================================================================+ //
 // +===========================================================================+ //

@@ -305,7 +305,7 @@ int32_t PDF_ITERATIONS(cudaDeviceProp* prop,
 				// ----------------------------------------------------------------------------------- //
 				// 1.- Build Matix in GPU (indexes, dists and neighbors) Using Exahustive search...
 				start_3 = std::chrono::high_resolution_clock::now();
-				Exh_PP_Search<TYPE> << <Blocks, Threads >> > (rpc(GPU_Part_Position, 0),
+				/*Exh_PP_Search<TYPE> << <Blocks, Threads >> > (rpc(GPU_Part_Position, 0),
 																rpc(GPU_Part_Position, 0),
 																rpc(GPU_Index_array, 0),
 																rpc(GPU_Mat_entries, 0),
@@ -315,18 +315,20 @@ int32_t PDF_ITERATIONS(cudaDeviceProp* prop,
 																Block_Particles,
 																search_radius,
 																rpc(__D__Domain_Boundary, 0));
-				gpuError_Check(cudaDeviceSynchronize());
+				gpuError_Check(cudaDeviceSynchronize());*/
 
-				/*error_check = _CS_Neighbor_Search<TYPE>(GPU_Part_Position,
+				error_check = _CS_Neighbor_Search<TYPE>(GPU_Part_Position,
+														GPU_AdaptPDF,
 														GPU_Index_array,
 														GPU_Mat_entries,
+														GPU_Num_Neighbors,
 														PtsPerDim,
 														Adapt_Points,
 														H_Mesh[0],
 														MaxNeighborNum,
 														search_radius,
 														disc_X,
-														__D__Domain_Boundary);*/
+														__D__Domain_Boundary);
 
 				if (error_check == -1) { break; }
 
