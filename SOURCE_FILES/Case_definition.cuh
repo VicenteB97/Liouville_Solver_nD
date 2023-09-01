@@ -28,7 +28,7 @@
 #define THREADS_P_BLK 128
 
 // This variable controls the size of the '.csv' files where the simulations are saved
-#define MAX_FILE_SIZE_B 1024*1024*1024
+#define MAX_FILE_SIZE_B 2*1024*1024*1024
 
 // Choosing whether showing full or simplified timing information
 #define OUTPUT_INFO false
@@ -37,8 +37,8 @@
 
 // AMR tolerance, Conjugate Gradient tolerance and number of discretization size for the radius of the RBFs
 #define TOLERANCE_AMR       0.00001
-#define TOLERANCE_ConjGrad  powf(10,-7)
-#define DISC_RADIUS         3.95
+#define TOLERANCE_ConjGrad  powf(10,-6)
+#define DISC_RADIUS         3.45
 
 // State variables information
 #define DIMENSIONS  2
@@ -61,12 +61,12 @@ inline const TYPE	IC_STD[DIMENSIONS] = { sqrtf(0.015f),sqrtf(0.015f) };
 
 // Parameter information
 #define PARAM_DIMENSIONS 1
-inline const char   _DIST_NAMES[PARAM_DIMENSIONS] = { 'U' };
-inline const bool   _DIST_TRUNC[PARAM_DIMENSIONS] = { true };
-inline const TYPE  _DIST_InfTVAL[PARAM_DIMENSIONS] = { 1.5 };
-inline const TYPE  _DIST_SupTVAL[PARAM_DIMENSIONS] = { 3.5 };
-inline TYPE 		_DIST_MEAN[PARAM_DIMENSIONS] = { 2.5 };
-inline TYPE 		_DIST_STD[PARAM_DIMENSIONS] = { sqrtf(0.1) };
+inline const char   _DIST_NAMES[PARAM_DIMENSIONS]	= { 'U' };
+inline const bool   _DIST_TRUNC[PARAM_DIMENSIONS]	= { true };
+inline const TYPE  _DIST_InfTVAL[PARAM_DIMENSIONS]	= { 1.5 };
+inline const TYPE  _DIST_SupTVAL[PARAM_DIMENSIONS]	= { 3.5 };
+inline TYPE 		_DIST_MEAN[PARAM_DIMENSIONS]	= { 2.5 };
+inline TYPE 		_DIST_STD[PARAM_DIMENSIONS]		= { sqrtf(0.1) };
 
 #define IMPULSE_TYPE 0
 
