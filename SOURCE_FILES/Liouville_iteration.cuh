@@ -21,9 +21,6 @@
 #include "Impulse_transformations.cuh"
 #include "Integrator.cuh"
 
-/*#include "Debugging.cuh"*/
-
-
 /// @brief This function computes the Liouville Eq. iterations from t0 to tF. Each iteration consists of the following steps:
 /// 1st) Compute the AMR of the initial PDF. 
 /// 2nd) Create as many particle families as random samples there are.
@@ -158,6 +155,7 @@ int32_t PDF_ITERATIONS(	cudaDeviceProp*				prop,
 
 		auto end_3 = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<float> duration_3 = end_3 - start_3;
+
 #if OUTPUT_INFO
 		std::cout << "AMR iteration took " << duration_3.count() << " seconds\n";
 #endif
@@ -280,27 +278,28 @@ int32_t PDF_ITERATIONS(	cudaDeviceProp*				prop,
 				// -------------------------- POINT ADVECTION ----------------------------------------- //
 				// ------------------------------------------------------------------------------------ //
 				start_3 = std::chrono::high_resolution_clock::now();
-				RungeKutta << <Blocks, Threads >> > (rpc(GPU_Part_Position, 0),
-					rpc(GPU_AdaptPDF, 0),
-					rpc(GPU_Parameter_Mesh, Sample_idx_offset_init),
-					rpc(GPU_nSamples, 0),
-					t0,
-					deltaT,
-					tF,
-					Adapt_Points,
-					Random_Samples_Blk_size,
-					mode,
-					rpc(Extra_Parameter, 0),
-					rpc(__D__Domain_Boundary, 0));
+				ODE_INTEGRATE<< <Blocks, Threads >> > (	rpc(GPU_Part_Position, 0),
+														rpc(GPU_AdaptPDF, 0),
+														rpc(GPU_Parameter_Mesh, Sample_idx_offset_init),
+														rpc(GPU_nSamples, 0),
+														t0,
+														deltaT,
+														tF,
+														Adapt_Points,
+														Random_Samples_Blk_size,
+														mode,
+														rpc(Extra_Parameter, 0),
+														rpc(__D__Domain_Boundary, 0));
 				gpuError_Check(cudaDeviceSynchronize()); // Here, the entire H_Mesh points (those that were selected) and PDF points (same) have been updated.
 
 				end_3 = std::chrono::high_resolution_clock::now();
 				duration_3 = end_3 - start_3;
+
 				// Using RK4 for time integration of characteristic curves
-#if OUTPUT_INFO
-				duration_3 = end_3 - start_3;
-				std::cout << "Runge-Kutta iteration took " << duration_3.count() << " seconds\n";
-#endif
+				#if OUTPUT_INFO
+					duration_3 = end_3 - start_3;
+					std::cout << "Runge-Kutta iteration took " << duration_3.count() << " seconds\n";
+				#endif
 
 				// ----------------------------------------------------------------------------------- //
 				// -------------------------- INTERPOLATION ------------------------------------------ //
@@ -308,32 +307,35 @@ int32_t PDF_ITERATIONS(	cudaDeviceProp*				prop,
 				// 1.- Build Matix in GPU (indexes, dists and neighbors) Using Exahustive search...
 				start_3 = std::chrono::high_resolution_clock::now();
 
-				Exh_PP_Search<TYPE> << <Blocks, Threads >> > (rpc(GPU_Part_Position, 0),
-					rpc(GPU_Part_Position, 0),
-					rpc(GPU_Index_array, 0),
-					rpc(GPU_Mat_entries, 0),
-					rpc(GPU_Num_Neighbors, 0),
-					MaxNeighborNum,
-					Adapt_Points,
-					Block_Particles,
-					search_radius,
-					rpc(__D__Domain_Boundary, 0));
-				gpuError_Check(cudaDeviceSynchronize());
+				// Dynamical choice of either exhaustive or counting sort-based point search
+				if (Adapt_Points < ptSEARCH_THRESHOLD) {
+					Exh_PP_Search<TYPE> << <Blocks, Threads >> > (	rpc(GPU_Part_Position, 0),
+																	rpc(GPU_Part_Position, 0),
+																	rpc(GPU_Index_array, 0),
+																	rpc(GPU_Mat_entries, 0),
+																	rpc(GPU_Num_Neighbors, 0),
+																	MaxNeighborNum,
+																	Adapt_Points,
+																	Block_Particles,
+																	search_radius,
+																	rpc(__D__Domain_Boundary, 0));
+					gpuError_Check(cudaDeviceSynchronize());
+				}
+				else {
+					error_check = _CS_Neighbor_Search<TYPE>(GPU_Part_Position,
+															GPU_AdaptPDF,
+															GPU_Index_array,
+															GPU_Mat_entries,
+															GPU_Num_Neighbors,
+															PtsPerDim,
+															Adapt_Points,
+															MaxNeighborNum,
+															search_radius,
+															disc_X,
+															__D__Domain_Boundary);
 
-				/*error_check = _CS_Neighbor_Search<TYPE>(GPU_Part_Position,
-					GPU_AdaptPDF,
-					GPU_Index_array,
-					GPU_Mat_entries,
-					GPU_Num_Neighbors,
-					PtsPerDim,
-					Adapt_Points,
-					MaxNeighborNum,
-					search_radius,
-					disc_X,
-					__D__Domain_Boundary);
-
-				if (error_check == -1) { break; }*/
-
+					if (error_check == -1) { break; }
+				}
 				end_3 = std::chrono::high_resolution_clock::now();
 				duration_3 = end_3 - start_3;
 
@@ -342,9 +344,9 @@ int32_t PDF_ITERATIONS(	cudaDeviceProp*				prop,
 				DEBUG_INDEX_ARRAY(Index_array, Block_Particles, MaxNeighborNum);
 				delete[] Index_array;*/
 
-#if OUTPUT_INFO
-				std::cout << "Exhaustive point serach took " << duration_3.count() << " seconds\n";
-#endif
+				#if OUTPUT_INFO
+					std::cout << "Exhaustive point serach took " << duration_3.count() << " seconds\n";
+				#endif
 
 
 				// 2.- Iterative solution (Conjugate Gradient) to obtain coefficients of the RBFs
@@ -364,16 +366,18 @@ int32_t PDF_ITERATIONS(	cudaDeviceProp*				prop,
 				if (error_check == -1) { break; }
 				end_3 = std::chrono::high_resolution_clock::now();
 				duration_3 = end_3 - start_3;
-#if OUTPUT_INFO
-				std::cout << "Conjugate Gradient took " << duration_3.count() << " seconds\n";
-#endif
+				
+				#if OUTPUT_INFO
+					std::cout << "Conjugate Gradient took " << duration_3.count() << " seconds\n";
+				#endif
 
 				// ----------------------------------------------------------------------------------- //
 				// THIS PART ONLY GRABS THE LAST "OPTIMAL" LAMBDA AND COMPUTES ITS "PROJECTION" INTO THE SUBSPACE
-#if DIMENSIONS == 2
-				TYPE temp = thrust::reduce(thrust::device, GPU_lambdas.begin(), GPU_lambdas.end());
-				thrust::transform(GPU_lambdas.begin(), GPU_lambdas.end(), GPU_lambdas.begin(), Random_Samples_Blk_size / temp * _1);
-#endif
+				
+				#if DIMENSIONS == 2
+					TYPE temp = thrust::reduce(thrust::device, GPU_lambdas.begin(), GPU_lambdas.end());
+					thrust::transform(GPU_lambdas.begin(), GPU_lambdas.end(), GPU_lambdas.begin(), Random_Samples_Blk_size / temp * _1);
+				#endif
 				// ----------------------------------------------------------------------------------- //
 
 			// 3.- Multiplication of matrix-lambdas to obtain updated grid nodes

@@ -16,18 +16,18 @@ using namespace thrust::placeholders; // this is useful for the multiplication o
 /// @param Adapt_Points Number of particles as computed by the AMR scheme
 /// @param Random_Samples Number of random parameter samples
 /// @return 
-__global__ void RungeKutta(gridPoint* Particles,
-	TYPE* PDF,
-	const Param_pair* parameters,
-	const int32_t* n_Samples,
-	float				t0,
-	const float			deltaT,
-	const float			tF,
-	const int32_t		Adapt_Points,
-	const int32_t		Random_Samples,
-	const uint32_t		mode,
-	const FIXED_TYPE* extra_param,
-	const gridPoint* Domain_boundary) {
+__global__ void ODE_INTEGRATE(gridPoint* Particles,
+							TYPE* PDF,
+							const Param_pair* parameters,
+							const int32_t* n_Samples,
+							float				t0,
+							const float			deltaT,
+							const float			tF,
+							const int32_t		Adapt_Points,
+							const int32_t		Random_Samples,
+							const uint32_t		mode,
+							const FIXED_TYPE* extra_param,
+							const gridPoint* Domain_boundary) {
 
 	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
 

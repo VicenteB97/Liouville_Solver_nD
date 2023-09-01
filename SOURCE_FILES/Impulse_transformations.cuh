@@ -143,33 +143,34 @@ int32_t IMPULSE_TRANSFORM_PDF(	const gridPoint*				MESH,			// Fixed Mesh
 	GPU_Mat_entries.resize(MaxNeighborNum * Total_Particles);
 	GPU_Num_Neighbors.resize(Total_Particles);
 
-	Exh_PP_Search << <Blocks, Threads >> > (raw_pointer_cast(&Particle_Positions[0]),
-		raw_pointer_cast(&Particle_Positions[0]),
-		raw_pointer_cast(&GPU_Index_array[0]),
-		raw_pointer_cast(&GPU_Mat_entries[0]),
-		raw_pointer_cast(&GPU_Num_Neighbors[0]),
-		MaxNeighborNum,
-		Adapt_Points,
-		Total_Particles,
-		search_radius,
-		rpc(D__Boundary, 0));
-	gpuError_Check(cudaDeviceSynchronize());
+	if (Adapt_Points < ptSEARCH_THRESHOLD) {
+		Exh_PP_Search << <Blocks, Threads >> > (raw_pointer_cast(&Particle_Positions[0]),
+			raw_pointer_cast(&Particle_Positions[0]),
+			raw_pointer_cast(&GPU_Index_array[0]),
+			raw_pointer_cast(&GPU_Mat_entries[0]),
+			raw_pointer_cast(&GPU_Num_Neighbors[0]),
+			MaxNeighborNum,
+			Adapt_Points,
+			Total_Particles,
+			search_radius,
+			rpc(D__Boundary, 0));
+		gpuError_Check(cudaDeviceSynchronize());
+	}
+	else {
+		err = _CS_Neighbor_Search<TYPE>(Particle_Positions,
+			PDF_Particles,
+			GPU_Index_array,
+			GPU_Mat_entries,
+			GPU_Num_Neighbors,
+			PtsPerDim,
+			Adapt_Points,
+			MaxNeighborNum,
+			search_radius,
+			disc_X,
+			D__Boundary);
 
-		/*err = _CS_Neighbor_Search<TYPE>(Particle_Positions,
-										PDF_Particles,
-										GPU_Index_array,
-										GPU_Mat_entries,
-										GPU_Num_Neighbors,
-										PtsPerDim,
-										Adapt_Points,
-										MaxNeighborNum,
-										search_radius,
-										disc_X,
-										D__Boundary);
-
-		if (err == -1) { return err; }*/
-
-	//std::cout << "Transformation Point Search: done\n";
+		if (err == -1) { return err; }
+	}
 
 	// 2.- Iterative solution (Conjugate Gradient) to obtain coefficients of the RBFs
 	thrust::device_vector<float>	GPU_lambdas(Total_Particles);	// solution vector (RBF weights)
