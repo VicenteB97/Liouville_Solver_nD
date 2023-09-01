@@ -22,7 +22,7 @@
 // -------------------- MODIFY!!! ----------------------------------------//
 // -----------------------------------------------------------------------//
 // Name of the case being simulated
-#define CASE "VanDerPol System"
+#define CASE "Duffing System"
 
 //Define the number of threads per block (128 for consumer GPUs such as the RTX3060 or Quadro RTX4000)
 #define THREADS_P_BLK 128
@@ -36,39 +36,45 @@
 #define TYPE float
 
 // AMR tolerance, Conjugate Gradient tolerance and number of discretization size for the radius of the RBFs
-#define TOLERANCE_AMR       0.00001
+#define TOLERANCE_AMR       0.0005
 #define TOLERANCE_ConjGrad  powf(10,-6)
-#define DISC_RADIUS         3.49
+#define DISC_RADIUS         4.45
 
 // State variables information
 #define DIMENSIONS  2
 #define DOMAIN_CTR  {0.00f, 0.00f}
-#define DOMAIN_DIAM {11.0f, 11.0f}
-// inline const TYPE	IC_MEAN[DIMENSIONS] = {0, 0};	
-inline const TYPE	IC_MEAN[DIMENSIONS] = {0, 2.5};	
-// inline const TYPE	IC_STD [DIMENSIONS] = {sqrtf(0.0015f),sqrtf(0.0015f)};
-inline const TYPE	IC_STD [DIMENSIONS] = {sqrtf(0.015f),sqrtf(0.015f)};
+#define DOMAIN_DIAM {12.0f, 12.0f}
+static const TYPE	IC_MEAN[DIMENSIONS] = { 1.75f, 0.00f };
+static const TYPE	IC_STD[DIMENSIONS] = { sqrtf(0.025f),sqrtf(0.025f) };
 
 // Vector field definition
 // explanation: 
-#define VF_1    X.dim[1]
-#define D_1     0
-#define VF_2    parameter.sample_vec[0]*(1 - powf(X.dim[0], 2))*X.dim[1] - X.dim[0]
-#define D_2     parameter.sample_vec[0]*(1 - powf(X.dim[0], 2))
-
-#define VEC_FIELD {VF_1, VF_2}
-#define DIVERGENCE D_1 + D_2
+#define VEC_FIELD {X.dim[1], -2 * parameter.sample_vec[0] * X.dim[1] - X.dim[0] - parameter.sample_vec[1] * powf(X.dim[0], 3)}
+#define DIVERGENCE -2 * parameter.sample_vec[0]
 
 // Parameter information
-#define PARAM_DIMENSIONS 1
-inline const char   _DIST_NAMES	 [PARAM_DIMENSIONS] = {'U'};
-inline const bool   _DIST_TRUNC	 [PARAM_DIMENSIONS] = {true};
-inline const TYPE  _DIST_InfTVAL[PARAM_DIMENSIONS] = {1.5};
-inline const TYPE  _DIST_SupTVAL[PARAM_DIMENSIONS] = {3.5};
-inline TYPE 		_DIST_MEAN	 [PARAM_DIMENSIONS]	= {2.5};
-inline TYPE 		_DIST_STD	 [PARAM_DIMENSIONS]	= {sqrtf(0.1)};
+#define PARAM_DIMENSIONS 2
+static const char   _DIST_NAMES[PARAM_DIMENSIONS] = { 'N','N' };
+static const bool   _DIST_TRUNC[PARAM_DIMENSIONS] = { true,true };
+static const TYPE  _DIST_InfTVAL[PARAM_DIMENSIONS] = { 0.0f, 0.0f };
+static const TYPE  _DIST_SupTVAL[PARAM_DIMENSIONS] = { 1000.0f, 1000.0f };
+static TYPE 		_DIST_MEAN[PARAM_DIMENSIONS] = { 0.2f, 3.0f };
+static TYPE 		_DIST_STD[PARAM_DIMENSIONS] = { sqrtf(0.02f),sqrtf(0.3f) };
 
+// Impulse information
 #define IMPULSE_TYPE 0
+#if IMPULSE_TYPE == 1
+#define DELTA_JUMPS 3
+//	time | Imp | mean_vec  |   st. dev. | 	samples
+static double 		D_JUMP_DIST_TIME[DELTA_JUMPS] = { 0.6, 1.2, 2.4 };
+static const char   D_JUMP_DIST_NAMES[DELTA_JUMPS * DIMENSIONS] = { 'N','N','N','N','N','N' };
+static const bool   D_JUMP_DIST_TRUNC[DELTA_JUMPS * DIMENSIONS] = { true, true, true, true, true, true };
+static const TYPE  D_JUMP_DIST_InfTVAL[DELTA_JUMPS * DIMENSIONS] = { 0, 0, 0, 0, 0, 0 };
+static const TYPE  D_JUMP_DIST_SupTVAL[DELTA_JUMPS * DIMENSIONS] = { 1000, 1000, 1000, 1000, 1000, 1000 };
+static TYPE 		D_JUMP_DIST_MEAN[DELTA_JUMPS * DIMENSIONS] = { 0, 2.5, 0, 1, 0, 1.2 };
+static TYPE 		D_JUMP_DIST_STD[DELTA_JUMPS * DIMENSIONS] = { 0, sqrtf(0.02f), 0, sqrtf(0.02f), 0, sqrtf(0.02f) };
+static const int 	D_JUMP_DIST_SAMPLES[DELTA_JUMPS * DIMENSIONS] = { 1, 20, 1, 20, 1, 20 };
+#endif
 
 #define INCLUDE_XTRA_PARAMS false
 

@@ -21,6 +21,8 @@
 #include "Impulse_transformations.cuh"
 #include "Integrator.cuh"
 
+/*#include "Debugging.cuh"*/
+
 
 /// @brief This function computes the Liouville Eq. iterations from t0 to tF. Each iteration consists of the following steps:
 /// 1st) Compute the AMR of the initial PDF. 
@@ -41,19 +43,19 @@
 /// @param deltaT 
 /// @param ReinitSteps 
 /// @return 
-int32_t PDF_ITERATIONS(cudaDeviceProp* prop,
-						std::vector<float>* store_PDFs,
-						const Param_pair* Parameter_Mesh,
-						const gridPoint* H_Mesh,
-						thrust::host_vector<TYPE>* H_PDF,
-						const int32_t* n_Samples,
-						const int32_t& LvlFine,
-						const int32_t& LvlCoarse,
-						const uint32_t& PtsPerDim,
-						const uint32_t& Grid_Nodes,
+int32_t PDF_ITERATIONS(	cudaDeviceProp*				prop,
+						std::vector<float>*			store_PDFs,
+						const Param_pair*			Parameter_Mesh,
+						const gridPoint*			H_Mesh,
+						thrust::host_vector<TYPE>*	H_PDF,
+						const int32_t*				n_Samples,
+						const int32_t&				LvlFine,
+						const int32_t&				LvlCoarse,
+						const uint32_t&				PtsPerDim,
+						const uint32_t&				Grid_Nodes,
 						const std::vector<Time_Impulse_vec> time_vector,
-						const FIXED_TYPE& deltaT,
-						const uint32_t& ReinitSteps) {
+						const FIXED_TYPE&			deltaT,
+						const uint32_t&				ReinitSteps) {
 
 	//--------------------------------------------------------------------------------------------//
 	//--------------------------------------------------------------------------------------------//
@@ -91,7 +93,7 @@ int32_t PDF_ITERATIONS(cudaDeviceProp* prop,
 		Sum_Rand_Params += aux_PM.Joint_PDF;
 	}
 
-	const uint64_t MAX_MEMORY_USABLE = 0.85 * (prop->totalGlobalMem - aux_Samples * sizeof(Param_pair) - Grid_Nodes * sizeof(TYPE));		// max memory to be used in bytes
+	const uint64_t MAX_MEMORY_USABLE = 0.9 * (prop->totalGlobalMem - aux_Samples * sizeof(Param_pair) - Grid_Nodes * sizeof(TYPE));		// max memory to be used in bytes
 
 
 	// ------------------ DEFINITION OF THE INTERPOLATION VARIABLES AND ARRAYS ------------------ //
@@ -100,7 +102,7 @@ int32_t PDF_ITERATIONS(cudaDeviceProp* prop,
 	const TYPE disc_X = (H_Mesh[1].dim[0] - H_Mesh[0].dim[0]);	// H_Mesh discretization size (per dimension)
 
 	thrust::host_vector<gridPoint>	__H__Domain_Boundary(2);
-#pragma unroll
+ 
 	for (uint32_t d = 0; d < DIMENSIONS; d++) {
 		__H__Domain_Boundary[0].dim[d] = H_Mesh[0].dim[d];
 		__H__Domain_Boundary[1].dim[d] = H_Mesh[Grid_Nodes - 1].dim[d];
@@ -110,7 +112,7 @@ int32_t PDF_ITERATIONS(cudaDeviceProp* prop,
 	const TYPE search_radius = DISC_RADIUS * disc_X;		// max radius to search ([3,6] appears to be optimal)
 
 	const uint32_t	max_steps = 1000;		 				// max steps at the Conjugate Gradient (CG) algorithm
-	const TYPE 	in_tolerance = TOLERANCE_ConjGrad; 		// CG stop tolerance
+	const TYPE 	in_tolerance = TOLERANCE_ConjGrad; 			// CG stop tolerance
 
 	// --------------------------------------------------------------------------------------------
 	// --------------------------------------------------------------------------------------------
@@ -146,7 +148,7 @@ int32_t PDF_ITERATIONS(cudaDeviceProp* prop,
 		float	t0 = time_vector[j].time,
 			tF = time_vector[j + 1].time;
 
-		std::cout << "/ ------------------------------------------------------------------- /\n";
+		std::cout << "+---------------------------------------------------------------------+\n";
 		// 1.- Initial step Adaptive H_Mesh Refinement. First store the initial PDF with AMR performed
 
 		auto start_3 = std::chrono::high_resolution_clock::now();
@@ -227,7 +229,7 @@ int32_t PDF_ITERATIONS(cudaDeviceProp* prop,
 			Adapt_Points = AdaptGrid.size();
 
 			// maximum neighbors to search. Diameter number of points powered to the dimension
-			MaxNeighborNum = fmin(pow(2 * DISC_RADIUS, DIMENSIONS), Adapt_Points);
+			MaxNeighborNum = fmin(pow(2 * round(DISC_RADIUS) + 1, DIMENSIONS), Adapt_Points);
 
 			// Total memory requirements for next Liouville step
 			const uint64_t mem_requested_per_sample = (uint64_t)Adapt_Points * (sizeof(TYPE) * (6 + MaxNeighborNum) + sizeof(gridPoint) + sizeof(int32_t) * (MaxNeighborNum + 1));
@@ -305,53 +307,60 @@ int32_t PDF_ITERATIONS(cudaDeviceProp* prop,
 				// ----------------------------------------------------------------------------------- //
 				// 1.- Build Matix in GPU (indexes, dists and neighbors) Using Exahustive search...
 				start_3 = std::chrono::high_resolution_clock::now();
-				/*Exh_PP_Search<TYPE> << <Blocks, Threads >> > (rpc(GPU_Part_Position, 0),
-																rpc(GPU_Part_Position, 0),
-																rpc(GPU_Index_array, 0),
-																rpc(GPU_Mat_entries, 0),
-																rpc(GPU_Num_Neighbors, 0),
-																MaxNeighborNum,
-																Adapt_Points,
-																Block_Particles,
-																search_radius,
-																rpc(__D__Domain_Boundary, 0));
-				gpuError_Check(cudaDeviceSynchronize());*/
 
-				error_check = _CS_Neighbor_Search<TYPE>(GPU_Part_Position,
-														GPU_AdaptPDF,
-														GPU_Index_array,
-														GPU_Mat_entries,
-														GPU_Num_Neighbors,
-														PtsPerDim,
-														Adapt_Points,
-														H_Mesh[0],
-														MaxNeighborNum,
-														search_radius,
-														disc_X,
-														__D__Domain_Boundary);
+				Exh_PP_Search<TYPE> << <Blocks, Threads >> > (rpc(GPU_Part_Position, 0),
+					rpc(GPU_Part_Position, 0),
+					rpc(GPU_Index_array, 0),
+					rpc(GPU_Mat_entries, 0),
+					rpc(GPU_Num_Neighbors, 0),
+					MaxNeighborNum,
+					Adapt_Points,
+					Block_Particles,
+					search_radius,
+					rpc(__D__Domain_Boundary, 0));
+				gpuError_Check(cudaDeviceSynchronize());
 
-				if (error_check == -1) { break; }
+				/*error_check = _CS_Neighbor_Search<TYPE>(GPU_Part_Position,
+					GPU_AdaptPDF,
+					GPU_Index_array,
+					GPU_Mat_entries,
+					GPU_Num_Neighbors,
+					PtsPerDim,
+					Adapt_Points,
+					MaxNeighborNum,
+					search_radius,
+					disc_X,
+					__D__Domain_Boundary);
+
+				if (error_check == -1) { break; }*/
 
 				end_3 = std::chrono::high_resolution_clock::now();
 				duration_3 = end_3 - start_3;
+
+				/*int* Index_array = new int[Block_Particles * MaxNeighborNum];
+				thrust::copy(GPU_Index_array.begin(), GPU_Index_array.end(), &Index_array[0]);
+				DEBUG_INDEX_ARRAY(Index_array, Block_Particles, MaxNeighborNum);
+				delete[] Index_array;*/
+
 #if OUTPUT_INFO
 				std::cout << "Exhaustive point serach took " << duration_3.count() << " seconds\n";
 #endif
 
+
 				// 2.- Iterative solution (Conjugate Gradient) to obtain coefficients of the RBFs
 				thrust::device_vector<TYPE>	GPU_lambdas(Block_Particles);	// solution vector (RBF weights)
-				thrust::fill(GPU_lambdas.begin(), GPU_lambdas.end(), 0.0f);		// this will serve as the initial condition
+				thrust::fill(GPU_lambdas.begin(), GPU_lambdas.end(), 0.0f);	// this will serve as the initial condition
 
 				start_3 = std::chrono::high_resolution_clock::now();
 				error_check = CONJUGATE_GRADIENT_SOLVE<TYPE>(GPU_lambdas,
-					GPU_Index_array,
-					GPU_Mat_entries,
-					GPU_Num_Neighbors,
-					GPU_AdaptPDF,
-					Block_Particles,
-					MaxNeighborNum,
-					max_steps,
-					in_tolerance);
+															GPU_Index_array,
+															GPU_Mat_entries,
+															GPU_Num_Neighbors,
+															GPU_AdaptPDF,
+															Block_Particles,
+															MaxNeighborNum,
+															max_steps,
+															in_tolerance);
 				if (error_check == -1) { break; }
 				end_3 = std::chrono::high_resolution_clock::now();
 				duration_3 = end_3 - start_3;

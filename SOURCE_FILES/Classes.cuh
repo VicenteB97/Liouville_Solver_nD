@@ -30,6 +30,7 @@
 #include <thrust/transform.h>
 #include <thrust/fill.h>
 #include <thrust/sort.h>
+#include <thrust/extrema.h>
 
 #include <chrono>
 
@@ -109,9 +110,9 @@ public:
 	};
 
 	// This function tells us what is the first bin to search if we consider an offset (radius, actually) of bin_offset
-	__host__ __device__ uint32_t GetBin(const TYPE discretization, const int16_t bin_offset, const gridPoint& lowest_node, const uint32_t PtsPerDimension) {
-		uint32_t bin_idx = 0;
-#pragma unroll
+	__host__ __device__ int32_t GetBin(const TYPE discretization, const int16_t bin_offset, const gridPoint& lowest_node, const uint32_t PtsPerDimension) {
+		int32_t bin_idx = 0;
+ 
 		for (uint32_t d = 0; d < DIMENSIONS; d++) {
 			int32_t temp_idx = (int32_t)roundf((dim[d] - lowest_node.dim[d]) / discretization) + bin_offset;
 			bin_idx += temp_idx * powf(PtsPerDimension, d);
@@ -193,7 +194,7 @@ __host__ __device__ inline TYPE Distance(const gridPoint P1, const gridPoint P2)
 
 	TYPE out = 0;
 
-	#pragma unroll
+	 
 	for (uint32_t d = 0; d < DIMENSIONS; d++) {
 		out += (P1.dim[d] - P2.dim[d]) * (P1.dim[d] - P2.dim[d]);
 	}
@@ -208,7 +209,7 @@ __host__ __device__ inline TYPE Distance(const gridPoint P1, const gridPoint P2)
 __host__ __device__ inline gridPoint Mult_by_Scalar(TYPE scalar, gridPoint Point) {
 	gridPoint out;
 
-	#pragma unroll
+	 
 	for (uint32_t d = 0; d < DIMENSIONS; d++) {
 		out.dim[d] = scalar * Point.dim[d];
 	}
@@ -227,7 +228,7 @@ __host__ __device__ inline Param_vec _Gather_Param_Vec(const uint32_t index, con
 	uint32_t aux_samples_mult = 1;
 	uint32_t aux_samples_sum  = 0;
 
-	#pragma unroll
+	 
 	for (uint32_t d = 0; d < PARAM_DIMENSIONS; d++){
 		uint32_t aux3 = n_Samples[d];
 		uint32_t aux = floorf(positive_rem(index, aux3 * aux_samples_mult) / aux_samples_mult );

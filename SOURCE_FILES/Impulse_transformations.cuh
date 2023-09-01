@@ -5,7 +5,7 @@
 
 #if IMPULSE_TYPE == 1
 #include "Classes.cuh"
-#include "Mat_Ops.cuh"
+#include "Interpolation.cuh"
 
 using namespace thrust::placeholders; // this is useful for the multiplication of a device vector by a constant
 
@@ -36,7 +36,7 @@ __global__ void TRANSFORM_PARTICLES(gridPoint*					Particle_Positions,
 		const int32_t j =(int32_t) floorf((float)i / Num_Particles_per_sample);				// current sample
 		Impulse_Param_vec aux = impulse_strengths[j];
 
-		#pragma unroll
+		 
 		for (uint32_t d = 0; d < DIMENSIONS; d++){			
 			Particle_Positions[i].dim[d] += aux.sample_vec[d];		// we only have to add to the second variable!
 		}
@@ -59,17 +59,17 @@ int32_t IMPULSE_TRANSFORM_PDF(	const gridPoint*				MESH,			// Fixed Mesh
 							const Time_Impulse_vec			time,			// time-impulse information 
 							const int32_t						jump,			// current jump 
 							const int32_t						Grid_Nodes,		// Number of grid points
-							const int32_t 						PtsPerDim,
+							const uint32_t 						PtsPerDim,
 							thrust::device_vector<gridPoint> &D__Boundary){	 
 
 // 0.- Create the impulse samples
 
-		int32_t Adapt_Points = Adapt_PDF->size();
+		uint32_t Adapt_Points = Adapt_PDF->size();
 
 		Distributions* Imp_Param_Dist = new Distributions[DIMENSIONS];
 		int32_t n_samples[DIMENSIONS];
 
-		#pragma unroll
+		 
 		for (uint32_t d = 0; d < DIMENSIONS; d++){
 				// RV mean and variance
 				Imp_Param_Dist[d].Name  			= D_JUMP_DIST_NAMES[jump * DIMENSIONS + d];						// N, G or U distributions
@@ -82,7 +82,7 @@ int32_t IMPULSE_TRANSFORM_PDF(	const gridPoint*				MESH,			// Fixed Mesh
 		}
 
 		int32_t Random_Samples = 1;
-		#pragma unroll
+		 
 		for (uint32_t i = 0; i < DIMENSIONS; i++){
 			Random_Samples *= n_samples[i];
 		}
@@ -127,12 +127,13 @@ int32_t IMPULSE_TRANSFORM_PDF(	const gridPoint*				MESH,			// Fixed Mesh
 // 2.- RBF interpolation into the fixed grid
 	
 	// 2.1. - Find near particles
-	const int32_t	 MaxNeighborNum	= fmin(pow(2*DISC_RADIUS,DIMENSIONS), Adapt_Points);
+	const uint32_t	 MaxNeighborNum = fmin(pow(2 * round(DISC_RADIUS) + 1, DIMENSIONS), Adapt_Points);
 	const float  disc_X 		= (MESH[1].dim[0] - MESH[0].dim[0]);	// H_Mesh discretization size (per dimension)
 	const float  search_radius 	= DISC_RADIUS * disc_X;						// max radius to search ([4,6] appears to be optimal)
 
 	const int32_t	 max_steps 		= 1000;		 		// max steps at the Conjugate Gradient (CG) algorithm
 	const float in_tolerance 	= TOLERANCE_ConjGrad; 	// CG stop tolerance
+	int16_t err = 0;
 
 	thrust::device_vector<int32_t>		GPU_Index_array;
 	thrust::device_vector<float>		GPU_Mat_entries;
@@ -142,24 +143,39 @@ int32_t IMPULSE_TRANSFORM_PDF(	const gridPoint*				MESH,			// Fixed Mesh
 	GPU_Mat_entries.resize(MaxNeighborNum * Total_Particles);
 	GPU_Num_Neighbors.resize(Total_Particles);
 
-	Exh_PP_Search << <Blocks, Threads >> > (raw_pointer_cast(&Particle_Positions[0]), 
-											raw_pointer_cast(&Particle_Positions[0]), 
-											raw_pointer_cast(&GPU_Index_array[0]), 
-											raw_pointer_cast(&GPU_Mat_entries[0]), 
-											raw_pointer_cast(&GPU_Num_Neighbors[0]), 
-											MaxNeighborNum, 
-											Adapt_Points, 
-											Total_Particles, 
-											search_radius,
-											rpc(D__Boundary,0));
-	gpuError_Check( cudaDeviceSynchronize() );
+	Exh_PP_Search << <Blocks, Threads >> > (raw_pointer_cast(&Particle_Positions[0]),
+		raw_pointer_cast(&Particle_Positions[0]),
+		raw_pointer_cast(&GPU_Index_array[0]),
+		raw_pointer_cast(&GPU_Mat_entries[0]),
+		raw_pointer_cast(&GPU_Num_Neighbors[0]),
+		MaxNeighborNum,
+		Adapt_Points,
+		Total_Particles,
+		search_radius,
+		rpc(D__Boundary, 0));
+	gpuError_Check(cudaDeviceSynchronize());
+
+		/*err = _CS_Neighbor_Search<TYPE>(Particle_Positions,
+										PDF_Particles,
+										GPU_Index_array,
+										GPU_Mat_entries,
+										GPU_Num_Neighbors,
+										PtsPerDim,
+										Adapt_Points,
+										MaxNeighborNum,
+										search_radius,
+										disc_X,
+										D__Boundary);
+
+		if (err == -1) { return err; }*/
+
 	//std::cout << "Transformation Point Search: done\n";
 
 	// 2.- Iterative solution (Conjugate Gradient) to obtain coefficients of the RBFs
 	thrust::device_vector<float>	GPU_lambdas(Total_Particles);	// solution vector (RBF weights)
 	thrust::fill(GPU_lambdas.begin(), GPU_lambdas.end(), 0.00f);		// this will serve as the initial condition
 
-	int32_t err = CONJUGATE_GRADIENT_SOLVE<float>( GPU_lambdas, 
+	err = CONJUGATE_GRADIENT_SOLVE<float>( GPU_lambdas, 
 												GPU_Index_array, 
 												GPU_Mat_entries, 
 												GPU_Num_Neighbors, 

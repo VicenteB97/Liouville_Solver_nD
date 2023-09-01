@@ -119,7 +119,7 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 	
 		thrust::host_vector<TYPE> H_PDF(Grid_Nodes);	 							// PDF values at the fixed, high-res grid (CPU)
 
-		#pragma unroll
+		 
 		for (uint32_t p = 0; p < PARAM_DIMENSIONS; p++){
 			Param_dist[p].Name  			= _DIST_NAMES[p];		// N, G or U distributions
 			Param_dist[p].Truncated  		= _DIST_TRUNC[p];		// TRUNCATED?
@@ -129,7 +129,7 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 			Param_dist[p].params[1] 		= _DIST_STD[p];			// std
 		}
 
-		#pragma unroll
+		 
 		for (uint32_t d = 0; d < DIMENSIONS; d++){
 			IC_dist_params[2*d] 	= IC_MEAN[d];
 			IC_dist_params[2*d + 1] = IC_STD[d];

@@ -22,10 +22,10 @@
 // delete[] Mat_entries;
 
 // Debug Indeces
-//int* Index_array = new int[Total_Points];
-//thrust::copy(GPU_Index_array.begin(), GPU_Index_array.end(), &Index_array[0]);
-//DEBUG_INDEX_ARRAY(Index_array, Total_Points, MaxNeighborNum);
-//delete[] Index_array;
+/*int* Index_array = new int[Block_Particles * MaxNeighborNum];
+thrust::copy(GPU_Index_array.begin(), GPU_Index_array.end(), &Index_array[0]);
+DEBUG_INDEX_ARRAY(Index_array, Block_Particles, MaxNeighborNum);
+delete[] Index_array;*/
 
 template <class T>
 void DEBUG_General(T Mat_entries, const int Total_Pts, const int Max_Neighbors) {
@@ -85,15 +85,15 @@ void DEBUG_LAMBDAS_VEC(std::vector<T>& Mat_entries, const int Adapt_Points, cons
 	}
 }
 
-void DEBUG_INDEX_ARRAY(std::vector<int>* Mat_entries, const int Adapt_Points, const int MaxNeighborNum) {
+void DEBUG_INDEX_ARRAY(int* Mat_entries, const int Adapt_Points, const int MaxNeighborNum) {
 	std::ofstream myfile_0;
 	myfile_0.open("Idx_info.csv");
 	if (myfile_0.is_open()) {
 		for (int k = 0; k < Adapt_Points; k++) {
-			for (int i = 0; i < MaxNeighborNum - 1; i++) {
-				myfile_0 << Mat_entries->at(i + k * MaxNeighborNum) << ",";
+			for (int i = 0; i < MaxNeighborNum; i++) {
+				myfile_0 << Mat_entries[i + k * MaxNeighborNum] << ",";
 			}
-			myfile_0 << Mat_entries->at((k + 1) * MaxNeighborNum - 1) << "\n";
+			myfile_0 << std::endl;
 		}
 		myfile_0.close();
 		std::cout << "Completed!\n";

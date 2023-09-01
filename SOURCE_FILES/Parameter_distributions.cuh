@@ -32,7 +32,7 @@ int16_t PDF_INITIAL_CONDITION(uint32_t Points_per_dimension, const gridPoint* Me
 	boost::math::normal dist[DIMENSIONS];
 
 	//create the distributions per dimension:
-	#pragma unroll
+	 
 	for (uint32_t d = 0; d < DIMENSIONS; d++){
 		dist[d] = boost::math::normal_distribution((FIXED_TYPE)IC_dist_parameters[2*d], (FIXED_TYPE)IC_dist_parameters[2*d + 1]);
 	}
@@ -170,7 +170,7 @@ int32_t RANDOMIZE(const int32_t* 		n_samples,
 
 	uint32_t aux = 0;
 
-	#pragma unroll
+	 
 	for (uint32_t d = 0; d < PARAM_DIMENSIONS; d++){
 		// call the parameter pair vec. function
 		Param_pair* PP = new Param_pair[n_samples[d]];

@@ -36,13 +36,13 @@ __global__ void D__Wavelet_Transform__F(T* 					PDF,
 		// This way we can obtain the global index of the cube vertex from the cube vertex's relative position
 		uint32_t main_node_idx = 0;
 
-		#pragma unroll 
+		  
 		for (uint32_t j = 0; j < DIMENSIONS; j++){
 			main_node_idx += floor(positive_rem(globalID, pow(Points_at_level, j + 1)) / powf(Points_at_level, j)) * powf(PtsPerDim, j) * rescaling;
 		}
 
 		// find the dyadic cube indeces and do the wavelet transform at the same time
-		#pragma unroll
+		 
 		for(uint32_t d = 0; d < DIMENSIONS; d++){
 			for(uint32_t k = 0; k < powf(2,DIMENSIONS);k++){
 				if( floor(positive_rem(k, pow(2, d + 1)) / pow(2, d))  == 0 ){ // this part decides whether this is an approximation node
