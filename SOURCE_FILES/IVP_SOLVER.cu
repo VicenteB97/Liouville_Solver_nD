@@ -236,67 +236,59 @@ auto end = std::chrono::high_resolution_clock::now();
 
 				std::string temp_str = std::to_string((uint32_t)k);
 
+			// SIMULATION INFORMATION FILE
 				std::string relavtive_pth = RELATIVE_PATH;
 				relavtive_pth.append("Simulation_info_");
 				relavtive_pth.append(temp_str);
 				relavtive_pth.append(".csv");
 
 				std::ofstream file1(relavtive_pth, std::ios::out);
+				assert(file1.is_open());
 
-				if (!file1.is_open()) {
-					std::cout << "Information file " << k << " failed!!\n";
-					error_check = -1;
-					// break;
+				file1 << Grid_Nodes << "," << PtsPerDim << ",";
+
+				for (uint32_t d = 0; d < DIMENSIONS; d++) {
+					file1 << H_Mesh[0].dim[d] << "," << H_Mesh[Grid_Nodes - 1].dim[d] << ",";
 				}
-				else{
-					file1 << Grid_Nodes << "," << PtsPerDim << ",";
-						
-					for (uint32_t d = 0; d < DIMENSIONS; d++){
-						file1 << H_Mesh[0].dim[d] << "," << H_Mesh[Grid_Nodes - 1].dim[d] << ",";
-					} 
-						file1 << duration.count() << "\n";
-
-					#if IMPULSE_TYPE == 0 || IMPULSE_TYPE ==1
-						for (uint32_t i = k * max_frames_file + frames_init; i < k*max_frames_file + frames_in_file + frames_init - 1; i++) {
-							file1 << time_vector[i].time << ",";
-						}
-						file1 << time_vector[k*max_frames_file + frames_in_file + frames_init - 1].time;
-
-					#elif IMPULSE_TYPE == 2
-						file1 << time_vector[k * max_frames_file + frames_init].time << ",";
-
-						for (uint32_t i = k * max_frames_file + 1 + frames_init; i < k*max_frames_file + frames_init + frames_in_file; i++) {
-							if(abs(time_vector[i].time - time_vector[i-1].time)>pow(10,-7)){
-								file1 << time_vector[i].time << ",";
-							}
-							else if(i == k*max_frames_file + frames_in_file + frames_init - 1){
-								if(time_vector[i].time != time_vector[i-1].time){
-									file1 << time_vector[i].time;
-								}
-							}
-						}
-					#endif
-					file1.close();
+				for (uint16_t d = 0; d < PARAM_DIMENSIONS; d++) {
+					file1 << n_samples[d] << ",";
 				}
+				file1 << duration.count() << "\n";
 
-				// Simulation Information
+				#if IMPULSE_TYPE == 0 || IMPULSE_TYPE ==1
+				for (uint32_t i = k * max_frames_file + frames_init; i < k * max_frames_file + frames_in_file + frames_init - 1; i++) {
+					file1 << time_vector[i].time << ",";
+				}
+				file1 << time_vector[k * max_frames_file + frames_in_file + frames_init - 1].time;
+
+				#elif IMPULSE_TYPE == 2
+				file1 << time_vector[k * max_frames_file + frames_init].time << ",";
+
+				for (uint32_t i = k * max_frames_file + 1 + frames_init; i < k * max_frames_file + frames_init + frames_in_file; i++) {
+					if (abs(time_vector[i].time - time_vector[i - 1].time) > pow(10, -7)) {
+						file1 << time_vector[i].time << ",";
+					}
+					else if (i == k * max_frames_file + frames_in_file + frames_init - 1) {
+						if (time_vector[i].time != time_vector[i - 1].time) {
+							file1 << time_vector[i].time;
+						}
+					}
+				}
+				#endif
+				file1.close();
+
+			// SIMULATION OUTPUT
 				relavtive_pth = RELATIVE_PATH;
 				relavtive_pth.append("Mean_PDFs_");
 				relavtive_pth.append(temp_str);
 				relavtive_pth.append(".bin");
 
 				std::ofstream myfile(relavtive_pth, std::ios::out | std::ios::binary);
+				assert (myfile.is_open());
 
-				if(!myfile.is_open()){
-					std::cout << "Simulation output file " << k << " failed!!\n";
-					error_check = -1;
-					// break;
-				}
-				else{
-					myfile.write((char *)&store_PDFs[(k*max_frames_file + frames_init)*Grid_Nodes], sizeof(float) * frames_in_file * Grid_Nodes);
-					myfile.close();
-					std::cout << "Simulation output file " << k << " completed!\n";
-				}
+				myfile.write((char*)&store_PDFs[(k * max_frames_file + frames_init) * Grid_Nodes], sizeof(float) * frames_in_file * Grid_Nodes);
+				myfile.close();
+				std::cout << "Simulation output file " << k << " completed!\n";
 				
 			}
 		}
