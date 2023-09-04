@@ -429,7 +429,7 @@ int32_t PDF_ITERATIONS(	cudaDeviceProp*				prop,
 
 			std::chrono::duration<float> duration_2 = end_2 - start_2;
 			std::cout << "Total Liouville iteration took " << duration_2.count() << " seconds\n";
-			std::cout << "/ ------------------------------------------------------------------- /\n";
+			std::cout << "+---------------------------------------------------------------------+\n";
 
 			// Store info in cumulative variable
 			thrust::copy(H_PDF->begin(), H_PDF->end(), &(*store_PDFs)[j * Grid_Nodes]);

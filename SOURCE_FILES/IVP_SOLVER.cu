@@ -288,14 +288,14 @@ auto end = std::chrono::high_resolution_clock::now();
 				std::ofstream myfile(relavtive_pth, std::ios::out | std::ios::binary);
 
 				if(!myfile.is_open()){
-					std::cout << "Simulation output file " << k << " failed!!" << std::endl;
+					std::cout << "Simulation output file " << k << " failed!!\n";
 					error_check = -1;
 					// break;
 				}
 				else{
 					myfile.write((char *)&store_PDFs[(k*max_frames_file + frames_init)*Grid_Nodes], sizeof(float) * frames_in_file * Grid_Nodes);
 					myfile.close();
-					std::cout << "Simulation output file " << k << " completed!" << std::endl;
+					std::cout << "Simulation output file " << k << " completed!\n";
 				}
 				
 			}
