@@ -109,7 +109,7 @@ int32_t PDF_ITERATIONS(	cudaDeviceProp*				prop,
 	const TYPE search_radius = DISC_RADIUS * disc_X;		// max radius to search ([3,6] appears to be optimal)
 
 	const uint32_t	max_steps = 1000;		 				// max steps at the Conjugate Gradient (CG) algorithm
-	const TYPE 	in_tolerance  = TOLERANCE_ConjGrad; 			// CG stop tolerance
+	const TYPE 	in_tolerance  = TOLERANCE_ConjGrad; 		// CG stop tolerance
 
 	// --------------------------------------------------------------------------------------------
 	// --------------------------------------------------------------------------------------------
@@ -385,7 +385,7 @@ int32_t PDF_ITERATIONS(	cudaDeviceProp*				prop,
 
 				GPU_PDF.resize(Grid_Nodes, 0);	// PDF is reset to 0, so that we may use atomic adding at the remeshing step
 				Threads = fminf(THREADS_P_BLK, Block_Particles);
-				Blocks = floorf((Block_Particles - 1) / Threads) + 1;
+				Blocks  = floorf((Block_Particles - 1) / Threads) + 1;
 
 				start_3 = std::chrono::high_resolution_clock::now();
 				RESTART_GRID_FIND_GN<TYPE> << < Blocks, Threads >> > (rpc(GPU_Part_Position, 0),
@@ -409,7 +409,6 @@ int32_t PDF_ITERATIONS(	cudaDeviceProp*				prop,
 #else
 #endif
 			}
-
 
 			AdaptGrid.clear();
 			AdaptPDF.clear();

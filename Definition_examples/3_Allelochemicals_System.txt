@@ -125,8 +125,8 @@ inline TYPE 		_DIST_STD	 [PARAM_DIMENSIONS]	= {sqrtf(0.00092928f), sqrtf(0.0011f
 // 	inline double SQ_JUMP_DIST_TIME [2 * SQUARE_JUMPS] = {6, 12, 30, 36, 54, 60, 78, 84};
 	
 // 	#if INCLUDE_XTRA_PARAMS
-// 		#define XTRA_PARAM SQ_JUMP_DIST_TIME
-// 		#define XTRA_PARAM_LENGTH SQUARE_JUMPS*2
+// 		#define XTRA_PARAM 			SQ_JUMP_DIST_TIME
+// 		#define XTRA_PARAM_LENGTH 	SQUARE_JUMPS*2
 // 	#endif
 // #endif
 // // -----------------------------------------------------------------------//
