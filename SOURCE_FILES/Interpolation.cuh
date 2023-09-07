@@ -144,11 +144,16 @@ __global__ void Neighbor_search(gridPoint*		Search_Particles,
 			aux_index += floorf(positive_rem(k, powf(2 * Bin_offset + 1, d + 1)) / powf(2 * Bin_offset + 1, d)) * powf(BB_PtsPerDimension, d);
 		}
 
-		if (aux_index > -1 && aux_index < powf(BB_PtsPerDimension, DIMENSIONS) - 1) { // If we are selecting nodes inside the domain
+		if (aux_index > -1 && aux_index < powf(BB_PtsPerDimension, DIMENSIONS)) { // If we are selecting nodes inside the domain
 
 			// Now that we have the bin to search, all we have to do is go through the particles that are in the corresponding bin:
 			uint32_t startIdx	= Bin_count[aux_index];
-			uint32_t endIdx		= Bin_count[aux_index + 1];
+			uint32_t endIdx		= Total_Particles;
+
+			// When we haven't reached the last element of the count vector, we have to know where do we stop the counting
+			if (aux_index < powf(BB_PtsPerDimension, DIMENSIONS) - 1) {
+				endIdx = Bin_count[aux_index + 1];
+			}
 
 			// Add the points in the current bin
 			for (uint32_t m = startIdx; m < endIdx; m++) {
@@ -300,32 +305,33 @@ void Exh_PP_Search(const gridPoint* Search_Particles,
 
 	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
 
-	if (i < Total_Particles) {
-		gridPoint FP_aux = Fixed_Particles[i];
-		uint32_t		aux = 1;
-		const uint32_t	i_aux = floorf(i / Adapt_Points);										// Tells me what parameter sample I'm at
-		const int64_t	k = i * max_neighbor_num;
-		T				dist;
+	if (i >= Total_Particles) { return; }
 
-		Index_Array[k] = i;
-		Matrix_Entries[k] = RBF(search_radius, 0);
+	gridPoint		FP_aux	= Fixed_Particles[i];									// Tells me what parameter sample I'm at
+	const int64_t	k		= i * max_neighbor_num;
 
-		if (FP_aux.is_in_domain(Boundary)) {
-			for (uint64_t j = i_aux * Adapt_Points; j < (i_aux + 1) * Adapt_Points; j++) {		// neighborhood where I'm searching
+	Index_Array[k] = i;
+	Matrix_Entries[k] = RBF(search_radius, 0);
 
-				gridPoint Temp_Particle = Search_Particles[j];
+	if (!FP_aux.is_in_domain(Boundary)) { Num_Neighbors[i] = 1; return; }
 
-				dist = Distance(Temp_Particle, FP_aux) / search_radius;	// normalized distance between particles
+	uint32_t		aux = 1;
+	const uint32_t	i_aux = floorf(i / Adapt_Points);
+	T				dist;
 
-				if (dist <= 1 && aux < max_neighbor_num && j != i && Temp_Particle.is_in_domain(Boundary)) {
-					Index_Array[k + aux] = j;
-					Matrix_Entries[k + aux] = RBF(search_radius, dist);
-					aux++;
-				}
-			}
-			Num_Neighbors[i] = aux;
+	for (uint64_t j = i_aux * Adapt_Points; j < (i_aux + 1) * Adapt_Points; j++) {		// neighborhood where I'm searching
+
+		gridPoint Temp_Particle = Search_Particles[j];
+
+		dist = Distance(Temp_Particle, FP_aux) / search_radius;	// normalized distance between particles
+
+		if (dist <= 1 && aux < max_neighbor_num && j != i && Temp_Particle.is_in_domain(Boundary)) {
+			Index_Array[k + aux] = j;
+			Matrix_Entries[k + aux] = RBF(search_radius, dist);
+			aux++;
 		}
 	}
+	Num_Neighbors[i] = aux;
 }
 
 //---------------------------------------------------------------------------------------------------------------------//
@@ -363,23 +369,24 @@ void MATRIX_VECTOR_MULTIPLICATION(T* X, const T* x0, const int32_t* Matrix_idxs,
 
 	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;	// For each i, which represents the matrix row, we read the index positions and multiply against the particle weights
 
-	if (i < total_length) {						// total length = adapt_points * total_samples
-		// 1.- Compute A*X0										
-			// 1.1.- Determine where my particles are!!
-		const uint32_t n = Interaction_Lengths[i];	// total neighbors to look at
-		const uint32_t i0 = i * Max_Neighbors;		// where does my search index start
+	if (i >= total_length) { return; }						// total length = adapt_points * total_samples
 
-		T 			a = 0;					// auxiliary value for sum (the diagonal is always 1 in our case)
-		uint32_t 	p;						// auxiliary variable for indexing
-		// 1.2.- Multiply row vec (from matrix) - column vec (possible solution)
-		for (uint32_t j = i0; j < i0 + n; j++) {
-			p = Matrix_idxs[j];
-			a += Matrix_entries[j] * x0[p];		// < n calls to global memory
-		}
+// 1.- Compute A*X0										
+	// 1.1.- Determine where my particles are!!
+	const uint32_t n = Interaction_Lengths[i];	// total neighbors to look at
+	const uint32_t i0 = i * Max_Neighbors;		// where does my search index start
 
-		// 2.- Output
-		X[i] = a;								// particle weights
+	T a = 0;					// auxiliary value for sum (the diagonal is always 1 in our case)
+
+	// 1.2.- Multiply row vec (from matrix) - column vec (possible solution)
+	for (uint32_t j = i0; j < i0 + n; j++) {
+		int32_t p = Matrix_idxs[j];
+
+		a += Matrix_entries[j] * x0[p]; 		// < n calls to global memory
 	}
+
+// 2.- Output
+	X[i] = a;								// particle weights
 }
 
 template<class T>
@@ -396,14 +403,14 @@ template<class T>
 /// @return An integer for determining whether it has exited successfully or not
 __host__ 
 int32_t CONJUGATE_GRADIENT_SOLVE(	thrust::device_vector<T>&		GPU_lambdas,
-											thrust::device_vector<int32_t>& GPU_Index_array,
-											thrust::device_vector<T>&		GPU_Mat_entries,
-											thrust::device_vector<uint32_t>& GPU_Num_Neighbors,
-											thrust::device_vector<T>&		GPU_AdaptPDF,
-											const int32_t					Total_Particles,
-											const int32_t					MaxNeighborNum,
-											const int32_t					max_steps,
-											const T							in_tolerance) {
+									thrust::device_vector<int32_t>& GPU_Index_array,
+									thrust::device_vector<T>&		GPU_Mat_entries,
+									thrust::device_vector<uint32_t>& GPU_Num_Neighbors,
+									thrust::device_vector<T>&		GPU_AdaptPDF,
+									const int32_t					Total_Particles,
+									const int32_t					MaxNeighborNum,
+									const int32_t					max_steps,
+									const T							in_tolerance) {
 
 
 	// Determine threads and blocks for the simulation

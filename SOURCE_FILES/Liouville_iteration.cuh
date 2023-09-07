@@ -109,7 +109,7 @@ int32_t PDF_ITERATIONS(	cudaDeviceProp*				prop,
 	const TYPE search_radius = DISC_RADIUS * disc_X;		// max radius to search ([3,6] appears to be optimal)
 
 	const uint32_t	max_steps = 1000;		 				// max steps at the Conjugate Gradient (CG) algorithm
-	const TYPE 	in_tolerance = TOLERANCE_ConjGrad; 			// CG stop tolerance
+	const TYPE 	in_tolerance  = TOLERANCE_ConjGrad; 			// CG stop tolerance
 
 	// --------------------------------------------------------------------------------------------
 	// --------------------------------------------------------------------------------------------

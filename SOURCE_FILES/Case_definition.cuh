@@ -32,20 +32,14 @@
 #define MAX_FILE_SIZE_B 2*1024*1024*1024
 
 // Choosing whether showing full or simplified timing information
-#define OUTPUT_INFO false
+#define OUTPUT_INFO true
 
 #define TYPE float     // only supported values are 'float' and 'double'
 
 // AMR tolerance, Conjugate Gradient tolerance and number of discretization size for the radius of the RBFs
-#define TOLERANCE_AMR       0.001
+#define TOLERANCE_AMR       0.0005
 #define TOLERANCE_ConjGrad  powf(10,-6)     // RECOMMENDED: This appears to give good results...no need to change it
-#define DISC_RADIUS         3.45
-
-// // DEFINE WHETHER WE WILL USE THE ADATIVE TIME STEPPING WITH "NO" POINT SEARCH PHASE
-// #define TIME_ADAPTIVE       true            // VAL: 0.07. 
-//                                             // Bounded by the inverse of the Lipschitz constant of the vector field (2 in our case)... 
-//                                             // and multiplied by the log-difference of the max distance and the initial distance (in this case,...
-//                                             // the "CFL" condition is over 11 times what we would obtain using FDM)
+#define DISC_RADIUS         3.25
 
 // State variables information
 #define DIMENSIONS   3
@@ -76,7 +70,7 @@ static const bool   _DIST_TRUNC[PARAM_DIMENSIONS] = { false, false, true, true }
 static const TYPE   _DIST_InfTVAL[PARAM_DIMENSIONS] = { 0,0,0,0 };
 static const TYPE   _DIST_SupTVAL[PARAM_DIMENSIONS] = { 1,1,1,1 };
 static TYPE 		_DIST_MEAN[PARAM_DIMENSIONS] = { 0.025,0.025,0.3,0.2 };
-static TYPE 		_DIST_STD[PARAM_DIMENSIONS] = { sqrtf(0.0001),sqrtf(0.0001),sqrtf(0.0001),sqrtf(0.0001) };
+static TYPE 		_DIST_STD[PARAM_DIMENSIONS] = { sqrtf(0.0005),sqrtf(0.0005),sqrtf(0.0001),sqrtf(0.0001) };
 
 // Impulse parameter information
 #define IMPULSE_TYPE 0
