@@ -92,6 +92,7 @@ int main() {
 		int16_t ret_val = PDF_EVOLUTION(&prop);
 
 		std::cout << "Simulation finished with output code " << ret_val << ". Press any key to continue...";
+		std::cin.ignore();
 		std::cin.get();
 
 		return ret_val;

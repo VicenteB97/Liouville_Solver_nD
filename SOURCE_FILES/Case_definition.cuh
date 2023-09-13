@@ -32,7 +32,7 @@
 #define MAX_FILE_SIZE_B 2*1024*1024*1024
 
 // Choosing whether showing full or simplified timing information
-#define OUTPUT_INFO true
+#define OUTPUT_INFO false
 
 #define TYPE float     // only supported values are 'float' and 'double'
 
