@@ -27,7 +27,7 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 	// ----------------------------------------------------------------------------------------------- //
 	// ---------------------------------- OBTAIN INFO FROM TERMINAL ---------------------------------- //
 	// ----------------------------------------------------------------------------------------------- //
-	int32_t LvlFine, LvlCoarse = 0;
+	INT LvlFine, LvlCoarse = 0;
 	std::cout << "Finest level in the domain?: ";
 	std::cin >> LvlFine;
 	if (LvlFine == -1){
@@ -48,15 +48,15 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 	const gridPoint Domain_Center 	= DOMAIN_CTR;
 	const gridPoint Domain_Diameter = DOMAIN_DIAM;
 
-	const uint32_t PtsPerDim  	= pow(2, LvlFine);
-	const uint32_t Grid_Nodes 	= pow(PtsPerDim, DIMENSIONS);
+	const UINT PtsPerDim  	= pow(2, LvlFine);
+	const UINT Grid_Nodes 	= pow(PtsPerDim, DIMENSIONS);
 	gridPoint* H_Mesh 	 		= new gridPoint[Grid_Nodes];
 
 	// GENERAL DIMENSION Cartesian coordinate grid build up
 	#pragma omp parallel for
-	for (int32_t i = 0; i < Grid_Nodes; i++){
-		for (uint32_t d = 0; d < DIMENSIONS; d++){
-			uint32_t j 	 = floor(positive_rem(i, pow(PtsPerDim, d + 1))/pow(PtsPerDim, d));
+	for (INT i = 0; i < Grid_Nodes; i++){
+		for (UINT d = 0; d < DIMENSIONS; d++){
+			UINT j 	 = floor(positive_rem(i, pow(PtsPerDim, d + 1))/pow(PtsPerDim, d));
 			H_Mesh[i].dim[d] = ((TYPE) j / (PtsPerDim - 1) - 0.50f) * Domain_Diameter.dim[d] + Domain_Center.dim[d]; 
 		}
 	}
@@ -65,7 +65,7 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 // -------------------------------------------------------------------------------------------------------------- //
 // -------------------------------------------------------------------------------------------------------------- //
 	// Time simulation data Definition: -------------------------------------------------------------------------------
-	int32_t	ReinitSteps;
+	INT	ReinitSteps;
 	FIXED_TYPE	deltaT;
 
 	std::vector<Time_Impulse_vec> time_vector;
@@ -89,14 +89,14 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 // --------------------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------
 // 1.- PARAMETERS biuld up
-		int32_t n_samples[PARAM_DIMENSIONS];	// number of samples per parameter
+		INT n_samples[PARAM_DIMENSIONS];	// number of samples per parameter
 
 		TYPE IC_dist_params[DIMENSIONS * 2];	// distribution parameters for the IC
 		
 	// ----------------------------------------------------------------------------------------------- //
 	// ---------------------------------- OBTAIN INFO FROM TERMINAL ---------------------------------- //
 	// ----------------------------------------------------------------------------------------------- //
-		for (uint32_t k = 0; k < PARAM_DIMENSIONS; k++) {
+		for (UINT k = 0; k < PARAM_DIMENSIONS; k++) {
 			std::cout << "How many samples for parameter " << k + 1 << " ? ";
 			std::cin >> n_samples[k];
 			while (n_samples[k] == 0){ 
@@ -109,8 +109,8 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 	// ----------------------------------------------------------------------------------------------- //
 	// ----------------------------------------------------------------------------------------------- //
 	// ----------------------------------------------------------------------------------------------- //
-		uint32_t PM_length = 1;															// Total number of parameter samples we use
-		for (uint32_t i = 0; i < PARAM_DIMENSIONS; i++){
+		UINT PM_length = 1;															// Total number of parameter samples we use
+		for (UINT i = 0; i < PARAM_DIMENSIONS; i++){
 			PM_length += n_samples[i];
 		}
 
@@ -120,7 +120,7 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 		thrust::host_vector<TYPE> H_PDF(Grid_Nodes);	 							// PDF values at the fixed, high-res grid (CPU)
 
 		 
-		for (uint32_t p = 0; p < PARAM_DIMENSIONS; p++){
+		for (UINT p = 0; p < PARAM_DIMENSIONS; p++){
 			Param_dist[p].Name  			= _DIST_NAMES[p];		// N, G or U distributions
 			Param_dist[p].Truncated  		= _DIST_TRUNC[p];		// TRUNCATED?
 			Param_dist[p].trunc_interval[0] = _DIST_InfTVAL[p];		// min of trunc. interval
@@ -130,7 +130,7 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 		}
 
 		 
-		for (uint32_t d = 0; d < DIMENSIONS; d++){
+		for (UINT d = 0; d < DIMENSIONS; d++){
 			IC_dist_params[2*d] 	= IC_MEAN[d];
 			IC_dist_params[2*d + 1] = IC_STD[d];
 		}
@@ -173,9 +173,9 @@ auto end = std::chrono::high_resolution_clock::now();
 
 	const uint64_t MEM_2_STORE = store_PDFs.size() * sizeof(float);
 	
-	uint32_t number_of_frames_needed 	= MEM_2_STORE / Grid_Nodes / sizeof(float);
-	uint64_t max_frames_file 			= MAX_FILE_SIZE_B / Grid_Nodes / sizeof(float);
-	uint32_t number_of_files_needed  	= floor((number_of_frames_needed - 1) / max_frames_file) + 1;
+	UINT number_of_frames_needed 	= MEM_2_STORE / Grid_Nodes / sizeof(float);
+	uint64_t max_frames_file 		= (uint64_t)MAX_FILE_SIZE_B / Grid_Nodes / sizeof(float);
+	UINT number_of_files_needed  	= floor((number_of_frames_needed - 1) / max_frames_file) + 1;
 	
 	char ans;
 	std::cout << "Simulation time: " << duration.count() << " seconds. ";
@@ -200,7 +200,7 @@ auto end = std::chrono::high_resolution_clock::now();
 
 		if ((ans != 'N') && (ans != 'n')) {
 
-			int32_t frames_init = 0, frames_end = number_of_files_needed - 1;
+			INT frames_init = 0, frames_end = number_of_files_needed - 1;
 			bool condition = false;
 
 			if((ans == 'P') || (ans == 'p')){
@@ -232,9 +232,9 @@ auto end = std::chrono::high_resolution_clock::now();
 			#pragma omp parallel for
 			for(int16_t k = 0; k < number_of_files_needed; k++){
 
-				uint32_t frames_in_file = fmin(max_frames_file, number_of_frames_needed - k * max_frames_file);
+				UINT frames_in_file = fmin(max_frames_file, number_of_frames_needed - k * max_frames_file);
 
-				std::string temp_str = std::to_string((uint32_t)k);
+				std::string temp_str = std::to_string((UINT)k);
 
 			// SIMULATION INFORMATION FILE
 				std::string relavtive_pth = RELATIVE_PATH;
@@ -247,7 +247,7 @@ auto end = std::chrono::high_resolution_clock::now();
 
 				file1 << Grid_Nodes << "," << PtsPerDim << ",";
 
-				for (uint32_t d = 0; d < DIMENSIONS; d++) {
+				for (UINT d = 0; d < DIMENSIONS; d++) {
 					file1 << H_Mesh[0].dim[d] << "," << H_Mesh[Grid_Nodes - 1].dim[d] << ",";
 				}
 				for (uint16_t d = 0; d < PARAM_DIMENSIONS; d++) {
@@ -256,7 +256,7 @@ auto end = std::chrono::high_resolution_clock::now();
 				file1 << duration.count() << "\n";
 
 				#if IMPULSE_TYPE == 0 || IMPULSE_TYPE ==1
-				for (uint32_t i = k * max_frames_file + frames_init; i < k * max_frames_file + frames_in_file + frames_init - 1; i++) {
+				for (UINT i = k * max_frames_file + frames_init; i < k * max_frames_file + frames_in_file + frames_init - 1; i++) {
 					file1 << time_vector[i].time << ",";
 				}
 				file1 << time_vector[k * max_frames_file + frames_in_file + frames_init - 1].time;
@@ -264,7 +264,7 @@ auto end = std::chrono::high_resolution_clock::now();
 				#elif IMPULSE_TYPE == 2
 				file1 << time_vector[k * max_frames_file + frames_init].time << ",";
 
-				for (uint32_t i = k * max_frames_file + 1 + frames_init; i < k * max_frames_file + frames_init + frames_in_file; i++) {
+				for (UINT i = k * max_frames_file + 1 + frames_init; i < k * max_frames_file + frames_init + frames_in_file; i++) {
 					if (abs(time_vector[i].time - time_vector[i - 1].time) > pow(10, -7)) {
 						file1 << time_vector[i].time << ",";
 					}

@@ -27,21 +27,21 @@
 /// @param Mesh 
 /// @param PDF_value 
 /// @param IC_dist_parameters 
-int16_t PDF_INITIAL_CONDITION(uint32_t Points_per_dimension, const gridPoint* Mesh, thrust::host_vector<TYPE>& PDF_value, TYPE* IC_dist_parameters) {
+int16_t PDF_INITIAL_CONDITION(UINT Points_per_dimension, const gridPoint* Mesh, thrust::host_vector<TYPE>& PDF_value, TYPE* IC_dist_parameters) {
 
 	// Due to obvious reasons, we will not make the choice of IC distributions automatically, as with the model parameters
 	boost::math::normal dist[DIMENSIONS];
 
 	//create the distributions per dimension:
 	 
-	for (uint32_t d = 0; d < DIMENSIONS; d++){
+	for (UINT d = 0; d < DIMENSIONS; d++){
 		dist[d] = boost::math::normal_distribution((FIXED_TYPE)IC_dist_parameters[2*d], (FIXED_TYPE)IC_dist_parameters[2*d + 1]);
 	}
 
 	#pragma omp parallel for
-	for (int32_t k = 0; k < PDF_value.size(); k++){
+	for (INT k = 0; k < PDF_value.size(); k++){
 		TYPE aux = 1;
-		for (uint32_t d = 0; d < DIMENSIONS; d++){
+		for (UINT d = 0; d < DIMENSIONS; d++){
 			aux *= boost::math::pdf(dist[d], Mesh[k].dim[d]);
 		}
 		PDF_value[k] = aux; // with positive and negative parts!
@@ -208,14 +208,14 @@ int16_t PARAMETER_VEC_BUILD(const int n_Samples, Param_pair* PP, const Distribut
 /// @param Parameter_Mesh Parameter Mesh 
 /// @param Dist_Parameters Parameters' (hyper)parameters
 /// @param Dist_Names Distributions that will be assigned (N = Normal, U = Uniform, etc.)
-int32_t RANDOMIZE(const int32_t* 		n_samples, 
+int16_t RANDOMIZE(const INT* 		n_samples, 
 				Param_pair* 			Parameter_Mesh, 
 				const Distributions* 	Dist_Parameters) {
 
-	uint32_t aux = 0;
+	UINT aux = 0;
 
 	 
-	for (uint32_t d = 0; d < PARAM_DIMENSIONS; d++){
+	for (UINT d = 0; d < PARAM_DIMENSIONS; d++){
 		// call the parameter pair vec. function
 		Param_pair* PP = new Param_pair[n_samples[d]];
 

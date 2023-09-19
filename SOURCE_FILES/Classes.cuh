@@ -44,7 +44,20 @@
 
 #define FIXED_TYPE double
 
-inline void gpuAssert (cudaError_t code, const char *file, int32_t line, bool abort = true){
+#define MAX_FILE_SIZE_B (uint64_t)2*1024*1024*1024
+
+#if DIMENSIONS < 3
+	#define INT int32_t
+	#define UINT uint32_t
+#elif DIMENSIONS < 6
+	#define INT int64_t
+	#define UINT uint64_t
+#else
+	#define INT int128_t
+	#define UINT uint128_t
+#endif
+
+inline void gpuAssert (cudaError_t code, const char *file, int line, bool abort = true){
 if (code != cudaSuccess) {
 		fprintf(stderr, "GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
 		if (abort) exit(code);
@@ -66,7 +79,7 @@ public:
 
 		gridPoint out;
 
-		for (uint32_t d = 0; d < DIMENSIONS; d++) {
+		for (uint16_t d = 0; d < DIMENSIONS; d++) {
 			TYPE aux = dim[d];
 			aux += other.dim[d];
 			out.dim[d] = aux;
@@ -77,7 +90,7 @@ public:
 	__host__ __device__ gridPoint operator-(const gridPoint& other) {
 		gridPoint out;
 
-		for (uint32_t d = 0; d < DIMENSIONS; d++) {
+		for (uint16_t d = 0; d < DIMENSIONS; d++) {
 			TYPE aux = dim[d];
 			aux -= other.dim[d];
 			out.dim[d] = aux;
@@ -88,7 +101,7 @@ public:
 	__host__ __device__ bool operator==(const gridPoint& other) {
 		bool out = true;
 
-		for (uint32_t d = 0; d < DIMENSIONS; d++) {
+		for (uint16_t d = 0; d < DIMENSIONS; d++) {
 			if (dim[d] != other.dim[d]) { out = false; }
 		}
 
@@ -97,25 +110,25 @@ public:
 
 	__host__ __device__ inline TYPE Distance(const gridPoint& other) {
 		TYPE dist = 0;
-		for (uint32_t d = 0; d < DIMENSIONS; d++) {
+		for (uint16_t d = 0; d < DIMENSIONS; d++) {
 			dist += (dim[d] - other.dim[d]) * (dim[d] - other.dim[d]);
 		}
 		return sqrtf(dist);
 	};
 
 	__device__ inline bool is_in_domain(const gridPoint* Boundary) {
-		for (uint32_t d = 0; d < DIMENSIONS; d++) {
+		for (uint16_t d = 0; d < DIMENSIONS; d++) {
 			if (dim[d] < Boundary[0].dim[d] || dim[d] > Boundary[1].dim[d]) { return false; }
 		}
 		return true;
 	};
 
 	// This function tells us what is the first bin to search if we consider an offset (radius, actually) of bin_offset
-	__host__ __device__ int32_t GetBin(const TYPE discretization, const int16_t bin_offset, const gridPoint& lowest_node, const uint32_t PtsPerDimension) {
-		int32_t bin_idx = 0;
+	__host__ __device__ INT GetBin(const TYPE discretization, const int16_t bin_offset, const gridPoint& lowest_node, const UINT PtsPerDimension) {
+		INT bin_idx = 0;
  
-		for (uint32_t d = 0; d < DIMENSIONS; d++) {
-			int32_t temp_idx = (int32_t)roundf((dim[d] - lowest_node.dim[d]) / discretization) + bin_offset;
+		for (uint16_t d = 0; d < DIMENSIONS; d++) {
+			INT temp_idx = (INT)roundf((dim[d] - lowest_node.dim[d]) / discretization) + bin_offset;
 			bin_idx += temp_idx * powf(PtsPerDimension, d);
 		}
 		return bin_idx;
@@ -135,7 +148,7 @@ public:
 
 class AMR_node_select{
 public:
-	uint32_t node, AMR_selected;
+	UINT node, AMR_selected;
 
 	__host__ __device__ bool operator < (const AMR_node_select& other) const { // Note that we have changed order, for simpler work
 		return (AMR_selected > other.AMR_selected);
@@ -182,7 +195,8 @@ public:
 /// @param a This is the numerator
 /// @param b This is the denominator
 /// @return Returns mod(a,b)
-__host__ __device__ inline uint32_t positive_rem(const int32_t a, const int32_t b){
+__host__ __device__ 
+inline UINT positive_rem(const INT a, const INT b){
 	return (a % b + b) % b;
 } 
 // ------------------------------------------------------------------------ //
@@ -195,8 +209,7 @@ __host__ __device__ inline TYPE Distance(const gridPoint P1, const gridPoint P2)
 
 	TYPE out = 0;
 
-	 
-	for (uint32_t d = 0; d < DIMENSIONS; d++) {
+	for (uint16_t d = 0; d < DIMENSIONS; d++) {
 		out += (P1.dim[d] - P2.dim[d]) * (P1.dim[d] - P2.dim[d]);
 	}
 
@@ -211,7 +224,7 @@ __host__ __device__ inline gridPoint Mult_by_Scalar(TYPE scalar, gridPoint Point
 	gridPoint out;
 
 	 
-	for (uint32_t d = 0; d < DIMENSIONS; d++) {
+	for (uint16_t d = 0; d < DIMENSIONS; d++) {
 		out.dim[d] = scalar * Point.dim[d];
 	}
 
@@ -220,19 +233,19 @@ __host__ __device__ inline gridPoint Mult_by_Scalar(TYPE scalar, gridPoint Point
 // ------------------------------------------------------------------------ //
 // ------------------------------------------------------------------------ //
 
-__host__ __device__ inline Param_vec _Gather_Param_Vec(const uint32_t index, const Param_pair* Parameter_Array, const int32_t* n_Samples){
+__host__ __device__ inline Param_vec _Gather_Param_Vec(const UINT index, const Param_pair* Parameter_Array, const INT* n_Samples){
 
 	Param_vec Output;
 
 	Output.Joint_PDF = 1;
 
-	uint32_t aux_samples_mult = 1;
-	uint32_t aux_samples_sum  = 0;
+	UINT aux_samples_mult = 1;
+	UINT aux_samples_sum  = 0;
 
 	 
-	for (uint32_t d = 0; d < PARAM_DIMENSIONS; d++){
-		uint32_t aux3 = n_Samples[d];
-		uint32_t aux = floorf(positive_rem(index, aux3 * aux_samples_mult) / aux_samples_mult );
+	for (uint16_t d = 0; d < PARAM_DIMENSIONS; d++){
+		UINT aux3 = n_Samples[d];
+		UINT aux = floorf(positive_rem(index, aux3 * aux_samples_mult) / aux_samples_mult );
 
 		Output.sample_vec[d] = Parameter_Array[aux + aux_samples_sum].sample;
 		Output.Joint_PDF 	*= Parameter_Array[aux + aux_samples_sum].PDF;
@@ -243,23 +256,11 @@ __host__ __device__ inline Param_vec _Gather_Param_Vec(const uint32_t index, con
 	return Output;
 }
 
-__device__ inline bool __is_in_domain(const gridPoint particle, const gridPoint* Boundary){
-	bool out = true;
-	uint32_t d = 0;
-
-	while(out && d < DIMENSIONS){
-		if(particle.dim[d] < Boundary[0].dim[d] || particle.dim[d] > Boundary[1].dim[d]){out = false;}
-		d++;
-	}
-
-	return out;
-}
-
 __device__ __forceinline__ void __atomicAdd(double *address, double val)
 {
     // Doing it all as longlongs cuts one __longlong_as_double from the inner loop
-    unsigned long long *ptr = (unsigned long long *)address;
-    unsigned long long old, newdbl, ret = *ptr;
+    uint64_t *ptr = (uint64_t *)address;
+    uint64_t old, newdbl, ret = *ptr;
     do {
         old = ret;
         newdbl = __double_as_longlong(__longlong_as_double(old)+val);
@@ -269,35 +270,19 @@ __device__ __forceinline__ void __atomicAdd(double *address, double val)
 __device__ __forceinline__ void __atomicAdd(float *address, float val)
 {
     // Doing it all as longlongs cuts one __longlong_as_double from the inner loop
-    unsigned int *ptr = (unsigned int *)address;
-    unsigned int old, newint, ret = *ptr;
+    UINT *ptr = (UINT *)address;
+    UINT old, newint, ret = *ptr;
     do {
         old = ret;
         newint = __float_as_int(__int_as_float(old)+val);
     } while((ret = atomicCAS(ptr, old, newint)) != old);
 }
-
-/*__device__ __forceinline__ uint32_t __atomicAdd_ret(uint32_t* address, uint32_t value){
-
-	// unsigned *ptr =  
-
-	uint32_t ret = atomicExch(address, 0);
-
-	uint32_t old = ret + value;
-
-	while ((old = atomicExch(address, old)) != 0){
-		old = atomicExch(address, 0) + old;
-	}
-
-	return ret;
-
-};*/
 // +===========================================================================+ //
 // +===========================================================================+ //
 // +===========================================================================+ //
 // +===========================================================================+ //
 
-__device__ inline gridPoint VECTOR_FIELD(gridPoint X, TYPE t, const Param_vec parameter, const uint32_t mode, const FIXED_TYPE extra_param[]) {
+__device__ inline gridPoint VECTOR_FIELD(gridPoint X, TYPE t, const Param_vec parameter, const UINT mode, const FIXED_TYPE extra_param[]) {
 	gridPoint output = VEC_FIELD;
 
 	return output;
@@ -305,7 +290,7 @@ __device__ inline gridPoint VECTOR_FIELD(gridPoint X, TYPE t, const Param_vec pa
 //-------------------------------------------------------------------------
 
 //-------------------------------------------------------------------------
-__device__ inline TYPE DIVERGENCE_FIELD(gridPoint X, TYPE t, const Param_vec parameter, const uint32_t mode, const FIXED_TYPE extra_param[]) {
+__device__ inline TYPE DIVERGENCE_FIELD(gridPoint X, TYPE t, const Param_vec parameter, const UINT mode, const FIXED_TYPE extra_param[]) {
 	TYPE output = DIVERGENCE;
 
 	return output;

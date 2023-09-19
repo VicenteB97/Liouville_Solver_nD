@@ -9,8 +9,8 @@
 
 using namespace thrust::placeholders; // this is useful for the multiplication of a device vector by a constant
 
-int32_t RANDOMIZE_II(const int32_t* 					n_samples, 
-				const int32_t 						Total_Samples, 
+INT RANDOMIZE_II(const INT* 					n_samples, 
+				const INT 						Total_Samples, 
 				std::vector<Impulse_Param_vec>* Parameter_Mesh, 
 				const Distributions* 			Dist_Parameters);
 
@@ -26,18 +26,18 @@ int32_t RANDOMIZE_II(const int32_t* 					n_samples,
 /// <returns></returns>
 __global__ void TRANSFORM_PARTICLES(gridPoint*					Particle_Positions,
 									const Impulse_Param_vec*	impulse_strengths, 
-									const int32_t					Num_Particles_per_sample,
-									const int32_t					Total_Particles) {
+									const INT					Num_Particles_per_sample,
+									const INT					Total_Particles) {
 
-	const int32_t i = blockDim.x * blockIdx.x + threadIdx.x;
+	const INT i = blockDim.x * blockIdx.x + threadIdx.x;
 
 	if (i < Total_Particles){
 
-		const int32_t j =(int32_t) floorf((float)i / Num_Particles_per_sample);				// current sample
+		const INT j =(INT) floorf((float)i / Num_Particles_per_sample);				// current sample
 		Impulse_Param_vec aux = impulse_strengths[j];
 
 		 
-		for (uint32_t d = 0; d < DIMENSIONS; d++){			
+		for (uint16_t d = 0; d < DIMENSIONS; d++){			
 			Particle_Positions[i].dim[d] += aux.sample_vec[d];		// we only have to add to the second variable!
 		}
 
@@ -51,26 +51,26 @@ __global__ void TRANSFORM_PARTICLES(gridPoint*					Particle_Positions,
 /// <param name="Adapt_MESH"></param>
 /// <param name="PDF"></param>
 /// <param name="Adapt_PDF"></param>
-int32_t IMPULSE_TRANSFORM_PDF(	const gridPoint*				MESH,			// Fixed Mesh
+INT IMPULSE_TRANSFORM_PDF(	const gridPoint*				MESH,			// Fixed Mesh
 							const std::vector<gridPoint>*	Adapt_MESH,		// AMR-selected points
 							thrust::host_vector<float>*		PDF,			// PDF in Mesh
 							thrust::device_vector<float>*	GPU_PDF,			// PDF in Mesh
 							const std::vector<float>*		Adapt_PDF,		// PDF in AMR-selected points
 							const Time_Impulse_vec			time,			// time-impulse information 
-							const int32_t						jump,			// current jump 
-							const int32_t						Grid_Nodes,		// Number of grid points
-							const uint32_t 						PtsPerDim,
+							const INT						jump,			// current jump 
+							const INT						Grid_Nodes,		// Number of grid points
+							const UINT 						PtsPerDim,
 							thrust::device_vector<gridPoint> &D__Boundary){	 
 
 // 0.- Create the impulse samples
 
-		uint32_t Adapt_Points = Adapt_PDF->size();
+		UINT Adapt_Points = Adapt_PDF->size();
 
 		Distributions* Imp_Param_Dist = new Distributions[DIMENSIONS];
-		int32_t n_samples[DIMENSIONS];
+		INT n_samples[DIMENSIONS];
 
 		 
-		for (uint32_t d = 0; d < DIMENSIONS; d++){
+		for (uint16_t d = 0; d < DIMENSIONS; d++){
 				// RV mean and variance
 				Imp_Param_Dist[d].Name  			= D_JUMP_DIST_NAMES[jump * DIMENSIONS + d];						// N, G or U distributions
 				Imp_Param_Dist[d].Truncated  		= D_JUMP_DIST_TRUNC[jump * DIMENSIONS + d];						// TRUNCATED?
@@ -81,39 +81,39 @@ int32_t IMPULSE_TRANSFORM_PDF(	const gridPoint*				MESH,			// Fixed Mesh
 				n_samples[d]						= D_JUMP_DIST_SAMPLES[jump * DIMENSIONS + d];			// no. of samples
 		}
 
-		int32_t Random_Samples = 1;
+		INT Random_Samples = 1;
 		 
-		for (uint32_t i = 0; i < DIMENSIONS; i++){
+		for (UINT i = 0; i < DIMENSIONS; i++){
 			Random_Samples *= n_samples[i];
 		}
 
 		std::vector<Impulse_Param_vec> Impulse_Parameter_Mesh(Random_Samples);
 
-		int32_t error_check = RANDOMIZE_II(n_samples, Random_Samples, &Impulse_Parameter_Mesh, Imp_Param_Dist);
+		INT error_check = RANDOMIZE_II(n_samples, Random_Samples, &Impulse_Parameter_Mesh, Imp_Param_Dist);
 		if (error_check == -1){return -1;}
 
 		float Sum_Rand_Params = 0;
-		for (int32_t i = 0; i < Random_Samples; i++) {
+		for (INT i = 0; i < Random_Samples; i++) {
 			Sum_Rand_Params += Impulse_Parameter_Mesh[i].Joint_PDF;
 		}
 
 		std::vector<gridPoint>	Full_Adapt_Grid(0);
 		std::vector<float>		Full_Adapt_PDF(0);
 
-		for (int32_t i = 0; i < Random_Samples; i++) {
+		for (INT i = 0; i < Random_Samples; i++) {
 			Full_Adapt_Grid.insert(Full_Adapt_Grid.end(), Adapt_MESH->begin(), Adapt_MESH->end());
 			Full_Adapt_PDF.insert(Full_Adapt_PDF.end(), Adapt_PDF->begin(), Adapt_PDF->end());
 		}
 
-		const int32_t Total_Particles = Full_Adapt_PDF.size();
+		const INT Total_Particles = Full_Adapt_PDF.size();
 
 // 1.- Do the transformation of the points according to the info given by the time-impulse vector
 		thrust::device_vector<gridPoint>			Particle_Positions	= Full_Adapt_Grid;		// To compute the transformations at the GPU
 		thrust::device_vector<float>				PDF_Particles		= Full_Adapt_PDF;		// PDF of the transformations at the GPU
 		thrust::device_vector<Impulse_Param_vec>	Impulses			= Impulse_Parameter_Mesh;
 
-		int32_t Threads = (int32_t)fminf(THREADS_P_BLK, Total_Particles);
-		int32_t Blocks  = (int32_t)floorf(Total_Particles / Threads) + 1;
+		INT Threads = (INT)fminf(THREADS_P_BLK, Total_Particles);
+		INT Blocks  = (INT)floorf(Total_Particles / Threads) + 1;
 
 	// FOR SOME REASON, I'M ONLY WRITING IN SOME VALUES...NOT ALL OF THEM
 
@@ -127,17 +127,17 @@ int32_t IMPULSE_TRANSFORM_PDF(	const gridPoint*				MESH,			// Fixed Mesh
 // 2.- RBF interpolation into the fixed grid
 	
 	// 2.1. - Find near particles
-	const uint32_t	 MaxNeighborNum = fmin(pow(2 * round(DISC_RADIUS) + 1, DIMENSIONS), Adapt_Points);
+	const UINT	 MaxNeighborNum = fmin(pow(2 * round(DISC_RADIUS) + 1, DIMENSIONS), Adapt_Points);
 	const float  disc_X 		= (MESH[1].dim[0] - MESH[0].dim[0]);	// H_Mesh discretization size (per dimension)
 	const float  search_radius 	= DISC_RADIUS * disc_X;						// max radius to search ([4,6] appears to be optimal)
 
-	const int32_t	 max_steps 		= 1000;		 		// max steps at the Conjugate Gradient (CG) algorithm
+	const INT	 max_steps 		= 1000;		 		// max steps at the Conjugate Gradient (CG) algorithm
 	const float in_tolerance 	= TOLERANCE_ConjGrad; 	// CG stop tolerance
 	int16_t err = 0;
 
-	thrust::device_vector<int32_t>		GPU_Index_array;
+	thrust::device_vector<INT>		GPU_Index_array;
 	thrust::device_vector<float>		GPU_Mat_entries;
-	thrust::device_vector<uint32_t>		GPU_Num_Neighbors;
+	thrust::device_vector<UINT>		GPU_Num_Neighbors;
 
 	GPU_Index_array.resize(MaxNeighborNum * Total_Particles);
 	GPU_Mat_entries.resize(MaxNeighborNum * Total_Particles);
@@ -192,7 +192,7 @@ int32_t IMPULSE_TRANSFORM_PDF(	const gridPoint*				MESH,			// Fixed Mesh
 // 3.- Reinitialization
 	GPU_PDF->resize(Grid_Nodes, 0);
 
-for (uint32_t s = 0; s < Random_Samples; s++){
+for (UINT s = 0; s < Random_Samples; s++){
 	Threads = fminf(THREADS_P_BLK, Adapt_Points);
 	Blocks = floorf((Adapt_Points - 1) / Threads) + 1;				// To compute the interpolation results at the GPU
 
@@ -228,18 +228,18 @@ for (uint32_t s = 0; s < Random_Samples; s++){
 	return 0; // if this works
 }
 
-int32_t RANDOMIZE_II(const int32_t* 					n_samples, 
-				const int32_t 						Total_Samples, 
+INT RANDOMIZE_II(const INT* 					n_samples, 
+				const INT 						Total_Samples, 
 				std::vector<Impulse_Param_vec>* Parameter_Mesh, 
 				const Distributions* 			Dist_Parameters) {
 
 	std::vector<Param_pair> aux_PM;
 
-	for (uint32_t d = 0; d < DIMENSIONS; d++){
+	for (uint16_t d = 0; d < DIMENSIONS; d++){
 		// call the parameter pair vec. function
 		Param_pair* PP = new Param_pair[n_samples[d]];
 
-		int32_t err_check = PARAMETER_VEC_BUILD(n_samples[d], PP, Dist_Parameters[d]);
+		INT err_check = PARAMETER_VEC_BUILD(n_samples[d], PP, Dist_Parameters[d]);
 		if (err_check == -1){ return -1; }
 
 		// append to the output array
@@ -247,17 +247,17 @@ int32_t RANDOMIZE_II(const int32_t* 					n_samples,
 		delete[] PP;
 	}
 
-	for (uint32_t k = 0; k < Total_Samples; k++){
+	for (UINT k = 0; k < Total_Samples; k++){
 		// 1st, find the parameter components
-		int32_t aux_num 	=  n_samples[0];
-		int32_t aux_num_2 	=  n_samples[0];
+		INT aux_num 	=  n_samples[0];
+		INT aux_num_2 	=  n_samples[0];
 
-		int32_t aux_idx = positive_rem(k, aux_num);
+		INT aux_idx = positive_rem(k, aux_num);
 
 		Parameter_Mesh->at(k).sample_vec[0] = aux_PM[aux_idx].sample;
 		Parameter_Mesh->at(k).Joint_PDF 	= aux_PM[aux_idx].PDF;
 
-		for (uint32_t d = 1; d < DIMENSIONS; d++){
+		for (uint16_t d = 1; d < DIMENSIONS; d++){
 
 			aux_idx = floor(positive_rem(k, aux_num * n_samples[d]) / aux_num);
 

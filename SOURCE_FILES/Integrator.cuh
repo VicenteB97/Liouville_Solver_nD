@@ -19,13 +19,13 @@ using namespace thrust::placeholders; // this is useful for the multiplication o
 __global__ void ODE_INTEGRATE(gridPoint* Particles,
 							TYPE* PDF,
 							const Param_pair* parameters,
-							const int32_t* n_Samples,
+							const INT* n_Samples,
 							float				t0,
 							const float			deltaT,
 							const float			tF,
-							const int32_t		Adapt_Points,
-							const int32_t		Random_Samples,
-							const uint32_t		mode,
+							const INT		Adapt_Points,
+							const INT		Random_Samples,
+							const UINT		mode,
 							const FIXED_TYPE* extra_param,
 							const gridPoint* Domain_boundary) {
 
@@ -35,7 +35,7 @@ __global__ void ODE_INTEGRATE(gridPoint* Particles,
 
 		// AUXILIARY DATA TO RUN THE ITERATIONS
 		// So, the total amount of advections are going to be: (no. particles x no. of samples)
-		const uint32_t  i_sample = floorf((float)i / Adapt_Points);
+		const UINT  i_sample = floorf((float)i / Adapt_Points);
 		const Param_vec parameter = _Gather_Param_Vec(i_sample, parameters, n_Samples);
 
 		gridPoint k0, k1, k2, k3, k_final, aux;
@@ -78,7 +78,7 @@ __global__ void ODE_INTEGRATE(gridPoint* Particles,
 			x0 = aux;
 			t0 += deltaT;
 
-			if (!__is_in_domain(aux, Domain_boundary)) { Int_PDF = 0; break; }	// Condition is equivalent to the homogeneous Neumann condition
+			if (!aux.is_in_domain(Domain_boundary)) { Int_PDF = 0; break; }	// Condition is equivalent to the homogeneous Neumann condition
 		}
 
 		Particles[i] = aux;
