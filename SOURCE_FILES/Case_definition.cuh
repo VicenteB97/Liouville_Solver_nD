@@ -29,7 +29,7 @@
 #define THREADS_P_BLK 128
 
 // Choosing whether showing full or simplified timing information
-#define OUTPUT_INFO true
+#define OUTPUT_INFO false
 
 #define TYPE float     // only supported values are 'float' and 'double'
 
