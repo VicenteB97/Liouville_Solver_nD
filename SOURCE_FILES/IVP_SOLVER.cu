@@ -117,9 +117,8 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 		Param_pair*		Parameter_Mesh 	= new Param_pair[PM_length];				// Full parameter array
 		Distributions* 	Param_dist  	= new Distributions[PARAM_DIMENSIONS];		// Array for storing the model parameters' distribution information
 	
-		thrust::host_vector<TYPE> H_PDF(Grid_Nodes);	 							// PDF values at the fixed, high-res grid (CPU)
+		thrust::host_vector<TYPE> H_PDF(Grid_Nodes, 0);	 							// PDF values at the fixed, high-res grid (CPU)
 
-		 
 		for (UINT p = 0; p < PARAM_DIMENSIONS; p++){
 			Param_dist[p].Name  			= _DIST_NAMES[p];		// N, G or U distributions
 			Param_dist[p].Truncated  		= _DIST_TRUNC[p];		// TRUNCATED?

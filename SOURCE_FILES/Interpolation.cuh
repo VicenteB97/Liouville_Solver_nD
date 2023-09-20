@@ -160,7 +160,7 @@ void Neighbor_search(gridPoint*		Search_Particles,
 			for (INT m = startIdx; m < endIdx; m++) {
 
 				gridPoint	temp_GP = Search_Particles[m + offset];
-				TYPE		dist = Distance(fixed_GP, temp_GP) / search_distance;
+				TYPE		dist = fixed_GP.Distance(temp_GP) / search_distance;
 
 				if (dist <= 1 && temp_GP.is_in_domain(Boundary) && temp_counter < max_neighbor_num) {
 					// include particle index into COO-sparse information
@@ -324,7 +324,7 @@ void Exh_PP_Search(const gridPoint* Search_Particles,
 
 		gridPoint Temp_Particle = Search_Particles[j];
 
-		dist = Distance(Temp_Particle, FP_aux) / search_radius;	// normalized distance between particles
+		dist = Temp_Particle.Distance(FP_aux) / search_radius;	// normalized distance between particles
 
 		if (dist <= 1 && aux < max_neighbor_num && j != i && Temp_Particle.is_in_domain(Boundary)) {
 			Index_Array[k + aux] = j;
@@ -552,7 +552,7 @@ void RESTART_GRID_FIND_GN(gridPoint* Particle_Positions,
 
 	// store the lowest sparse index identification (remember we are alredy storing the transposed matrix. The one we will need for multiplication)
 	if (lowest_idx >= 0 && lowest_idx < pow(PtsPerDimension, DIMENSIONS) && fixed_gridNode.is_in_domain(Boundary)) {
-		dist = Distance(fixed_gridNode, particle) / search_radius;
+		dist = fixed_gridNode.Distance(particle) / search_radius;
 		if (dist <= 1) {
 			dist = RBF(search_radius, dist) * weighted_lambda;
 			atomicAdd(&PDF[lowest_idx], dist);
@@ -574,7 +574,7 @@ void RESTART_GRID_FIND_GN(gridPoint* Particle_Positions,
 
 		if (idx >= 0 && idx < pow(PtsPerDimension, DIMENSIONS) && temp_gridNode.is_in_domain(Boundary))
 		{
-			dist = Distance(temp_gridNode, particle) / search_radius;
+			dist = temp_gridNode.Distance(particle) / search_radius;
 			if (dist <= 1) {
 				dist = RBF(search_radius, dist) * weighted_lambda;
 				atomicAdd(&PDF[idx], dist);
@@ -626,7 +626,7 @@ void RESTART_GRID_FIND_GN_II(gridPoint* Particle_Positions,
 
 	// store the lowest sparse index identification (remember we are alredy storing the transposed matrix. The one we will need for multiplication)
 	if (lowest_idx > 0 && lowest_idx < (INT)pow(PtsPerDimension, DIMENSIONS) && fixed_gridNode.is_in_domain(Boundary)) {
-		dist = Distance(fixed_gridNode, particle) / search_radius;
+		dist = fixed_gridNode.Distance(particle) / search_radius;
 		if (dist <= 1) {
 			dist = RBF(search_radius, dist) * weighted_lambda;
 			atomicAdd(&PDF[lowest_idx], dist);
@@ -649,7 +649,7 @@ void RESTART_GRID_FIND_GN_II(gridPoint* Particle_Positions,
 
 		if (idx > -1 && idx < (INT)pow(PtsPerDimension, DIMENSIONS) && temp_gridNode.is_in_domain(Boundary))
 		{
-			dist = Distance(temp_gridNode, particle) / search_radius;
+			dist = temp_gridNode.Distance(particle) / search_radius;
 			if (dist <= 1) {
 				dist = RBF(search_radius, dist) * weighted_lambda;
 				atomicAdd(&PDF[idx], dist);

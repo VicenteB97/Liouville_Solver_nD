@@ -48,26 +48,27 @@ __global__ void ODE_INTEGRATE(gridPoint* Particles,
 			// Particle flow
 			k0 = VECTOR_FIELD(x0, t0, parameter, mode, extra_param);
 
-			aux = Mult_by_Scalar(deltaT / 2.0f, k0);
+			aux = k0.Mult_by_Scalar(deltaT / 2.0f);
 			k1 = VECTOR_FIELD(x0 + aux, t0 + deltaT / 2.0f, parameter, mode, extra_param);
 
-			aux = Mult_by_Scalar(deltaT / 2.0f, k1);
+			aux = k1.Mult_by_Scalar(deltaT / 2.0f);
 			k2 = VECTOR_FIELD(x0 + aux, t0 + deltaT / 2.0f, parameter, mode, extra_param);
 
-			aux = Mult_by_Scalar(deltaT, k2);
+			aux = k2.Mult_by_Scalar(deltaT);
 			k3 = VECTOR_FIELD(x0 + aux, t0 + deltaT, parameter, mode, extra_param);
 
-			k1 = Mult_by_Scalar(2.00f, k1);
-			k2 = Mult_by_Scalar(2.00f, k2);
+			k1 = k1.Mult_by_Scalar(2.00f);
+			k2 = k2.Mult_by_Scalar(2.00f);
 
-			aux = x0 + Mult_by_Scalar((TYPE)deltaT / 6.00f, (k0 + k3 + k1 + k2)); // New particle dim
+			aux = k0 + k3 + k1 + k2;
+			aux = x0 + aux.Mult_by_Scalar((TYPE)deltaT / 6.00f); // New particle dim
 
 			// Integration of PDF: The following line corresponds to computing the approximation via a Hermite interpolation (we know initial and final points and their velocities)
 			Int1 = DIVERGENCE_FIELD(x0, t0, parameter, mode, extra_param);
 
 			k_final = VECTOR_FIELD(aux, t0 + deltaT, parameter, mode, extra_param);
-			x0 = Mult_by_Scalar(0.50f, (x0 + aux));
-			x0 = x0 + Mult_by_Scalar(0.125f, (k0 + k_final));
+			x0 = (x0 + aux).Mult_by_Scalar(0.50f);
+			x0 = x0 + (k0 + k_final).Mult_by_Scalar(0.125f);
 			Int2 = DIVERGENCE_FIELD(x0, (TYPE)(2.00f * t0 + deltaT) / 2.00f, parameter, mode, extra_param);
 
 			Int3 = DIVERGENCE_FIELD(aux, (TYPE)t0 + deltaT, parameter, mode, extra_param);

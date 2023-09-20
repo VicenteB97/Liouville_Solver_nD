@@ -116,6 +116,19 @@ public:
 		return sqrtf(dist);
 	};
 
+	
+	__host__ __device__ 
+	inline gridPoint Mult_by_Scalar(TYPE scalar) {
+		gridPoint out;
+
+		
+		for (uint16_t d = 0; d < DIMENSIONS; d++) {
+			out.dim[d] = scalar * dim[d];
+		}
+
+		return out;
+	};
+
 	__device__ inline bool is_in_domain(const gridPoint* Boundary) {
 		for (uint16_t d = 0; d < DIMENSIONS; d++) {
 			if (dim[d] < Boundary[0].dim[d] || dim[d] > Boundary[1].dim[d]) { return false; }
@@ -199,37 +212,6 @@ __host__ __device__
 inline UINT positive_rem(const INT a, const INT b){
 	return (a % b + b) % b;
 } 
-// ------------------------------------------------------------------------ //
-// ------------------------------------------------------------------------ //
-
-
-// ------------------------------------------------------------------------ //
-// ------------------------------------------------------------------------ //
-__host__ __device__ inline TYPE Distance(const gridPoint P1, const gridPoint P2) {
-
-	TYPE out = 0;
-
-	for (uint16_t d = 0; d < DIMENSIONS; d++) {
-		out += (P1.dim[d] - P2.dim[d]) * (P1.dim[d] - P2.dim[d]);
-	}
-
-	return sqrtf(out);
-}
-// ------------------------------------------------------------------------ //
-// ------------------------------------------------------------------------ //
-
-// ------------------------------------------------------------------------ //
-// ------------------------------------------------------------------------ //
-__host__ __device__ inline gridPoint Mult_by_Scalar(TYPE scalar, gridPoint Point) {
-	gridPoint out;
-
-	 
-	for (uint16_t d = 0; d < DIMENSIONS; d++) {
-		out.dim[d] = scalar * Point.dim[d];
-	}
-
-	return out;
-}
 // ------------------------------------------------------------------------ //
 // ------------------------------------------------------------------------ //
 
