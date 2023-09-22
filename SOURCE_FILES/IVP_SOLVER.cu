@@ -44,22 +44,13 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 	// ----------------------------------------------------------------------------------------------- //
 	// ----------------------------------------------------------------------------------------------- //
 	// ----------------------------------------------------------------------------------------------- //
-
-	const gridPoint Domain_Center 	= DOMAIN_CTR;
-	const gridPoint Domain_Diameter = DOMAIN_DIAM;
-
 	const UINT PtsPerDim  	= pow(2, LvlFine);
-	const UINT Grid_Nodes 	= pow(PtsPerDim, DIMENSIONS);
-	gridPoint* H_Mesh 	 		= new gridPoint[Grid_Nodes];
 
-	// GENERAL DIMENSION Cartesian coordinate grid build up
-	#pragma omp parallel for
-	for (INT i = 0; i < Grid_Nodes; i++){
-		for (UINT d = 0; d < DIMENSIONS; d++){
-			UINT j 	 = floor(positive_rem(i, pow(PtsPerDim, d + 1))/pow(PtsPerDim, d));
-			H_Mesh[i].dim[d] = ((TYPE) j / (PtsPerDim - 1) - 0.50f) * Domain_Diameter.dim[d] + Domain_Center.dim[d]; 
-		}
-	}
+	const gridPoint Domain_Ctr 	= DOMAIN_CTR;
+	const gridPoint Domain_Diam = DOMAIN_DIAM;
+
+	grid Base_Mesh(Domain_Ctr, Domain_Diam, PtsPerDim);
+	const UINT Grid_Nodes 	= Base_Mesh.Total_Nodes();
 
 // -------------------------------------------------------------------------------------------------------------- //
 // -------------------------------------------------------------------------------------------------------------- //
@@ -138,7 +129,7 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 	error_check = RANDOMIZE(n_samples, Parameter_Mesh, Param_dist);
 	if (error_check == -1){return -1;}
 
-	error_check = PDF_INITIAL_CONDITION(PtsPerDim, H_Mesh, H_PDF, IC_dist_params); 	// initialize the grid and the PDF at the grid nodes (change so as to change the parameters as well)
+	error_check = PDF_INITIAL_CONDITION(PtsPerDim, Base_Mesh, H_PDF, IC_dist_params); 	// initialize the grid and the PDF at the grid nodes (change so as to change the parameters as well)
 	if (error_check == -1){return -1;}
 
 // --------------------------------------------------------------------------------------------
@@ -152,7 +143,7 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 
 auto start = std::chrono::high_resolution_clock::now();
 	
-	error_check = PDF_ITERATIONS(prop, &store_PDFs, Parameter_Mesh, H_Mesh, &H_PDF, n_samples, LvlFine, LvlCoarse, PtsPerDim, Grid_Nodes, time_vector, deltaT, ReinitSteps);
+	error_check = PDF_ITERATIONS(prop, &store_PDFs, Parameter_Mesh, Base_Mesh, &H_PDF, n_samples, LvlFine, LvlCoarse, PtsPerDim, Grid_Nodes, time_vector, deltaT, ReinitSteps);
 	if (error_check == -1){	std::cout << "An error has occured. Exiting simulation.\n"; return error_check;}
 
 auto end = std::chrono::high_resolution_clock::now();
@@ -247,7 +238,7 @@ auto end = std::chrono::high_resolution_clock::now();
 				file1 << Grid_Nodes << "," << PtsPerDim << ",";
 
 				for (UINT d = 0; d < DIMENSIONS; d++) {
-					file1 << H_Mesh[0].dim[d] << "," << H_Mesh[Grid_Nodes - 1].dim[d] << ",";
+					file1 << Base_Mesh.Boundary_inf.dim[d] << "," << Base_Mesh.Boundary_sup.dim[d] << ",";
 				}
 				for (uint16_t d = 0; d < PARAM_DIMENSIONS; d++) {
 					file1 << n_samples[d] << ",";
@@ -295,7 +286,6 @@ auto end = std::chrono::high_resolution_clock::now();
 		saving_active = false;
 	}
 
-	delete[] H_Mesh;
 	delete[] Param_dist;
 	delete[] Parameter_Mesh;
 	gpuError_Check(cudaDeviceReset());

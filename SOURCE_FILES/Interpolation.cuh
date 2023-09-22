@@ -35,11 +35,9 @@ void Bin_Insertion_Count(UINT*		Bin_locations,
 						UINT*		Bin_count,
 						UINT*		Bin_local_accSum,
 						const gridPoint* Search_Particles,
-						const T			grid_discretization,
+						const grid	Bounding_Box,
 						const UINT	Total_Particles,
-						const UINT	BB_PtsPerDimension,
-						const UINT	offset,
-						const gridPoint BB_lowest_node){
+						const UINT	offset){
 		
 	const uint64_t globalID = blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -49,7 +47,7 @@ void Bin_Insertion_Count(UINT*		Bin_locations,
 
 	// Find the Bin where it belongs. We use an unsigned int because since we are working with the bounding box,
 	// we're never going to have a point outside. Therefore, there will be a positive index for the bin location.
-	UINT bin_idx = temp_GP.GetBin(grid_discretization, 0, BB_lowest_node, BB_PtsPerDimension);
+	UINT bin_idx = Bounding_Box.Give_Bin(temp_GP, 0);
 
 	// Now, we've got the nearest bin index. This tells the idx of the bin center containing a given particle
 	Bin_locations[globalID] = bin_idx;
@@ -100,13 +98,11 @@ void Neighbor_search(gridPoint*		Search_Particles,
 					T*				Matrix_Entries,
 					UINT*		Num_Neighbors,
 					const UINT	max_neighbor_num,
-					const gridPoint BB_lowest_node, 
 					const UINT	Total_Particles,
-					const UINT	BB_PtsPerDimension,
 					const UINT	offset,
 					const T			search_distance,			// This tells us how many discretizations we have to move back to find initial bin to search from
-					const T			grid_discretization,
-					const gridPoint* Boundary) {
+					const grid		Bounding_Box,
+					const grid		Base_Mesh) {
 
 	const uint64_t globalID = blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -124,7 +120,7 @@ void Neighbor_search(gridPoint*		Search_Particles,
 	UINT temp_ID = (globalID + offset) * max_neighbor_num;
 
 // If the particle is not in the domain, we ignore it
-	if (!fixed_GP.is_in_domain(Boundary)) {
+	if (!Base_Mesh.Contains_particle(fixed_GP)) {
 		Num_Neighbors[globalID + offset] = 1;
 		Matrix_Entries[temp_ID] = RBF(search_distance, 0);
 		Index_Array[temp_ID] = globalID + offset;		// take the number of previous particles into account!
@@ -135,24 +131,24 @@ void Neighbor_search(gridPoint*		Search_Particles,
 	const UINT Bin_offset = roundf(DISC_RADIUS);
 
 // We find the lowest corner in the neighboring bins (Hence, the Bin_offset variable)
-	INT bin_idx = fixed_GP.GetBin(grid_discretization, -Bin_offset, BB_lowest_node, BB_PtsPerDimension);
+	INT bin_idx = Bounding_Box.Give_Bin(fixed_GP, -Bin_offset);
 
 	for (UINT k = 0; k < powf(2 * Bin_offset + 1, DIMENSIONS); k++) { // That's the total number of bins to visit
 
 		// First: find the global index of the bin to search!
 		INT aux_index = bin_idx;
 		for (uint16_t d = 0; d < DIMENSIONS; d++) {
-			aux_index += floorf(positive_rem(k, powf(2 * Bin_offset + 1, d + 1)) / powf(2 * Bin_offset + 1, d)) * powf(BB_PtsPerDimension, d);
+			aux_index += floorf(positive_rem(k, powf(2 * Bin_offset + 1, d + 1)) / powf(2 * Bin_offset + 1, d)) * powf(Bounding_Box.Nodes_per_Dim, d);
 		}
 
-		if (aux_index > -1 && aux_index < powf(BB_PtsPerDimension, DIMENSIONS)) { // If we are selecting nodes inside the domain
+		if (aux_index > -1 && aux_index < Bounding_Box.Total_Nodes()) { // If we are selecting nodes inside the domain
 
 			// Now that we have the bin to search, all we have to do is go through the particles that are in the corresponding bin:
 			INT startIdx	= Bin_count[aux_index];
 			INT endIdx		= Total_Particles;
 
 			// When we haven't reached the last element of the count vector, we have to know where do we stop the counting
-			if (aux_index < powf(BB_PtsPerDimension, DIMENSIONS) - 1) {
+			if (aux_index < Bounding_Box.Total_Nodes() - 1) {
 				endIdx = Bin_count[aux_index + 1];
 			}
 
@@ -162,7 +158,7 @@ void Neighbor_search(gridPoint*		Search_Particles,
 				gridPoint	temp_GP = Search_Particles[m + offset];
 				TYPE		dist = fixed_GP.Distance(temp_GP) / search_distance;
 
-				if (dist <= 1 && temp_GP.is_in_domain(Boundary) && temp_counter < max_neighbor_num) {
+				if (dist <= 1 && Base_Mesh.Contains_particle(temp_GP) && temp_counter < max_neighbor_num) {
 					// include particle index into COO-sparse information
 					// include RBF-distance value into matrix values
 					// add count to number of neighbors (maybe optional)
@@ -184,16 +180,14 @@ int16_t _CS_Neighbor_Search(thrust::device_vector<gridPoint>& Search_Particles,
 							thrust::device_vector<INT>& Index_Array,
 							thrust::device_vector<T>& Matrix_Entries,
 							thrust::device_vector<UINT>& Num_Neighbors,
-							const UINT PtsPerDimension, 
 							const UINT Adapt_Points, 
 							const UINT max_neighbor_num,
 							const T search_radius,
-							const T grid_discretization,
-							const thrust::device_vector<gridPoint>& Boundary) {
+							const grid& Base_Mesh) {
 
 	// We need our particles
 	UINT Total_Particles = Search_Particles.size();
-	UINT Grid_Nodes		 = pow(PtsPerDimension, DIMENSIONS);
+	UINT Grid_Nodes		 = Base_Mesh.Total_Nodes();
 
 	thrust::device_vector<UINT> Bin_locations(Adapt_Points,0);
 
@@ -209,25 +203,22 @@ int16_t _CS_Neighbor_Search(thrust::device_vector<gridPoint>& Search_Particles,
 		UINT offset = k * Adapt_Points;
 
 	// First, we have to determine the bounding box of the particle set
-		gridPoint bBox_inf, bBox_sup;
-		T max_distance = 0;
+		grid CS_BBox; // create the bounding box for the Counting Sort algorithm
 		thrust::device_vector<T> projection(Adapt_Points);
 
 		for (uint16_t d = 0; d < DIMENSIONS; d++) {
 			findProjection<T> << <Threads, Blocks >> > (rpc(Search_Particles, offset), rpc(projection, 0), Adapt_Points, d);
 			gpuError_Check(cudaDeviceSynchronize());
 
-			bBox_inf.dim[d] = *(thrust::min_element(thrust::device, projection.begin(), projection.end()));
-			bBox_sup.dim[d] = *(thrust::max_element(thrust::device, projection.begin(), projection.end()));
-
-			max_distance = fmax(max_distance, bBox_sup.dim[d] - bBox_inf.dim[d]);
+			CS_BBox.Boundary_inf.dim[d] = *(thrust::min_element(thrust::device, projection.begin(), projection.end()));
+			CS_BBox.Boundary_sup.dim[d] = *(thrust::max_element(thrust::device, projection.begin(), projection.end()));
 		}
 
 	// We obtain the number of bins/nodes of our bounding box (per dimension). We build it as a square/cube
-		UINT totalBins_dimension = ceilf(max_distance / grid_discretization) + 1;
+		CS_BBox.Nodes_per_Dim = ceil((CS_BBox.Boundary_sup.dim[0] - CS_BBox.Boundary_inf.dim[0]) / Base_Mesh.Discr_length()) + 1;
 
 	// Reinitialize the particle count array
-		thrust::device_vector<UINT> Bin_globalCount(powf(totalBins_dimension,DIMENSIONS), 0);
+		thrust::device_vector<UINT> Bin_globalCount(CS_BBox.Total_Nodes(), 0);
 		thrust::device_vector<UINT> Bin_localCount(Adapt_Points, 0);
 
 	// Insert and count the particles inside each bin
@@ -235,11 +226,9 @@ int16_t _CS_Neighbor_Search(thrust::device_vector<gridPoint>& Search_Particles,
 														rpc(Bin_globalCount, 0),
 														rpc(Bin_localCount, 0),
 														rpc(Search_Particles, 0), 
-														grid_discretization, 
-														Adapt_Points, 
-														totalBins_dimension,
-														offset,
-														bBox_inf);
+														CS_BBox, 
+														Adapt_Points,
+														offset);
 		gpuError_Check(cudaDeviceSynchronize());
 
 	// Prefix sum of the bin-count array, which gives the cumulative points in each bin (without including the bin itself; thus the name exclusive)
@@ -268,13 +257,11 @@ int16_t _CS_Neighbor_Search(thrust::device_vector<gridPoint>& Search_Particles,
 													rpc(Matrix_Entries, 0),
 													rpc(Num_Neighbors, 0),
 													max_neighbor_num,
-													bBox_inf,
 													Adapt_Points,
-													totalBins_dimension,
 													offset,
 													search_radius,
-													grid_discretization,
-													rpc(Boundary, 0));
+													CS_BBox,
+													Base_Mesh);
 		gpuError_Check(cudaDeviceSynchronize());
 	}
 	return 0;
@@ -294,15 +281,15 @@ template<class T>
 /// @return 
 __global__ 
 void Exh_PP_Search(const gridPoint* Search_Particles,
-								const gridPoint* Fixed_Particles,
-								INT* Index_Array,
-								T* Matrix_Entries,
-								UINT* Num_Neighbors,
-								const INT max_neighbor_num,
-								const UINT Adapt_Points,
-								const UINT Total_Particles,
-								const T search_radius,
-								const gridPoint* Boundary) {
+					const gridPoint* Fixed_Particles,
+					INT* Index_Array,
+					T* Matrix_Entries,
+					UINT* Num_Neighbors,
+					const INT max_neighbor_num,
+					const UINT Adapt_Points,
+					const UINT Total_Particles,
+					const T search_radius,
+					const grid& Mesh) {
 
 	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -314,7 +301,7 @@ void Exh_PP_Search(const gridPoint* Search_Particles,
 	Index_Array[k] = i;
 	Matrix_Entries[k] = RBF(search_radius, 0);
 
-	if (!FP_aux.is_in_domain(Boundary)) { Num_Neighbors[i] = 1; return; }
+	if (!Mesh.Contains_particle(FP_aux)) { Num_Neighbors[i] = 1; return; }
 
 	UINT		aux = 1;
 	const UINT	i_aux = floorf(i / Adapt_Points);
@@ -326,7 +313,7 @@ void Exh_PP_Search(const gridPoint* Search_Particles,
 
 		dist = Temp_Particle.Distance(FP_aux) / search_radius;	// normalized distance between particles
 
-		if (dist <= 1 && aux < max_neighbor_num && j != i && Temp_Particle.is_in_domain(Boundary)) {
+		if (dist <= 1 && aux < max_neighbor_num && j != i && Mesh.Contains_particle(Temp_Particle)) {
 			Index_Array[k + aux] = j;
 			Matrix_Entries[k + aux] = RBF(search_radius, dist);
 			aux++;
@@ -507,19 +494,17 @@ int16_t CONJUGATE_GRADIENT_SOLVE(	thrust::device_vector<T>&		GPU_lambdas,
 
 template<class T>
 __global__ 
-void RESTART_GRID_FIND_GN(gridPoint* Particle_Positions,
-							T* PDF,
-							T* lambdas,
+void RESTART_GRID_FIND_GN(gridPoint*		Particle_Positions,
+							T*				PDF,
+							T*				lambdas,
 							const Param_pair* Parameter_Mesh,
-							const INT* 		 n_Samples,
-							const T 	 	 search_radius,
-							const gridPoint  lowest_node,
-							const T 	 	 grid_discretization_length,
-							const UINT	 	 PtsPerDimension,
-							const UINT	 	 Adapt_Pts,
-							const UINT	 	 Block_samples,
-							const UINT	 	 offset,
-							const gridPoint* Boundary) {
+							const INT* 		n_Samples,
+							const T 	 	search_radius,
+							const UINT	 	Adapt_Pts,
+							const UINT	 	Block_samples,
+							const UINT	 	offset,
+							const grid 		Mesh,
+							const grid		Initial_BBox) {
 	// OUTPUT: New values of the PDF at the fixed grid
 
 	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
@@ -527,7 +512,10 @@ void RESTART_GRID_FIND_GN(gridPoint* Particle_Positions,
 	if (i >= Adapt_Pts * Block_samples) { return; }
 
 	gridPoint particle = Particle_Positions[i];
-	if (!particle.is_in_domain(Boundary)) { return; }
+	if (!Mesh.Contains_particle(particle)) { return; }
+
+	UINT PtsPerDimension = Mesh.Nodes_per_Dim, Total_nodes = Mesh.Total_Nodes();
+	T grid_discretization_length = Mesh.Discr_length();
 
 	UINT num_neighbors_per_dim = 2 * floorf(search_radius / grid_discretization_length) + 1;
 	UINT num_neighbors_per_particle = pow(num_neighbors_per_dim, DIMENSIONS);
@@ -538,9 +526,9 @@ void RESTART_GRID_FIND_GN(gridPoint* Particle_Positions,
 	T dist, weighted_lambda = lambdas[i] * aux.Joint_PDF;
 
 	// I want to compute the index of the lowest neighboring grid node (imagine the lowest corner of a box) and build its nearest neighbors
-	INT 	lowest_idx = 0;
+	INT 		lowest_idx = 0;
 	gridPoint	temp_gridNode;
-	gridPoint	fixed_gridNode = lowest_node;
+	gridPoint	lowest_node = Mesh.Boundary_inf, fixed_gridNode = lowest_node;
 
 #pragma unroll
 	for (uint16_t d = 0; d < DIMENSIONS; d++) {
@@ -551,7 +539,7 @@ void RESTART_GRID_FIND_GN(gridPoint* Particle_Positions,
 	}
 
 	// store the lowest sparse index identification (remember we are alredy storing the transposed matrix. The one we will need for multiplication)
-	if (lowest_idx >= 0 && lowest_idx < pow(PtsPerDimension, DIMENSIONS) && fixed_gridNode.is_in_domain(Boundary)) {
+	if (lowest_idx >= 0 && lowest_idx < Total_nodes && Mesh.Contains_particle(fixed_gridNode)) {
 		dist = fixed_gridNode.Distance(particle) / search_radius;
 		if (dist <= 1) {
 			dist = RBF(search_radius, dist) * weighted_lambda;
@@ -572,7 +560,7 @@ void RESTART_GRID_FIND_GN(gridPoint* Particle_Positions,
 			temp_gridNode.dim[d] = temp_idx * grid_discretization_length + fixed_gridNode.dim[d];
 		}
 
-		if (idx >= 0 && idx < pow(PtsPerDimension, DIMENSIONS) && temp_gridNode.is_in_domain(Boundary))
+		if (idx >= 0 && idx < Total_nodes && Mesh.Contains_particle(temp_gridNode))
 		{
 			dist = temp_gridNode.Distance(particle) / search_radius;
 			if (dist <= 1) {
@@ -590,42 +578,42 @@ void RESTART_GRID_FIND_GN_II(gridPoint* Particle_Positions,
 	float* lambdas,
 	const Impulse_Param_vec* Impulse_weights,
 	const float 	search_radius,
-	const gridPoint lowest_node,
-	const float 	grid_discretization_length,
-	const UINT	 	PtsPerDimension,
 	const UINT	 	Adapt_Pts,
 	const UINT	 	Current_sample,
-	const gridPoint* Boundary) {
+	const grid Mesh) {
 	// OUTPUT: New values of the PDF at the fixed grid
 
 	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
 
 	if (i >= Adapt_Pts) { return; }
 
-	gridPoint 	particle = Particle_Positions[i + Current_sample * Adapt_Pts];
-	if (!particle.is_in_domain(Boundary)) { return; }
+	gridPoint particle = Particle_Positions[i];
+	if (!Mesh.Contains_particle(particle)) { return; }
 
-	INT num_neighbors_per_dim = (INT)2 * floorf(search_radius / grid_discretization_length) + 1;
-	INT num_neighbors_per_particle = (INT)pow(num_neighbors_per_dim, DIMENSIONS);
+	UINT PtsPerDimension = Mesh.Nodes_per_Dim, Total_nodes = Mesh.Total_Nodes();
+	TYPE grid_discretization_length = Mesh.Discr_length();
+
+	UINT num_neighbors_per_dim = 2 * floorf(search_radius / grid_discretization_length) + 1;
+	UINT num_neighbors_per_particle = pow(num_neighbors_per_dim, DIMENSIONS);
 
 	float weighted_lambda = lambdas[i + Current_sample * Adapt_Pts] * Impulse_weights[Current_sample].Joint_PDF;				// the specific sample weight
 	float dist;
 
 	// I want to compute the index of the lowest neighboring grid node and build its nearest neighbors
-	INT 	lowest_idx = 0;
+	INT 		lowest_idx = 0;
 	gridPoint	temp_gridNode;
-	gridPoint	fixed_gridNode = lowest_node;
+	gridPoint	lowest_node = Mesh.Boundary_inf, fixed_gridNode = lowest_node;
 
 #pragma unroll
 	for (uint16_t d = 0; d < DIMENSIONS; d++) {
-		INT temp_idx = roundf((float)(particle.dim[d] - lowest_node.dim[d]) / grid_discretization_length) - roundf(DISC_RADIUS);
+		INT temp_idx = roundf((TYPE)(particle.dim[d] - lowest_node.dim[d]) / grid_discretization_length) - roundf(DISC_RADIUS);
 		lowest_idx += temp_idx * pow(PtsPerDimension, d);
 
 		fixed_gridNode.dim[d] += temp_idx * grid_discretization_length;
 	}
 
 	// store the lowest sparse index identification (remember we are alredy storing the transposed matrix. The one we will need for multiplication)
-	if (lowest_idx > 0 && lowest_idx < (INT)pow(PtsPerDimension, DIMENSIONS) && fixed_gridNode.is_in_domain(Boundary)) {
+	if (lowest_idx >= 0 && lowest_idx < Total_nodes && Mesh.Contains_particle(fixed_gridNode)) {
 		dist = fixed_gridNode.Distance(particle) / search_radius;
 		if (dist <= 1) {
 			dist = RBF(search_radius, dist) * weighted_lambda;
@@ -635,19 +623,18 @@ void RESTART_GRID_FIND_GN_II(gridPoint* Particle_Positions,
 
 	// now, go through all the neighboring grid nodes and add the values to the PDF field
 	for (UINT j = 1; j < num_neighbors_per_particle; j++) {
-
 		INT idx = lowest_idx;
 		temp_gridNode = fixed_gridNode;
 
 #pragma unroll
 		for (uint16_t d = 0; d < DIMENSIONS; d++) {
-			INT temp_idx = (INT)floorf(positive_rem(j, (INT)pow(num_neighbors_per_dim, d + 1)) / pow(num_neighbors_per_dim, d));
+			UINT temp_idx = floorf(positive_rem(j, pow(num_neighbors_per_dim, d + 1)) / pow(num_neighbors_per_dim, d));
 			idx += temp_idx * pow(PtsPerDimension, d);
 
 			temp_gridNode.dim[d] = temp_idx * grid_discretization_length + fixed_gridNode.dim[d];
 		}
 
-		if (idx > -1 && idx < (INT)pow(PtsPerDimension, DIMENSIONS) && temp_gridNode.is_in_domain(Boundary))
+		if (idx >= 0 && idx < Total_nodes && Mesh.Contains_particle(temp_gridNode))
 		{
 			dist = temp_gridNode.Distance(particle) / search_radius;
 			if (dist <= 1) {

@@ -27,7 +27,7 @@
 /// @param Mesh 
 /// @param PDF_value 
 /// @param IC_dist_parameters 
-int16_t PDF_INITIAL_CONDITION(UINT Points_per_dimension, const gridPoint* Mesh, thrust::host_vector<TYPE>& PDF_value, TYPE* IC_dist_parameters) {
+int16_t PDF_INITIAL_CONDITION(UINT Points_per_dimension, const grid& Mesh, thrust::host_vector<TYPE>& PDF_value, TYPE* IC_dist_parameters) {
 
 	// Due to obvious reasons, we will not make the choice of IC distributions automatically, as with the model parameters
 	boost::math::normal dist[DIMENSIONS];
@@ -38,11 +38,12 @@ int16_t PDF_INITIAL_CONDITION(UINT Points_per_dimension, const gridPoint* Mesh, 
 		dist[d] = boost::math::normal_distribution((FIXED_TYPE)IC_dist_parameters[2*d], (FIXED_TYPE)IC_dist_parameters[2*d + 1]);
 	}
 
-	#pragma omp parallel for
+#pragma omp parallel for
 	for (INT k = 0; k < PDF_value.size(); k++){
 		TYPE aux = 1;
+
 		for (UINT d = 0; d < DIMENSIONS; d++){
-			aux *= boost::math::pdf(dist[d], Mesh[k].dim[d]);
+			aux *= boost::math::pdf(dist[d], Mesh.Get_node(k).dim[d]);
 		}
 		PDF_value[k] = aux; // with positive and negative parts!
 	}

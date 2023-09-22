@@ -64,6 +64,15 @@ if (code != cudaSuccess) {
 	}
 }
 
+/// @brief Host/Device function that computes the positive remainder (mod) between two integers
+/// @param a This is the numerator
+/// @param b This is the denominator
+/// @return Returns mod(a,b)
+__host__ __device__
+inline UINT positive_rem(const INT a, const INT b) {
+	return (a % b + b) % b;
+}
+
 #define M_PI 3.14159265358979323846
 #define ptSEARCH_THRESHOLD 15000 // The min. number of particles per sample where we use the counting sort search
 
@@ -75,7 +84,16 @@ class gridPoint {
 public:
 	TYPE dim[DIMENSIONS];
 
-	__host__ __device__ gridPoint operator+(const gridPoint& other) {
+	// Default constructor	
+	// __host__ __device__
+	// gridPoint(){
+	// 	for (uint16_t d = 0; d < DIMENSIONS; d++){
+	// 		this->dim[d] = 0;
+	// 	}
+	// }
+
+	__host__ __device__ 
+	gridPoint operator+(const gridPoint& other) const {
 
 		gridPoint out;
 
@@ -87,7 +105,8 @@ public:
 
 		return out;
 	}
-	__host__ __device__ gridPoint operator-(const gridPoint& other) {
+	__host__ __device__ 
+	gridPoint operator-(const gridPoint& other) const {
 		gridPoint out;
 
 		for (uint16_t d = 0; d < DIMENSIONS; d++) {
@@ -98,7 +117,8 @@ public:
 
 		return out;
 	}
-	__host__ __device__ bool operator==(const gridPoint& other) {
+	__host__ __device__ 
+	bool operator==(const gridPoint& other) const {
 		bool out = true;
 
 		for (uint16_t d = 0; d < DIMENSIONS; d++) {
@@ -108,7 +128,8 @@ public:
 		return out;
 	}
 
-	__host__ __device__ inline TYPE Distance(const gridPoint& other) {
+	__host__ __device__ 
+	inline TYPE Distance(const gridPoint& other) const {
 		TYPE dist = 0;
 		for (uint16_t d = 0; d < DIMENSIONS; d++) {
 			dist += (dim[d] - other.dim[d]) * (dim[d] - other.dim[d]);
@@ -118,7 +139,7 @@ public:
 
 	
 	__host__ __device__ 
-	inline gridPoint Mult_by_Scalar(TYPE scalar) {
+	inline gridPoint Mult_by_Scalar(TYPE scalar) const {
 		gridPoint out;
 
 		
@@ -129,15 +150,9 @@ public:
 		return out;
 	};
 
-	__device__ inline bool is_in_domain(const gridPoint* Boundary) {
-		for (uint16_t d = 0; d < DIMENSIONS; d++) {
-			if (dim[d] < Boundary[0].dim[d] || dim[d] > Boundary[1].dim[d]) { return false; }
-		}
-		return true;
-	};
-
 	// This function tells us what is the first bin to search if we consider an offset (radius, actually) of bin_offset
-	__host__ __device__ INT GetBin(const TYPE discretization, const int16_t bin_offset, const gridPoint& lowest_node, const UINT PtsPerDimension) {
+	__host__ __device__ 
+	INT GetBin(const TYPE discretization, const int16_t bin_offset, const gridPoint& lowest_node, const UINT PtsPerDimension) const {
 		INT bin_idx = 0;
  
 		for (uint16_t d = 0; d < DIMENSIONS; d++) {
@@ -146,6 +161,105 @@ public:
 		}
 		return bin_idx;
 	};
+};
+
+class grid{
+public:
+	gridPoint 	Boundary_inf, Boundary_sup;
+	UINT		Nodes_per_Dim;
+
+	// Default constructor:
+	__host__ __device__
+	grid(){
+		Boundary_inf	= DOMAIN_CTR;
+		Boundary_sup	= DOMAIN_CTR;
+		Nodes_per_Dim	= 0;
+	}
+	// Custom constructor:
+	__host__ __device__
+	grid(const gridPoint Center, const gridPoint Diameter, const INT Nodes_per_dim){
+
+		Nodes_per_Dim	= Nodes_per_dim;
+		Boundary_inf	= Center - Diameter.Mult_by_Scalar(0.5);
+		Boundary_sup	= Center + Diameter.Mult_by_Scalar(0.5);
+	}
+
+// Methods/functions
+	// This function gives the total amount of Mesh nodes
+	__host__ __device__
+	inline UINT Total_Nodes() const {
+		return pow(Nodes_per_Dim, DIMENSIONS);
+	}
+
+	// This function gives the length of each edge of our cubical mesh
+	__host__ __device__
+	inline gridPoint Edge_size() const {
+		return (Boundary_sup - Boundary_inf);
+	}
+
+	// This function returns the center point of the mesh
+	__host__ __device__
+	inline gridPoint Center() const {
+		return (Boundary_sup + Boundary_inf).Mult_by_Scalar(0.5);
+	}
+
+	// This function gives the mesh discretization length
+	__host__ __device__
+		inline TYPE Discr_length() const {
+		if (Nodes_per_Dim == 1) { return (TYPE)0; }
+
+		return (TYPE)(this->Edge_size().dim[0] / (Nodes_per_Dim - 1));
+	}
+
+	// Given an index, this function returns the corresponding node
+	__host__ __device__
+	inline gridPoint Get_node(const INT& idx) const {
+		gridPoint out;
+
+		for (uint16_t d = 0; d < DIMENSIONS; d++) {
+			INT j = floor( positive_rem(idx, pow(Nodes_per_Dim, d + 1)) / pow(Nodes_per_Dim, d) );		// This line gives the index at each dimension
+			out.dim[d] = ((TYPE) j / (Nodes_per_Dim - 1) - 0.50f) * this->Edge_size().dim[d]; // This line gives the grid node per se
+		}
+		out = out + this->Center();
+
+		return out;
+	}
+
+	// Checks whether Particle belongs to the grid/mesh
+	__host__ __device__
+	inline bool Contains_particle(const gridPoint Particle) const {
+		for (uint16_t d = 0; d < DIMENSIONS; d++) {
+			if (Particle.dim[d] < this->Boundary_inf.dim[d] || Particle.dim[d] > this->Boundary_sup.dim[d]) { return false; }
+		}
+		return true;
+	}
+	
+	// Returns the bin (or ID of the closest node) where Particle belongs to, adding bin_offset.
+	__host__ __device__ 
+	inline INT Give_Bin(const gridPoint Particle, const INT bin_offset) const {
+		INT bin_idx = 0;
+ 
+		for (uint16_t d = 0; d < DIMENSIONS; d++) {
+			INT temp_idx = roundf((Particle.dim[d] - this->Boundary_inf.dim[d]) / this->Discr_length()) + bin_offset;
+			bin_idx += temp_idx * powf(Nodes_per_Dim, d);
+		}
+		return bin_idx;
+	};
+
+	// Compute the global index in a mesh, given the global index in another mesh.
+	__host__ __device__
+	inline INT Indx_here(const INT indx_at_other, const grid& other) const {
+
+		INT out = this->Give_Bin(other.Boundary_inf,0);
+
+		for (uint16_t d = 0; d < DIMENSIONS; d++) {
+
+			// Calculate the local dimensional index in the 'other' mesh:
+			out += floor(positive_rem(indx_at_other, pow(other.Nodes_per_Dim, d + 1)) / pow(other.Nodes_per_Dim, d)) * pow(this->Nodes_per_Dim, d);
+		}
+
+		return out;
+	}
 };
 
 // Time + impulse: ----------------------------------------------
@@ -204,14 +318,7 @@ public:
 
 // ------------------------------------------------------------------------ //
 // ------------------------------------------------------------------------ //
-/// @brief Host/Device function that computes the positive remainder (mod) between two integers
-/// @param a This is the numerator
-/// @param b This is the denominator
-/// @return Returns mod(a,b)
-__host__ __device__ 
-inline UINT positive_rem(const INT a, const INT b){
-	return (a % b + b) % b;
-} 
+
 // ------------------------------------------------------------------------ //
 // ------------------------------------------------------------------------ //
 
@@ -236,28 +343,6 @@ __host__ __device__ inline Param_vec _Gather_Param_Vec(const UINT index, const P
 		aux_samples_sum  += aux3;
 	}
 	return Output;
-}
-
-__device__ __forceinline__ void __atomicAdd(double *address, double val)
-{
-    // Doing it all as longlongs cuts one __longlong_as_double from the inner loop
-    uint64_t *ptr = (uint64_t *)address;
-    uint64_t old, newdbl, ret = *ptr;
-    do {
-        old = ret;
-        newdbl = __double_as_longlong(__longlong_as_double(old)+val);
-    } while((ret = atomicCAS(ptr, old, newdbl)) != old);
-}
-
-__device__ __forceinline__ void __atomicAdd(float *address, float val)
-{
-    // Doing it all as longlongs cuts one __longlong_as_double from the inner loop
-    UINT *ptr = (UINT *)address;
-    UINT old, newint, ret = *ptr;
-    do {
-        old = ret;
-        newint = __float_as_int(__int_as_float(old)+val);
-    } while((ret = atomicCAS(ptr, old, newint)) != old);
 }
 // +===========================================================================+ //
 // +===========================================================================+ //

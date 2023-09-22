@@ -27,7 +27,7 @@ __global__ void ODE_INTEGRATE(gridPoint* Particles,
 							const INT		Random_Samples,
 							const UINT		mode,
 							const FIXED_TYPE* extra_param,
-							const gridPoint* Domain_boundary) {
+							grid D_Mesh) {
 
 	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -79,7 +79,7 @@ __global__ void ODE_INTEGRATE(gridPoint* Particles,
 			x0 = aux;
 			t0 += deltaT;
 
-			if (!aux.is_in_domain(Domain_boundary)) { Int_PDF = 0; break; }	// Condition is equivalent to the homogeneous Neumann condition
+			if (!D_Mesh.Contains_particle(aux)) { Int_PDF = 0; break; }	// Condition is equivalent to the homogeneous Neumann condition
 		}
 
 		Particles[i] = aux;

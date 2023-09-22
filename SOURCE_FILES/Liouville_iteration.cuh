@@ -30,7 +30,7 @@
 /// 6th) Store final PDF into the iteration vector for further post-processing and/or evolution visualization.
 /// @param store_PDFs 
 /// @param Parameter_Mesh 
-/// @param H_Mesh 
+/// @param Base_Mesh 
 /// @param H_PDF 
 /// @param LvlFine 
 /// @param LvlCoarse 
@@ -43,7 +43,7 @@
 int16_t PDF_ITERATIONS(	cudaDeviceProp*				prop,
 						std::vector<float>*			store_PDFs,
 						const Param_pair*			Parameter_Mesh,
-						const gridPoint*			H_Mesh,
+						grid&					Base_Mesh,
 						thrust::host_vector<TYPE>*	H_PDF,
 						const INT*				n_Samples,
 						const INT&				LvlFine,
@@ -66,6 +66,9 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*				prop,
 	std::vector<gridPoint>	Full_AdaptGrid(0);		// Final adapted grid (adapted grid x number of samples)
 	std::vector<TYPE>		Full_AdaptPDF(0);		// Final adapted PDF (adapted grid x number of samples)
 
+	grid Supp_BBox = Base_Mesh;		// Initialize the Support bounding box as the initial mesh...		THIS WORKS BECAUSE WE HAVE DEFINED A DEFAULT CONSTRUCTOR
+									// First iteration will be slower but...whatcha gonna do?
+
 	INT Random_Samples = 1;
 	INT aux_Samples = 0;
 
@@ -78,9 +81,9 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*				prop,
 
 	thrust::device_vector<gridPoint>	GPU_Part_Position;		// Particle positions (for the GPU)
 	thrust::device_vector<TYPE>			GPU_AdaptPDF;			// PDF value at Particle positions (for the GPU)
-	thrust::device_vector<Param_pair>	GPU_Parameter_Mesh(Parameter_Mesh, Parameter_Mesh + aux_Samples);		// Parameter H_Mesh array (for the GPU)
+	thrust::device_vector<Param_pair>	GPU_Parameter_Mesh(Parameter_Mesh, Parameter_Mesh + aux_Samples);		// Parameter Base_Mesh array (for the GPU)
 
-	thrust::device_vector<INT>		GPU_nSamples(n_Samples, n_Samples + PARAM_DIMENSIONS);
+	thrust::device_vector<INT>			GPU_nSamples(n_Samples, n_Samples + PARAM_DIMENSIONS);
 	thrust::device_vector<TYPE>			GPU_PDF = *H_PDF;					// PDF values at fixed Grid Nodes (for the GPU)
 
 	// auxiliary variable that will be used for ensemble mean computation
@@ -96,20 +99,8 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*				prop,
 	// ------------------ DEFINITION OF THE INTERPOLATION VARIABLES AND ARRAYS ------------------ //
 	UINT Adapt_Points, MaxNeighborNum;
 
-	const TYPE disc_X = (H_Mesh[1].dim[0] - H_Mesh[0].dim[0]);	// H_Mesh discretization size (per dimension)
-
-	thrust::host_vector<gridPoint>	__H__Domain_Boundary(2);
- 
-	for (UINT d = 0; d < DIMENSIONS; d++) {
-		__H__Domain_Boundary[0].dim[d] = H_Mesh[0].dim[d];
-		__H__Domain_Boundary[1].dim[d] = H_Mesh[Grid_Nodes - 1].dim[d];
-	}
-	thrust::device_vector<gridPoint> __D__Domain_Boundary = __H__Domain_Boundary;
-
-	const TYPE search_radius = DISC_RADIUS * disc_X;		// max radius to search ([3,6] appears to be optimal)
-
 	const UINT	max_steps = 1000;		 				// max steps at the Conjugate Gradient (CG) algorithm
-	const TYPE 	in_tolerance  = TOLERANCE_ConjGrad; 		// CG stop tolerance
+	const TYPE 	in_tolerance  = TOLERANCE_ConjGrad, search_radius = DISC_RADIUS * Base_Mesh.Discr_length(); 		// CG stop tolerance and max radius to search ([3,6] appears to be optimal)
 
 	// --------------------------------------------------------------------------------------------
 	// --------------------------------------------------------------------------------------------
@@ -123,53 +114,57 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*				prop,
 	thrust::copy(H_PDF->begin(), H_PDF->end(), &(*store_PDFs)[0]);
 
 	// ------------------------------------------------------------------------------------
-	uint16_t j = 0;				// PDF iteration counter
-	uint16_t mode = 0; 		// this modifies the vector field to go between the unforced and square-forced field
+	uint16_t j = 0, mode = 0; 	// iteration counter and variable that modifies the vector field to go between the unforced and forced fields
 	int16_t error_check = 0;	// auxiliary variable for error checking
 
-#if IMPULSE_TYPE == 1
-	UINT jump = 0;	// auxiliary variable to know how many delta jumps have passed
-#endif
+	// IF THERE ARE DELTA TERMS
+	#if IMPULSE_TYPE == 1
+		UINT jump = 0;	// auxiliary variable to know how many delta jumps have passed
+	#endif
+	
+	// IF THERE ARE HEAVISIDE TERMS WITH EXTRA PARAMETERS
+	#if INCLUDE_XTRA_PARAMS
+		thrust::device_vector<FIXED_TYPE>	Extra_Parameter(XTRA_PARAM_LENGTH);
+		thrust::copy(&XTRA_PARAM[0], &XTRA_PARAM[XTRA_PARAM_LENGTH], Extra_Parameter.begin());
+	#else
+		thrust::device_vector<FIXED_TYPE>	Extra_Parameter(0);
+	#endif
 
-#if INCLUDE_XTRA_PARAMS
-	thrust::device_vector<FIXED_TYPE>	Extra_Parameter(XTRA_PARAM_LENGTH);
-	thrust::copy(&XTRA_PARAM[0], &XTRA_PARAM[XTRA_PARAM_LENGTH], Extra_Parameter.begin());
-#else
-	thrust::device_vector<FIXED_TYPE>	Extra_Parameter(0);
-#endif
 
+// IN THIS LINE WE COMMENCE WITH THE ACTUAL ITERATIONS OF THE LIOUVILLE EQUATION
 	while (j < time_vector.size() - 1 && error_check == 0) {
 
 		auto start_2 = std::chrono::high_resolution_clock::now();
 
-		float	t0 = time_vector[j].time,
-			tF = time_vector[j + 1].time;
+		float	t0 = time_vector[j].time, tF = time_vector[j + 1].time;
 
 		std::cout << "+---------------------------------------------------------------------+\n";
-		// 1.- Initial step Adaptive H_Mesh Refinement. First store the initial PDF with AMR performed
+		// 1.- Initial step Adaptive Base_Mesh Refinement. First store the initial PDF with AMR performed
 
 		auto start_3 = std::chrono::high_resolution_clock::now();
 
-		error_check = ADAPT_MESH_REFINEMENT_nD(*H_PDF, &GPU_PDF, &AdaptPDF, H_Mesh, &AdaptGrid, LvlFine, LvlCoarse, PtsPerDim);
+		error_check = ADAPT_MESH_REFINEMENT_nD(*H_PDF, GPU_PDF, AdaptPDF, AdaptGrid, Base_Mesh, Supp_BBox, LvlFine, LvlCoarse);
 		if (error_check == -1) { break; }
 
 		auto end_3 = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<float> duration_3 = end_3 - start_3;
 
-#if OUTPUT_INFO
+		Supp_BBox = Base_Mesh;	// Reinitialize the mesh to do more stuff
+
+		#if OUTPUT_INFO
 		std::cout << "AMR iteration took " << duration_3.count() << " seconds\n";
-#endif
+		#endif
 
 		// 1.1.- COMPUTE THE TRANSFORMATION OF THE PDF (IF THERE IS ONE)
 		if (time_vector[j].impulse) {
 
-#if(IMPULSE_TYPE == 1)	// THIS IS FOR DELTA-TYPE IMPULSE!
+	#if(IMPULSE_TYPE == 1)	// THIS IS FOR DELTA-TYPE IMPULSE!
 
 			std::cout << "RVT transformation at time: " << t0 << "\n";
 
 			start_3 = std::chrono::high_resolution_clock::now();
 
-			error_check = IMPULSE_TRANSFORM_PDF(H_Mesh,
+			error_check = IMPULSE_TRANSFORM_PDF(Base_Mesh,
 												&AdaptGrid,
 												H_PDF,
 												&GPU_PDF,
@@ -289,8 +284,8 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*				prop,
 														Random_Samples_Blk_size,
 														mode,
 														rpc(Extra_Parameter, 0),
-														rpc(__D__Domain_Boundary, 0));
-				gpuError_Check(cudaDeviceSynchronize()); // Here, the entire H_Mesh points (those that were selected) and PDF points (same) have been updated.
+														Base_Mesh);
+				gpuError_Check(cudaDeviceSynchronize()); // Here, the entire Base_Mesh points (those that were selected) and PDF points (same) have been updated.
 
 				end_3 = std::chrono::high_resolution_clock::now();
 				duration_3 = end_3 - start_3;
@@ -318,7 +313,7 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*				prop,
 																	Adapt_Points,
 																	Block_Particles,
 																	search_radius,
-																	rpc(__D__Domain_Boundary, 0));
+																	Base_Mesh);
 					gpuError_Check(cudaDeviceSynchronize());
 				}
 				else {
@@ -327,12 +322,10 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*				prop,
 															GPU_Index_array,
 															GPU_Mat_entries,
 															GPU_Num_Neighbors,
-															PtsPerDim,
 															Adapt_Points,
 															MaxNeighborNum,
 															search_radius,
-															disc_X,
-															__D__Domain_Boundary);
+															Base_Mesh);
 
 					if (error_check == -1) { break; }
 				}
@@ -389,13 +382,11 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*				prop,
 																		rpc(GPU_Parameter_Mesh, 0),
 																		rpc(GPU_nSamples, 0),
 																		search_radius,
-																		H_Mesh[0],
-																		disc_X,
-																		PtsPerDim,
 																		Adapt_Points,
 																		Random_Samples_Blk_size,
 																		Sample_idx_offset_init,
-																		rpc(__D__Domain_Boundary, 0));
+																		Base_Mesh,
+																		Supp_BBox);
 				gpuError_Check(cudaDeviceSynchronize());
 				end_3 = std::chrono::high_resolution_clock::now();
 				duration_3 = end_3 - start_3;
@@ -411,6 +402,7 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*				prop,
 			// Re-define Threads and Blocks
 			UINT Threads = fminf(THREADS_P_BLK, Grid_Nodes);
 			UINT Blocks = floorf((Grid_Nodes - 1) / Threads) + 1;
+
 			CORRECTION<TYPE> << <Blocks, Threads >> > (rpc(GPU_PDF, 0), Grid_Nodes);
 			gpuError_Check(cudaDeviceSynchronize());
 
