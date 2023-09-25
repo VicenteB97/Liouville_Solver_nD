@@ -386,13 +386,12 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*				prop,
 																		Random_Samples_Blk_size,
 																		Sample_idx_offset_init,
 																		Base_Mesh,
-																		Supp_BBox);
+																		&Supp_BBox);
 				gpuError_Check(cudaDeviceSynchronize());
 				end_3 = std::chrono::high_resolution_clock::now();
 				duration_3 = end_3 - start_3;
 #if OUTPUT_INFO
 				std::cout << "Remeshing took " << duration_3.count() << " seconds\n";
-#else
 #endif
 			}
 

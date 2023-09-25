@@ -504,67 +504,42 @@ void RESTART_GRID_FIND_GN(gridPoint*		Particle_Positions,
 							const UINT	 	Block_samples,
 							const UINT	 	offset,
 							const grid 		Mesh,
-							const grid		Initial_BBox) {
+							grid*		Initial_BBox) {
 	// OUTPUT: New values of the PDF at the fixed grid
 
 	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
 
 	if (i >= Adapt_Pts * Block_samples) { return; }
-
 	gridPoint particle = Particle_Positions[i];
+
 	if (!Mesh.Contains_particle(particle)) { return; }
 
-	UINT PtsPerDimension = Mesh.Nodes_per_Dim, Total_nodes = Mesh.Total_Nodes();
-	T grid_discretization_length = Mesh.Discr_length();
-
-	UINT num_neighbors_per_dim = 2 * floorf(search_radius / grid_discretization_length) + 1;
-	UINT num_neighbors_per_particle = pow(num_neighbors_per_dim, DIMENSIONS);
 	UINT Current_sample = offset + floorf(i / Adapt_Pts);
-
 	Param_vec aux = _Gather_Param_Vec(Current_sample, Parameter_Mesh, n_Samples);
 
-	T dist, weighted_lambda = lambdas[i] * aux.Joint_PDF;
+	T weighted_lambda = lambdas[i] * aux.Joint_PDF;
 
 	// I want to compute the index of the lowest neighboring grid node (imagine the lowest corner of a box) and build its nearest neighbors
-	INT 		lowest_idx = 0;
-	gridPoint	temp_gridNode;
-	gridPoint	lowest_node = Mesh.Boundary_inf, fixed_gridNode = lowest_node;
+	INT lowest_idx  = Mesh.Give_Bin(particle, -roundf(DISC_RADIUS));	// Index of the lowest corner in the search area
+	INT highest_idx = Mesh.Give_Bin(particle, roundf(DISC_RADIUS));	// Index of the lowest corner in the search area
 
-#pragma unroll
-	for (uint16_t d = 0; d < DIMENSIONS; d++) {
-		INT temp_idx = roundf((T)(particle.dim[d] - lowest_node.dim[d]) / grid_discretization_length) - roundf(DISC_RADIUS);
-		lowest_idx += temp_idx * pow(PtsPerDimension, d);
-
-		fixed_gridNode.dim[d] += temp_idx * grid_discretization_length;
-	}
-
-	// store the lowest sparse index identification (remember we are alredy storing the transposed matrix. The one we will need for multiplication)
-	if (lowest_idx >= 0 && lowest_idx < Total_nodes && Mesh.Contains_particle(fixed_gridNode)) {
-		dist = fixed_gridNode.Distance(particle) / search_radius;
-		if (dist <= 1) {
-			dist = RBF(search_radius, dist) * weighted_lambda;
-			atomicAdd(&PDF[lowest_idx], dist);
-		}
-	}
+	// Define my search cube using the extremal nodes
+	grid Search_area;
+	Search_area.Boundary_inf = Mesh.Get_node(lowest_idx);
+	Search_area.Boundary_sup = Mesh.Get_node(highest_idx);
+	Search_area.Nodes_per_Dim = 2 * floorf(DISC_RADIUS) + 1;
 
 	// now, go through all the neighboring grid nodes and add the values to the PDF field
-	for (UINT j = 1; j < num_neighbors_per_particle; j++) {
-		INT idx = lowest_idx;
-		temp_gridNode = fixed_gridNode;
+	for (UINT j = 0; j < Search_area.Total_Nodes(); j++) {
+		gridPoint temp_gridNode = Search_area.Get_node(j);
 
-#pragma unroll
-		for (uint16_t d = 0; d < DIMENSIONS; d++) {
-			UINT temp_idx = floorf(positive_rem(j, pow(num_neighbors_per_dim, d + 1)) / pow(num_neighbors_per_dim, d));
-			idx += temp_idx * pow(PtsPerDimension, d);
-
-			temp_gridNode.dim[d] = temp_idx * grid_discretization_length + fixed_gridNode.dim[d];
-		}
-
-		if (idx >= 0 && idx < Total_nodes && Mesh.Contains_particle(temp_gridNode))
+		if (Mesh.Contains_particle(temp_gridNode))
 		{
-			dist = temp_gridNode.Distance(particle) / search_radius;
+			T dist = temp_gridNode.Distance(particle) / search_radius;
 			if (dist <= 1) {
 				dist = RBF(search_radius, dist) * weighted_lambda;
+				INT idx = Mesh.Give_Bin(temp_gridNode, 0);
+
 				atomicAdd(&PDF[idx], dist);
 			}
 		}
@@ -580,65 +555,38 @@ void RESTART_GRID_FIND_GN_II(gridPoint* Particle_Positions,
 	const float 	search_radius,
 	const UINT	 	Adapt_Pts,
 	const UINT	 	Current_sample,
-	const grid Mesh) {
+	const grid		Mesh) {
 	// OUTPUT: New values of the PDF at the fixed grid
 
 	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
 
 	if (i >= Adapt_Pts) { return; }
-
 	gridPoint particle = Particle_Positions[i];
+	
 	if (!Mesh.Contains_particle(particle)) { return; }
 
-	UINT PtsPerDimension = Mesh.Nodes_per_Dim, Total_nodes = Mesh.Total_Nodes();
-	TYPE grid_discretization_length = Mesh.Discr_length();
-
-	UINT num_neighbors_per_dim = 2 * floorf(search_radius / grid_discretization_length) + 1;
-	UINT num_neighbors_per_particle = pow(num_neighbors_per_dim, DIMENSIONS);
-
 	float weighted_lambda = lambdas[i + Current_sample * Adapt_Pts] * Impulse_weights[Current_sample].Joint_PDF;				// the specific sample weight
-	float dist;
 
-	// I want to compute the index of the lowest neighboring grid node and build its nearest neighbors
-	INT 		lowest_idx = 0;
-	gridPoint	temp_gridNode;
-	gridPoint	lowest_node = Mesh.Boundary_inf, fixed_gridNode = lowest_node;
+	// I want to compute the index of the lowest neighboring grid node (imagine the lowest corner of a box) and build its nearest neighbors
+	INT lowest_idx = Mesh.Give_Bin(particle, -roundf(DISC_RADIUS));	// Index of the lowest corner in the search area
+	INT highest_idx = Mesh.Give_Bin(particle, roundf(DISC_RADIUS));	// Index of the lowest corner in the search area
 
-#pragma unroll
-	for (uint16_t d = 0; d < DIMENSIONS; d++) {
-		INT temp_idx = roundf((TYPE)(particle.dim[d] - lowest_node.dim[d]) / grid_discretization_length) - roundf(DISC_RADIUS);
-		lowest_idx += temp_idx * pow(PtsPerDimension, d);
-
-		fixed_gridNode.dim[d] += temp_idx * grid_discretization_length;
-	}
-
-	// store the lowest sparse index identification (remember we are alredy storing the transposed matrix. The one we will need for multiplication)
-	if (lowest_idx >= 0 && lowest_idx < Total_nodes && Mesh.Contains_particle(fixed_gridNode)) {
-		dist = fixed_gridNode.Distance(particle) / search_radius;
-		if (dist <= 1) {
-			dist = RBF(search_radius, dist) * weighted_lambda;
-			atomicAdd(&PDF[lowest_idx], dist);
-		}
-	}
+	// Define my search cube using the extremal nodes
+	grid Search_area;
+	Search_area.Boundary_inf = Mesh.Get_node(lowest_idx);
+	Search_area.Boundary_sup = Mesh.Get_node(highest_idx);
+	Search_area.Nodes_per_Dim = 2 * floorf(DISC_RADIUS) + 1;
 
 	// now, go through all the neighboring grid nodes and add the values to the PDF field
-	for (UINT j = 1; j < num_neighbors_per_particle; j++) {
-		INT idx = lowest_idx;
-		temp_gridNode = fixed_gridNode;
+	for (UINT j = 0; j < Search_area.Total_Nodes(); j++) {
+		gridPoint temp_gridNode = Search_area.Get_node(j);
 
-#pragma unroll
-		for (uint16_t d = 0; d < DIMENSIONS; d++) {
-			UINT temp_idx = floorf(positive_rem(j, pow(num_neighbors_per_dim, d + 1)) / pow(num_neighbors_per_dim, d));
-			idx += temp_idx * pow(PtsPerDimension, d);
-
-			temp_gridNode.dim[d] = temp_idx * grid_discretization_length + fixed_gridNode.dim[d];
-		}
-
-		if (idx >= 0 && idx < Total_nodes && Mesh.Contains_particle(temp_gridNode))
+		if (Mesh.Contains_particle(temp_gridNode))
 		{
-			dist = temp_gridNode.Distance(particle) / search_radius;
+			float dist = temp_gridNode.Distance(particle) / search_radius;
 			if (dist <= 1) {
 				dist = RBF(search_radius, dist) * weighted_lambda;
+				INT idx = Mesh.Give_Bin(temp_gridNode, 0);
 				atomicAdd(&PDF[idx], dist);
 			}
 		}
