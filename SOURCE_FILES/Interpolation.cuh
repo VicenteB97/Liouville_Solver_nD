@@ -503,8 +503,7 @@ void RESTART_GRID_FIND_GN(gridPoint*		Particle_Positions,
 							const UINT	 	Adapt_Pts,
 							const UINT	 	Block_samples,
 							const UINT	 	offset,
-							const grid 		Mesh,
-							grid*			Initial_BBox) {
+							const grid 		Mesh) {
 	// OUTPUT: New values of the PDF at the fixed grid
 
 	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
@@ -514,26 +513,25 @@ void RESTART_GRID_FIND_GN(gridPoint*		Particle_Positions,
 
 	if (!Mesh.Contains_particle(particle)) { return; }
 
-	INT Current_sample	= offset + floorf(i / Adapt_Pts);
-	Param_vec aux		= _Gather_Param_Vec(Current_sample, Parameter_Mesh, n_Samples);
+	UINT Current_sample = offset + floorf(i / Adapt_Pts);
+	Param_vec aux = _Gather_Param_Vec(Current_sample, Parameter_Mesh, n_Samples);
 
 	T weighted_lambda = lambdas[i] * aux.Joint_PDF;
 
-	// I want to build a search grid
-	INT lowest_idx  = Mesh.Give_Bin(particle, -roundf(DISC_RADIUS));	// Index of the lowest corner in the search area
-	INT highest_idx = Mesh.Give_Bin(particle, roundf(DISC_RADIUS));		// Index of the highest corner in the search area
+	// I want to compute the index of the lowest neighboring grid node (imagine the lowest corner of a box) and build its nearest neighbors
+	INT lowest_idx  = Mesh.Give_Bin(particle, -roundf(DISC_RADIUS));
+	INT highest_idx = Mesh.Give_Bin(particle, roundf(DISC_RADIUS));
 
-	// Define my search cube using the extremal nodes
-	grid Search_area;
-	Search_area.Boundary_inf  = Mesh.Get_node(lowest_idx);
-	Search_area.Boundary_sup  = Mesh.Get_node(highest_idx);
-	Search_area.Nodes_per_Dim = 2 * roundf(DISC_RADIUS);
+	grid Search_grid;
+	Search_grid.Boundary_inf = Mesh.Get_node(lowest_idx);
+	Search_grid.Boundary_sup = Mesh.Get_node(highest_idx);
+	Search_grid.Nodes_per_Dim = 2 * roundf(DISC_RADIUS) + 1;
 
 	// now, go through all the neighboring grid nodes and add the values to the PDF field
-	for (UINT j = 0; j < Search_area.Total_Nodes(); j++) {
+	for (UINT j = 0; j < Search_grid.Total_Nodes(); j++) {
 
-		gridPoint	temp_gridNode	= Search_area.Get_node(j);
-		INT			idx				= Mesh.Give_Bin(temp_gridNode, 0);
+		INT idx = Mesh.Give_Bin(Search_grid.Get_node(j), 0);
+		gridPoint temp_gridNode = Mesh.Get_node(idx);
 
 		if (Mesh.Contains_particle(temp_gridNode))
 		{
@@ -568,19 +566,19 @@ void RESTART_GRID_FIND_GN_II(gridPoint* Particle_Positions,
 	float weighted_lambda = lambdas[i + Current_sample * Adapt_Pts] * Impulse_weights[Current_sample].Joint_PDF;				// the specific sample weight
 
 	// I want to compute the index of the lowest neighboring grid node (imagine the lowest corner of a box) and build its nearest neighbors
-	INT lowest_idx = Mesh.Give_Bin(particle, -roundf(DISC_RADIUS));	// Index of the lowest corner in the search area
-	INT highest_idx = Mesh.Give_Bin(particle, roundf(DISC_RADIUS));	// Index of the lowest corner in the search area
+	INT lowest_idx = Mesh.Give_Bin(particle, -roundf(DISC_RADIUS));
+	INT highest_idx = Mesh.Give_Bin(particle, roundf(DISC_RADIUS));
 
-	// Define my search cube using the extremal nodes
-	grid Search_area;
-	Search_area.Boundary_inf = Mesh.Get_node(lowest_idx);
-	Search_area.Boundary_sup = Mesh.Get_node(highest_idx);
-	Search_area.Nodes_per_Dim = 2 * floorf(DISC_RADIUS) + 1;
+	grid Search_grid;
+	Search_grid.Boundary_inf = Mesh.Get_node(lowest_idx);
+	Search_grid.Boundary_sup = Mesh.Get_node(highest_idx);
+	Search_grid.Nodes_per_Dim = 2 * roundf(DISC_RADIUS) + 1;
 
 	// now, go through all the neighboring grid nodes and add the values to the PDF field
-	for (UINT j = 0; j < Search_area.Total_Nodes(); j++) {
-		gridPoint temp_gridNode = Search_area.Get_node(j);
-		INT idx = Mesh.Indx_here(j, Search_area);
+	for (UINT j = 0; j < Search_grid.Total_Nodes(); j++) {
+
+		INT idx = Mesh.Give_Bin(Search_grid.Get_node(j), 0);
+		gridPoint temp_gridNode = Mesh.Get_node(idx);
 
 		if (Mesh.Contains_particle(temp_gridNode))
 		{

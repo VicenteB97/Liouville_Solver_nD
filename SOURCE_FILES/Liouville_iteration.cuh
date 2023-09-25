@@ -387,8 +387,7 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*				prop,
 																		Adapt_Points,
 																		Random_Samples_Blk_size,
 																		Sample_idx_offset_init,
-																		Base_Mesh,
-																		&Supp_BBox);
+																		Base_Mesh);
 				gpuError_Check(cudaDeviceSynchronize());
 				end_3 = std::chrono::high_resolution_clock::now();
 				duration_3 = end_3 - start_3;
