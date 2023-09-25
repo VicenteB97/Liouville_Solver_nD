@@ -74,7 +74,7 @@ inline UINT positive_rem(const INT a, const INT b) {
 }
 
 #define M_PI 3.14159265358979323846
-#define ptSEARCH_THRESHOLD 15000 // The min. number of particles per sample where we use the counting sort search
+#define ptSEARCH_THRESHOLD 35000 // The min. number of particles per sample where we use the counting sort search
 
 //-------------------------------------------------------------------------//
 //-------------------------- CLASSES USED ---------------------------------//
@@ -171,11 +171,11 @@ public:
 	grid(){
 		Boundary_inf	= DOMAIN_CTR;
 		Boundary_sup	= DOMAIN_CTR;
-		Nodes_per_Dim	= 0;
+		Nodes_per_Dim	= 1;
 	}
-	// Custom constructor:
+	// Parametric constructor:
 	__host__ __device__
-	grid(const gridPoint Center, const gridPoint Diameter, const INT Nodes_per_dim){
+	grid(const gridPoint& Center, const gridPoint& Diameter, const INT& Nodes_per_dim){
 
 		Nodes_per_Dim	= Nodes_per_dim;
 		Boundary_inf	= Center - Diameter.Mult_by_Scalar(0.5);
@@ -211,52 +211,44 @@ public:
 
 	// Given an index, this function returns the corresponding node
 	__host__ __device__
-	inline gridPoint Get_node(const INT& idx) const {
+	inline gridPoint Get_node(const INT& globalIdx) const {
 		gridPoint out;
 
 		for (uint16_t d = 0; d < DIMENSIONS; d++) {
-			INT j = floor( positive_rem(idx, pow(Nodes_per_Dim, d + 1)) / pow(Nodes_per_Dim, d) );		// This line gives the index at each dimension
-			out.dim[d] = ((TYPE) j / (Nodes_per_Dim - 1) - 0.50f) * this->Edge_size().dim[d]; // This line gives the grid node per se
+			INT j = floor( positive_rem(globalIdx, pow(Nodes_per_Dim, d + 1)) / pow(Nodes_per_Dim, d) );	// This line gives the index at each dimension
+			out.dim[d] = j * this->Discr_length() + Boundary_inf.dim[d];								// This line gives the grid node per se
 		}
-		out = out + this->Center();
 
 		return out;
 	}
 
 	// Checks whether Particle belongs to the grid/mesh
 	__host__ __device__
-	inline bool Contains_particle(const gridPoint Particle) const {
+	inline bool Contains_particle(const gridPoint& Particle) const {
 		for (uint16_t d = 0; d < DIMENSIONS; d++) {
-			if (Particle.dim[d] < this->Boundary_inf.dim[d] || Particle.dim[d] > this->Boundary_sup.dim[d]) { return false; }
+			if (Particle.dim[d] < Boundary_inf.dim[d] || Particle.dim[d] > Boundary_sup.dim[d]) { return false; }
 		}
 		return true;
 	}
 	
 	// Returns the bin (or ID of the closest node) where Particle belongs to, adding bin_offset.
 	__host__ __device__ 
-	inline INT Give_Bin(const gridPoint Particle, const INT bin_offset) const {
+	inline INT Give_Bin(const gridPoint& Particle, const INT& bin_offset) const {
 		INT bin_idx = 0;
  
 		for (uint16_t d = 0; d < DIMENSIONS; d++) {
-			INT temp_idx = roundf((Particle.dim[d] - this->Boundary_inf.dim[d]) / this->Discr_length()) + bin_offset;
+			INT temp_idx = (INT)roundf((Particle.dim[d] - Boundary_inf.dim[d]) / this->Discr_length()) + bin_offset;
 			bin_idx += temp_idx * powf(Nodes_per_Dim, d);
 		}
 		return bin_idx;
 	};
 
-	// Compute the global index in a mesh, given the global index in another mesh.
+	// Compute the global index at your mesh, given the global index in "other" mesh.
 	__host__ __device__
-	inline INT Indx_here(const INT indx_at_other, const grid& other) const {
+	inline INT Indx_here(const INT& indx_at_other, const grid& other) const {
 
-		INT out = this->Give_Bin(other.Boundary_inf,0);
+		return this->Give_Bin(other.Get_node(indx_at_other),0);
 
-		for (uint16_t d = 0; d < DIMENSIONS; d++) {
-
-			// Calculate the local dimensional index in the 'other' mesh:
-			out += floor(positive_rem(indx_at_other, pow(other.Nodes_per_Dim, d + 1)) / pow(other.Nodes_per_Dim, d)) * pow(this->Nodes_per_Dim, d);
-		}
-
-		return out;
 	}
 };
 
@@ -275,7 +267,8 @@ class AMR_node_select{
 public:
 	UINT node, AMR_selected;
 
-	__host__ __device__ bool operator < (const AMR_node_select& other) const { // Note that we have changed order, for simpler work
+	__host__ __device__ 
+	bool operator < (const AMR_node_select& other) const { // Note that we have changed order, for simpler work...
 		return (AMR_selected > other.AMR_selected);
 	}
 };

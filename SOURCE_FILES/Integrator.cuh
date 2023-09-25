@@ -27,7 +27,7 @@ __global__ void ODE_INTEGRATE(gridPoint* Particles,
 							const INT		Random_Samples,
 							const UINT		mode,
 							const FIXED_TYPE* extra_param,
-							grid D_Mesh) {
+							const grid D_Mesh) {
 
 	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
 

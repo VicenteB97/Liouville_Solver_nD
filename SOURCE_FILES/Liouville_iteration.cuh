@@ -21,6 +21,8 @@
 #include "Impulse_transformations.cuh"
 #include "Integrator.cuh"
 
+#include "Debugging.cuh"
+
 /// @brief This function computes the Liouville Eq. iterations from t0 to tF. Each iteration consists of the following steps:
 /// 1st) Compute the AMR of the initial PDF. 
 /// 2nd) Create as many particle families as random samples there are.

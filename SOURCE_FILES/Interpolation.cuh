@@ -183,7 +183,7 @@ int16_t _CS_Neighbor_Search(thrust::device_vector<gridPoint>& Search_Particles,
 							const UINT Adapt_Points, 
 							const UINT max_neighbor_num,
 							const T search_radius,
-							const grid& Base_Mesh) {
+							const grid Base_Mesh) {
 
 	// We need our particles
 	UINT Total_Particles = Search_Particles.size();
@@ -289,23 +289,23 @@ void Exh_PP_Search(const gridPoint* Search_Particles,
 					const UINT Adapt_Points,
 					const UINT Total_Particles,
 					const T search_radius,
-					const grid& Mesh) {
+					const grid Mesh) {
 
 	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
 
 	if (i >= Total_Particles) { return; }
 
 	gridPoint		FP_aux	= Fixed_Particles[i];									// Tells me what parameter sample I'm at
-	const INT	k		= i * max_neighbor_num;
+	const INT	k			= i * max_neighbor_num;
 
-	Index_Array[k] = i;
+	Index_Array[k]	= i;
 	Matrix_Entries[k] = RBF(search_radius, 0);
 
 	if (!Mesh.Contains_particle(FP_aux)) { Num_Neighbors[i] = 1; return; }
 
 	UINT		aux = 1;
 	const UINT	i_aux = floorf(i / Adapt_Points);
-	T				dist;
+	T			dist;
 
 	for (UINT j = i_aux * Adapt_Points; j < (i_aux + 1) * Adapt_Points; j++) {		// neighborhood where I'm searching
 
@@ -504,7 +504,7 @@ void RESTART_GRID_FIND_GN(gridPoint*		Particle_Positions,
 							const UINT	 	Block_samples,
 							const UINT	 	offset,
 							const grid 		Mesh,
-							grid*		Initial_BBox) {
+							grid*			Initial_BBox) {
 	// OUTPUT: New values of the PDF at the fixed grid
 
 	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
@@ -514,32 +514,32 @@ void RESTART_GRID_FIND_GN(gridPoint*		Particle_Positions,
 
 	if (!Mesh.Contains_particle(particle)) { return; }
 
-	UINT Current_sample = offset + floorf(i / Adapt_Pts);
-	Param_vec aux = _Gather_Param_Vec(Current_sample, Parameter_Mesh, n_Samples);
+	INT Current_sample	= offset + floorf(i / Adapt_Pts);
+	Param_vec aux		= _Gather_Param_Vec(Current_sample, Parameter_Mesh, n_Samples);
 
 	T weighted_lambda = lambdas[i] * aux.Joint_PDF;
 
-	// I want to compute the index of the lowest neighboring grid node (imagine the lowest corner of a box) and build its nearest neighbors
+	// I want to build a search grid
 	INT lowest_idx  = Mesh.Give_Bin(particle, -roundf(DISC_RADIUS));	// Index of the lowest corner in the search area
-	INT highest_idx = Mesh.Give_Bin(particle, roundf(DISC_RADIUS));	// Index of the lowest corner in the search area
+	INT highest_idx = Mesh.Give_Bin(particle, roundf(DISC_RADIUS));		// Index of the highest corner in the search area
 
 	// Define my search cube using the extremal nodes
 	grid Search_area;
-	Search_area.Boundary_inf = Mesh.Get_node(lowest_idx);
-	Search_area.Boundary_sup = Mesh.Get_node(highest_idx);
-	Search_area.Nodes_per_Dim = 2 * floorf(DISC_RADIUS) + 1;
+	Search_area.Boundary_inf  = Mesh.Get_node(lowest_idx);
+	Search_area.Boundary_sup  = Mesh.Get_node(highest_idx);
+	Search_area.Nodes_per_Dim = 2 * ceilf(DISC_RADIUS);
 
 	// now, go through all the neighboring grid nodes and add the values to the PDF field
 	for (UINT j = 0; j < Search_area.Total_Nodes(); j++) {
-		gridPoint temp_gridNode = Search_area.Get_node(j);
+
+		gridPoint	temp_gridNode	= Search_area.Get_node(j);
+		INT			idx				= Mesh.Give_Bin(temp_gridNode, 0);
 
 		if (Mesh.Contains_particle(temp_gridNode))
 		{
 			T dist = temp_gridNode.Distance(particle) / search_radius;
 			if (dist <= 1) {
 				dist = RBF(search_radius, dist) * weighted_lambda;
-				INT idx = Mesh.Give_Bin(temp_gridNode, 0);
-
 				atomicAdd(&PDF[idx], dist);
 			}
 		}
@@ -580,13 +580,13 @@ void RESTART_GRID_FIND_GN_II(gridPoint* Particle_Positions,
 	// now, go through all the neighboring grid nodes and add the values to the PDF field
 	for (UINT j = 0; j < Search_area.Total_Nodes(); j++) {
 		gridPoint temp_gridNode = Search_area.Get_node(j);
+		INT idx = Mesh.Indx_here(j, Search_area);
 
 		if (Mesh.Contains_particle(temp_gridNode))
 		{
 			float dist = temp_gridNode.Distance(particle) / search_radius;
 			if (dist <= 1) {
 				dist = RBF(search_radius, dist) * weighted_lambda;
-				INT idx = Mesh.Give_Bin(temp_gridNode, 0);
 				atomicAdd(&PDF[idx], dist);
 			}
 		}
