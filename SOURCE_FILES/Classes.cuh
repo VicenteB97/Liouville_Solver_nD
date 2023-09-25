@@ -204,9 +204,9 @@ public:
 	// This function gives the mesh discretization length
 	__host__ __device__
 	inline TYPE Discr_length() const {
-	if (Nodes_per_Dim == 1) { return (TYPE)0; }
+		if (Nodes_per_Dim == 1) { return (TYPE)0; }
 
-	return (TYPE)(this->Edge_size().dim[0] / (Nodes_per_Dim - 1));
+		return (TYPE)(this->Edge_size().dim[0] / (Nodes_per_Dim - 1));
 	}
 
 	// Given an index, this function returns the corresponding node
@@ -255,7 +255,7 @@ public:
 // Time + impulse: ----------------------------------------------
 class Time_Impulse_vec {
 public:
-	FIXED_TYPE 		time;
+	FIXED_TYPE 	time;
 	bool 		impulse;
 
 	bool operator < (const Time_Impulse_vec& other) const {

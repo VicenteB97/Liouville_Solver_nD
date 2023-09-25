@@ -527,7 +527,7 @@ void RESTART_GRID_FIND_GN(gridPoint*		Particle_Positions,
 	grid Search_area;
 	Search_area.Boundary_inf  = Mesh.Get_node(lowest_idx);
 	Search_area.Boundary_sup  = Mesh.Get_node(highest_idx);
-	Search_area.Nodes_per_Dim = 2 * ceilf(DISC_RADIUS);
+	Search_area.Nodes_per_Dim = 2 * roundf(DISC_RADIUS);
 
 	// now, go through all the neighboring grid nodes and add the values to the PDF field
 	for (UINT j = 0; j < Search_area.Total_Nodes(); j++) {
