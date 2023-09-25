@@ -74,7 +74,7 @@ inline UINT positive_rem(const INT a, const INT b) {
 }
 
 #define M_PI 3.14159265358979323846
-#define ptSEARCH_THRESHOLD 35000 // The min. number of particles per sample where we use the counting sort search
+#define ptSEARCH_THRESHOLD 20000 // The min. number of particles per sample where we use the counting sort search
 
 //-------------------------------------------------------------------------//
 //-------------------------- CLASSES USED ---------------------------------//
@@ -83,14 +83,6 @@ inline UINT positive_rem(const INT a, const INT b) {
 class gridPoint {
 public:
 	TYPE dim[DIMENSIONS];
-
-	// Default constructor	
-	// __host__ __device__
-	// gridPoint(){
-	// 	for (uint16_t d = 0; d < DIMENSIONS; d++){
-	// 		this->dim[d] = 0;
-	// 	}
-	// }
 
 	__host__ __device__ 
 	gridPoint operator+(const gridPoint& other) const {
@@ -169,17 +161,26 @@ public:
 	// Default constructor:
 	__host__ __device__
 	grid(){
-		Boundary_inf	= DOMAIN_CTR;
-		Boundary_sup	= DOMAIN_CTR;
 		Nodes_per_Dim	= 1;
+		Boundary_inf	= DOMAIN_INF;
+		Boundary_sup	= DOMAIN_SUP;
 	}
-	// Parametric constructor:
+
+	// Parametric constructors:
 	__host__ __device__
-	grid(const gridPoint& Center, const gridPoint& Diameter, const INT& Nodes_per_dim){
+		grid(const INT& Nodes_per_dim) {
+
+		Nodes_per_Dim = Nodes_per_dim;
+		Boundary_inf = DOMAIN_INF;
+		Boundary_sup = DOMAIN_SUP;
+	}
+
+	__host__ __device__
+	grid(const gridPoint& Bnd_inf, const gridPoint& Bnd_sup, const INT& Nodes_per_dim){
 
 		Nodes_per_Dim	= Nodes_per_dim;
-		Boundary_inf	= Center - Diameter.Mult_by_Scalar(0.5);
-		Boundary_sup	= Center + Diameter.Mult_by_Scalar(0.5);
+		Boundary_inf	= Bnd_inf;
+		Boundary_sup	= Bnd_sup;
 	}
 
 // Methods/functions
@@ -246,9 +247,7 @@ public:
 	// Compute the global index at your mesh, given the global index in "other" mesh.
 	__host__ __device__
 	inline INT Indx_here(const INT& indx_at_other, const grid& other) const {
-
 		return this->Give_Bin(other.Get_node(indx_at_other),0);
-
 	}
 };
 

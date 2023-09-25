@@ -522,10 +522,7 @@ void RESTART_GRID_FIND_GN(gridPoint*		Particle_Positions,
 	INT lowest_idx  = Mesh.Give_Bin(particle, -roundf(DISC_RADIUS));
 	INT highest_idx = Mesh.Give_Bin(particle, roundf(DISC_RADIUS));
 
-	grid Search_grid;
-	Search_grid.Boundary_inf = Mesh.Get_node(lowest_idx);
-	Search_grid.Boundary_sup = Mesh.Get_node(highest_idx);
-	Search_grid.Nodes_per_Dim = 2 * roundf(DISC_RADIUS) + 1;
+	grid Search_grid = grid(Mesh.Get_node(lowest_idx), Mesh.Get_node(highest_idx), 2 * roundf(DISC_RADIUS) + 1);
 
 	// now, go through all the neighboring grid nodes and add the values to the PDF field
 	for (UINT j = 0; j < Search_grid.Total_Nodes(); j++) {
@@ -569,10 +566,7 @@ void RESTART_GRID_FIND_GN_II(gridPoint* Particle_Positions,
 	INT lowest_idx = Mesh.Give_Bin(particle, -roundf(DISC_RADIUS));
 	INT highest_idx = Mesh.Give_Bin(particle, roundf(DISC_RADIUS));
 
-	grid Search_grid;
-	Search_grid.Boundary_inf = Mesh.Get_node(lowest_idx);
-	Search_grid.Boundary_sup = Mesh.Get_node(highest_idx);
-	Search_grid.Nodes_per_Dim = 2 * roundf(DISC_RADIUS) + 1;
+	grid Search_grid = grid(Mesh.Get_node(lowest_idx), Mesh.Get_node(highest_idx), 2 * roundf(DISC_RADIUS) + 1);
 
 	// now, go through all the neighboring grid nodes and add the values to the PDF field
 	for (UINT j = 0; j < Search_grid.Total_Nodes(); j++) {

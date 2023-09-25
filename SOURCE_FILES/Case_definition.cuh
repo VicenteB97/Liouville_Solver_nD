@@ -39,9 +39,9 @@
 #define DISC_RADIUS         3.49
 
 // State variables information
-#define DIMENSIONS   3
-#define DOMAIN_CTR  {0.5, 0.5, 0.5}
-#define DOMAIN_DIAM {1, 1, 1}
+#define DIMENSIONS  3
+#define DOMAIN_INF {0, 0, 0}
+#define DOMAIN_SUP {1, 1, 1}
 
 static const TYPE	IC_MEAN[DIMENSIONS] = { 0.75, 0.15, 0.1 };
 static const TYPE	IC_STD[DIMENSIONS] = { sqrtf(0.0002), sqrtf(0.0002), sqrtf(0.0002) };

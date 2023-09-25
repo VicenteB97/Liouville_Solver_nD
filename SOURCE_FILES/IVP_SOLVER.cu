@@ -46,10 +46,7 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 	// ----------------------------------------------------------------------------------------------- //
 	const UINT PtsPerDim  	= pow(2, LvlFine);
 
-	const gridPoint Domain_Ctr 	= DOMAIN_CTR;
-	const gridPoint Domain_Diam = DOMAIN_DIAM;
-
-	grid Base_Mesh(Domain_Ctr, Domain_Diam, PtsPerDim);
+	grid Base_Mesh = grid(PtsPerDim);
 	const UINT Grid_Nodes 	= Base_Mesh.Total_Nodes();
 
 // -------------------------------------------------------------------------------------------------------------- //
