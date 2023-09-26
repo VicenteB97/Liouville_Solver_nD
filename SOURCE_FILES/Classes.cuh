@@ -49,12 +49,9 @@
 #if DIMENSIONS < 3
 	#define INT int32_t
 	#define UINT uint32_t
-#elif DIMENSIONS < 6
+#else
 	#define INT int64_t
 	#define UINT uint64_t
-#else
-	#define INT int128_t
-	#define UINT uint128_t
 #endif
 
 inline void gpuAssert (cudaError_t code, const char *file, int line, bool abort = true){
@@ -292,10 +289,23 @@ public:
 
 class Distributions{
 public:
-	TYPE params[2];
-	char  Name;
-	bool  Truncated;
-	TYPE trunc_interval[2];
+	TYPE params[2];				// mean and variance. The appropriate choice of distribution parameters are given by the method of moments
+	char Name;					// Distribution name. Currently supported distributions: Delta, Normal, Beta, Gamma and Uniform
+	bool Truncated;				// Truncated? TRUE or FALSE
+	TYPE trunc_interval[2];		// Truncation interval (give min and max of the interval)
+
+	// Default constructor
+	Distributions() {
+		params[0] = 0;
+		params[1] = 0;
+
+		Name = 'D';
+
+		Truncated = true;
+
+		trunc_interval[0] = 0;
+		trunc_interval[1] = 0;
+	}
 };
 
 //-------------------------------------------------------------------------//
@@ -340,17 +350,15 @@ __host__ __device__ inline Param_vec _Gather_Param_Vec(const UINT index, const P
 // +===========================================================================+ //
 
 __device__ inline gridPoint VECTOR_FIELD(gridPoint X, TYPE t, const Param_vec parameter, const UINT mode, const FIXED_TYPE extra_param[]) {
-	gridPoint output = VEC_FIELD;
 
-	return output;
+	return VEC_FIELD;
 }
 //-------------------------------------------------------------------------
 
 //-------------------------------------------------------------------------
 __device__ inline TYPE DIVERGENCE_FIELD(gridPoint X, TYPE t, const Param_vec parameter, const UINT mode, const FIXED_TYPE extra_param[]) {
-	TYPE output = DIVERGENCE;
 
-	return output;
+	return DIVERGENCE;
 }
 
 

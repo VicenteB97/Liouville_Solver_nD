@@ -31,9 +31,9 @@ void findProjection(const gridPoint* particles, T* projections, const UINT total
 
 template<class T>
 __global__ 
-void Bin_Insertion_Count(UINT*		Bin_locations,
-						UINT*		Bin_count,
-						UINT*		Bin_local_accSum,
+void Bin_Insertion_Count(INT*		Bin_locations,
+						INT*		Bin_count,
+						INT*		Bin_local_accSum,
 						const gridPoint* Search_Particles,
 						const grid	Bounding_Box,
 						const UINT	Total_Particles,
@@ -53,7 +53,7 @@ void Bin_Insertion_Count(UINT*		Bin_locations,
 	Bin_locations[globalID] = bin_idx;
 
 	//Add one to the number of particles inside the current bin, and store the previous value!
-	Bin_local_accSum[globalID] = atomicAdd(&Bin_count[bin_idx], 1);
+	Bin_local_accSum[globalID] = atomicAdd((UINT*) & Bin_count[bin_idx], (UINT)1);
 }
 
 template<class T>
@@ -62,28 +62,28 @@ void Count_sort(const gridPoint*	fixed_Particles,
 				gridPoint*			Particles_2sort, 
 				const T*			fixed_values, 
 				T*					values_2sort,
-				const UINT*		Bin_count, 
-				const UINT*		Bin_locations,
-				const UINT*		Bin_local_accSum,	
-				const UINT		Total_Particles,
-				const UINT		offset) {
+				const INT*		Bin_count, 
+				const INT*		Bin_locations,
+				const INT*		Bin_local_accSum,	
+				const INT		Total_Particles,
+				const INT		offset) {
 
 	const UINT globalID = blockDim.x * blockIdx.x + threadIdx.x;
 
 	if (globalID >= Total_Particles) { return; }
 
 // read bin location (@ the bounding box)
-	UINT my_bin_idx = Bin_locations[globalID];
+	INT my_bin_idx = Bin_locations[globalID];
 
 // read the prefix sum of the bin!
-	UINT pref_sum_idx = Bin_count[my_bin_idx];
+	INT pref_sum_idx = Bin_count[my_bin_idx];
 
 // read local cumulative sum
-	UINT my_count_loc = Bin_local_accSum[globalID];
+	INT my_count_loc = Bin_local_accSum[globalID];
 
 // Add to ordered particle array (pref. sum tells the first indx of the particles to be added, where local_count)
 // tells the position among those particles
-	UINT final_idx = pref_sum_idx + my_count_loc;
+	INT final_idx = pref_sum_idx + my_count_loc;
 
 	Particles_2sort[final_idx]  = fixed_Particles[globalID + offset];
 	values_2sort[final_idx] 	= fixed_values[globalID + offset];
@@ -93,7 +93,7 @@ void Count_sort(const gridPoint*	fixed_Particles,
 template<class T>
 __global__ 
 void Neighbor_search(gridPoint*		Search_Particles,
-					const UINT* Bin_count,
+					const INT* Bin_count,
 					INT*		Index_Array,
 					T*				Matrix_Entries,
 					UINT*		Num_Neighbors,
@@ -183,24 +183,28 @@ int16_t _CS_Neighbor_Search(thrust::device_vector<gridPoint>& Search_Particles,
 							const UINT Adapt_Points, 
 							const UINT max_neighbor_num,
 							const T search_radius,
-							const grid Base_Mesh) {
+							const grid& Base_Mesh,
+							grid&		Supp_BBox) {
 
 	// We need our particles
 	UINT Total_Particles = Search_Particles.size();
 	UINT Grid_Nodes		 = Base_Mesh.Total_Nodes();
 
-	thrust::device_vector<UINT> Bin_locations(Adapt_Points,0);
+	thrust::device_vector<INT> Bin_locations(Adapt_Points,0);
 
 	thrust::device_vector<gridPoint> temp_Particles(Adapt_Points);		// this one will store the ordered particles!
 	thrust::device_vector<T>		 temp_values(Adapt_Points,0);		// this one will store the values of the particles in the new order!
 
 	// Bin the particles!
 	UINT Threads = fmin(THREADS_P_BLK, Adapt_Points);
-	UINT Blocks = floor((Adapt_Points - 1) / Threads) + 1;
+	UINT Blocks  = floor((Adapt_Points - 1) / Threads) + 1;
 
 	for (UINT k = 0; k < Total_Particles / Adapt_Points; k++) { // We've got to repeat this once per random sample...we'll see another way out...
 
 		UINT offset = k * Adapt_Points;
+
+
+		// IN THE GENERAL CASE, WE HAVE TO BUILD THIS THINGO IN THE MAIN LOOP
 
 	// First, we have to determine the bounding box of the particle set
 		grid CS_BBox; // create the bounding box for the Counting Sort algorithm
@@ -212,14 +216,26 @@ int16_t _CS_Neighbor_Search(thrust::device_vector<gridPoint>& Search_Particles,
 
 			CS_BBox.Boundary_inf.dim[d] = *(thrust::min_element(thrust::device, projection.begin(), projection.end()));
 			CS_BBox.Boundary_sup.dim[d] = *(thrust::max_element(thrust::device, projection.begin(), projection.end()));
+
+			// Support bounding box update!
+			Supp_BBox.Boundary_inf.dim[d] = fmax(Base_Mesh.Boundary_inf.dim[d],fmin(CS_BBox.Boundary_inf.dim[d], Supp_BBox.Boundary_inf.dim[d]));
+			Supp_BBox.Boundary_sup.dim[d] = fmin(Base_Mesh.Boundary_sup.dim[d],fmax(CS_BBox.Boundary_sup.dim[d], Supp_BBox.Boundary_sup.dim[d]));
 		}
+
+		// Final, updated support bounding box? Nope, still have to fix the issue with the number of points!
+		Supp_BBox.Boundary_inf = Base_Mesh.Get_node(Base_Mesh.Give_Bin(Supp_BBox.Boundary_inf, -roundf(DISC_RADIUS)));
+		Supp_BBox.Boundary_sup = Base_Mesh.Get_node(Base_Mesh.Give_Bin(Supp_BBox.Boundary_sup, roundf(DISC_RADIUS)));
+
+		
+
+		projection.clear();
 
 	// We obtain the number of bins/nodes of our bounding box (per dimension). We build it as a square/cube
 		CS_BBox.Nodes_per_Dim = ceil((CS_BBox.Boundary_sup.dim[0] - CS_BBox.Boundary_inf.dim[0]) / Base_Mesh.Discr_length()) + 1;
 
 	// Reinitialize the particle count array
-		thrust::device_vector<UINT> Bin_globalCount(CS_BBox.Total_Nodes(), 0);
-		thrust::device_vector<UINT> Bin_localCount(Adapt_Points, 0);
+		thrust::device_vector<INT> Bin_globalCount(CS_BBox.Total_Nodes(), 0);
+		thrust::device_vector<INT> Bin_localCount(Adapt_Points, 0);
 
 	// Insert and count the particles inside each bin
 		Bin_Insertion_Count<T> << <Threads, Blocks >> > (rpc(Bin_locations, 0), 
@@ -520,9 +536,9 @@ void RESTART_GRID_FIND_GN(gridPoint*		Particle_Positions,
 
 	// I want to compute the index of the lowest neighboring grid node (imagine the lowest corner of a box) and build its nearest neighbors
 	INT lowest_idx  = Mesh.Give_Bin(particle, -roundf(DISC_RADIUS));
-	INT highest_idx = Mesh.Give_Bin(particle, roundf(DISC_RADIUS));
+	INT highest_idx = Mesh.Give_Bin(particle,  roundf(DISC_RADIUS));
 
-	grid Search_grid = grid(Mesh.Get_node(lowest_idx), Mesh.Get_node(highest_idx), 2 * roundf(DISC_RADIUS) + 1);
+	grid Search_grid(Mesh.Get_node(lowest_idx), Mesh.Get_node(highest_idx), 2 * roundf(DISC_RADIUS) + 1);
 
 	// now, go through all the neighboring grid nodes and add the values to the PDF field
 	for (UINT j = 0; j < Search_grid.Total_Nodes(); j++) {
@@ -544,19 +560,19 @@ void RESTART_GRID_FIND_GN(gridPoint*		Particle_Positions,
 
 __global__ 
 void RESTART_GRID_FIND_GN_II(gridPoint* Particle_Positions,
-	float* PDF,
-	float* lambdas,
-	const Impulse_Param_vec* Impulse_weights,
-	const float 	search_radius,
-	const UINT	 	Adapt_Pts,
-	const UINT	 	Current_sample,
-	const grid		Mesh) {
+							float* PDF,
+							float* lambdas,
+							const Impulse_Param_vec* Impulse_weights,
+							const float 	search_radius,
+							const UINT	 	Adapt_Pts,
+							const UINT	 	Current_sample,
+							const grid		Mesh) {
 	// OUTPUT: New values of the PDF at the fixed grid
 
 	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
 
 	if (i >= Adapt_Pts) { return; }
-	gridPoint particle = Particle_Positions[i];
+	gridPoint particle = Particle_Positions[i + Current_sample * Adapt_Pts];
 	
 	if (!Mesh.Contains_particle(particle)) { return; }
 
@@ -566,7 +582,7 @@ void RESTART_GRID_FIND_GN_II(gridPoint* Particle_Positions,
 	INT lowest_idx = Mesh.Give_Bin(particle, -roundf(DISC_RADIUS));
 	INT highest_idx = Mesh.Give_Bin(particle, roundf(DISC_RADIUS));
 
-	grid Search_grid = grid(Mesh.Get_node(lowest_idx), Mesh.Get_node(highest_idx), 2 * roundf(DISC_RADIUS) + 1);
+	grid Search_grid(Mesh.Get_node(lowest_idx), Mesh.Get_node(highest_idx), 2 * roundf(DISC_RADIUS) + 1);
 
 	// now, go through all the neighboring grid nodes and add the values to the PDF field
 	for (UINT j = 0; j < Search_grid.Total_Nodes(); j++) {
@@ -622,7 +638,7 @@ void CORRECTION(T* PDF, const INT Grid_Nodes){
 		return (TYPE)powf(fmaxf(0, 1 - x), 4.00f) * (4.00f * x + 1.00f) / (Mass_RBF * 2.00f * M_PI * powf(support_radius, (TYPE)DIMENSIONS)); // We multiply by this last factor to get the L1-normalized RBF
 	}
 	
-#elif DIMENSIONS == 3
+#elif DIMENSIONS == 3	// ADD THE TOTAL MASS FOR EACH 3D RBF FUNCTION
 	__device__ inline TYPE RBF(const TYPE support_radius, const TYPE x) {
 		return (TYPE)powf(fmaxf(0, 1 - x), 4.00f) * (4.00f * x + 1.00f); // We multiply by this last factor to get the L1-normalized RBF
 	}

@@ -44,10 +44,8 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 	// ----------------------------------------------------------------------------------------------- //
 	// ----------------------------------------------------------------------------------------------- //
 	// ----------------------------------------------------------------------------------------------- //
-	const UINT PtsPerDim  	= pow(2, LvlFine);
 
-	grid Base_Mesh = grid(PtsPerDim);
-	const UINT Grid_Nodes 	= Base_Mesh.Total_Nodes();
+	grid Base_Mesh = grid(pow(2, LvlFine));
 
 // -------------------------------------------------------------------------------------------------------------- //
 // -------------------------------------------------------------------------------------------------------------- //
@@ -92,7 +90,8 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 				std::cin >> n_samples[k];
 			}
 			if (n_samples[k] == -1){
-			std::cout << "Exiting simulation.\n"; return -1;}
+				std::cout << "Exiting simulation.\n"; return -1;
+			}
 		}
 	// ----------------------------------------------------------------------------------------------- //
 	// ----------------------------------------------------------------------------------------------- //
@@ -105,7 +104,7 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 		Param_pair*		Parameter_Mesh 	= new Param_pair[PM_length];				// Full parameter array
 		Distributions* 	Param_dist  	= new Distributions[PARAM_DIMENSIONS];		// Array for storing the model parameters' distribution information
 	
-		thrust::host_vector<TYPE> H_PDF(Grid_Nodes, 0);	 							// PDF values at the fixed, high-res grid (CPU)
+		thrust::host_vector<TYPE> H_PDF(Base_Mesh.Total_Nodes(), 0);	 							// PDF values at the fixed, high-res grid (CPU)
 
 		for (UINT p = 0; p < PARAM_DIMENSIONS; p++){
 			Param_dist[p].Name  			= _DIST_NAMES[p];		// N, G or U distributions
@@ -126,7 +125,7 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 	error_check = RANDOMIZE(n_samples, Parameter_Mesh, Param_dist);
 	if (error_check == -1){return -1;}
 
-	error_check = PDF_INITIAL_CONDITION(PtsPerDim, Base_Mesh, H_PDF, IC_dist_params); 	// initialize the grid and the PDF at the grid nodes (change so as to change the parameters as well)
+	error_check = PDF_INITIAL_CONDITION(Base_Mesh, H_PDF, IC_dist_params); 	// initialize the grid and the PDF at the grid nodes (change so as to change the parameters as well)
 	if (error_check == -1){return -1;}
 
 // --------------------------------------------------------------------------------------------
@@ -136,11 +135,11 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 // --------------------------------------------------------------------------------------------
 // 3.- Evolution simulation
 
-	std::vector<float>	store_PDFs(Grid_Nodes * time_vector.size());		 // H_PDF storage for post-processing
+	std::vector<float>	store_PDFs(Base_Mesh.Total_Nodes() * time_vector.size());		 // H_PDF storage for post-processing
 
 auto start = std::chrono::high_resolution_clock::now();
 	
-	error_check = PDF_ITERATIONS(prop, &store_PDFs, Parameter_Mesh, Base_Mesh, &H_PDF, n_samples, LvlFine, LvlCoarse, PtsPerDim, Grid_Nodes, time_vector, deltaT, ReinitSteps);
+	error_check = PDF_ITERATIONS(prop, &store_PDFs, Parameter_Mesh, Base_Mesh, &H_PDF, n_samples, LvlFine, LvlCoarse, time_vector, deltaT, ReinitSteps);
 	if (error_check == -1){	std::cout << "An error has occured. Exiting simulation.\n"; return error_check;}
 
 auto end = std::chrono::high_resolution_clock::now();
@@ -160,8 +159,8 @@ auto end = std::chrono::high_resolution_clock::now();
 
 	const uint64_t MEM_2_STORE = store_PDFs.size() * sizeof(float);
 	
-	UINT number_of_frames_needed 	= MEM_2_STORE / Grid_Nodes / sizeof(float);
-	uint64_t max_frames_file 		= (uint64_t)MAX_FILE_SIZE_B / Grid_Nodes / sizeof(float);
+	UINT number_of_frames_needed 	= MEM_2_STORE / Base_Mesh.Total_Nodes() / sizeof(float);
+	uint64_t max_frames_file 		= (uint64_t)MAX_FILE_SIZE_B / Base_Mesh.Total_Nodes() / sizeof(float);
 	UINT number_of_files_needed  	= floor((number_of_frames_needed - 1) / max_frames_file) + 1;
 	
 	char ans;
@@ -232,7 +231,7 @@ auto end = std::chrono::high_resolution_clock::now();
 				std::ofstream file1(relavtive_pth, std::ios::out);
 				assert(file1.is_open());
 
-				file1 << Grid_Nodes << "," << PtsPerDim << ",";
+				file1 << Base_Mesh.Total_Nodes() << "," << Base_Mesh.Nodes_per_Dim << ",";
 
 				for (UINT d = 0; d < DIMENSIONS; d++) {
 					file1 << Base_Mesh.Boundary_inf.dim[d] << "," << Base_Mesh.Boundary_sup.dim[d] << ",";
@@ -273,7 +272,7 @@ auto end = std::chrono::high_resolution_clock::now();
 				std::ofstream myfile(relavtive_pth, std::ios::out | std::ios::binary);
 				assert (myfile.is_open());
 
-				myfile.write((char*)&store_PDFs[(k * max_frames_file + frames_init) * Grid_Nodes], sizeof(float) * frames_in_file * Grid_Nodes);
+				myfile.write((char*)&store_PDFs[(k * max_frames_file + frames_init) * Base_Mesh.Total_Nodes()], sizeof(float) * frames_in_file * Base_Mesh.Total_Nodes());
 				myfile.close();
 				std::cout << "Simulation output file " << k << " completed!\n";
 				

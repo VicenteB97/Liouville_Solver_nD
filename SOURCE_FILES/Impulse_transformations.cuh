@@ -9,7 +9,7 @@
 
 using namespace thrust::placeholders; // this is useful for the multiplication of a device vector by a constant
 
-INT RANDOMIZE_II(const INT* 					n_samples, 
+int16_t RANDOMIZE_II(const INT* 					n_samples, 
 				const INT 						Total_Samples, 
 				std::vector<Impulse_Param_vec>* Parameter_Mesh, 
 				const Distributions* 			Dist_Parameters);
@@ -51,20 +51,18 @@ __global__ void TRANSFORM_PARTICLES(gridPoint*					Particle_Positions,
 /// <param name="Adapt_MESH"></param>
 /// <param name="PDF"></param>
 /// <param name="Adapt_PDF"></param>
-INT IMPULSE_TRANSFORM_PDF(	const gridPoint*				MESH,			// Fixed Mesh
-							const std::vector<gridPoint>*	Adapt_MESH,		// AMR-selected points
+int16_t IMPULSE_TRANSFORM_PDF(const std::vector<gridPoint>&	Adapt_MESH,		// AMR-selected points
 							thrust::host_vector<float>*		PDF,			// PDF in Mesh
-							thrust::device_vector<float>*	GPU_PDF,			// PDF in Mesh
-							const std::vector<float>*		Adapt_PDF,		// PDF in AMR-selected points
+							thrust::device_vector<float>&	GPU_PDF,			// PDF in Mesh
+							const std::vector<float>&		Adapt_PDF,		// PDF in AMR-selected points
 							const Time_Impulse_vec			time,			// time-impulse information 
 							const INT						jump,			// current jump 
-							const INT						Grid_Nodes,		// Number of grid points
-							const UINT 						PtsPerDim,
-							thrust::device_vector<gridPoint> &D__Boundary){	 
+							const grid&						Base_Mesh,
+							grid&							Supp_BBox){	 
 
 // 0.- Create the impulse samples
 
-		UINT Adapt_Points = Adapt_PDF->size();
+		UINT Adapt_Points = Adapt_PDF.size();
 
 		Distributions* Imp_Param_Dist = new Distributions[DIMENSIONS];
 		INT n_samples[DIMENSIONS];
@@ -74,7 +72,7 @@ INT IMPULSE_TRANSFORM_PDF(	const gridPoint*				MESH,			// Fixed Mesh
 				// RV mean and variance
 				Imp_Param_Dist[d].Name  			= D_JUMP_DIST_NAMES[jump * DIMENSIONS + d];						// N, G or U distributions
 				Imp_Param_Dist[d].Truncated  		= D_JUMP_DIST_TRUNC[jump * DIMENSIONS + d];						// TRUNCATED?
-				Imp_Param_Dist[d].trunc_interval[0] = D_JUMP_DIST_InfTVAL[jump * DIMENSIONS + d];						// min of trunc. interval (if chosen low enough, automatically bounds to -6 std. deviations)
+				Imp_Param_Dist[d].trunc_interval[0] = D_JUMP_DIST_InfTVAL[jump * DIMENSIONS + d];					// min of trunc. interval (if chosen low enough, automatically bounds to -6 std. deviations)
 				Imp_Param_Dist[d].trunc_interval[1] = D_JUMP_DIST_SupTVAL[jump * DIMENSIONS + d]; 					// max. of trunc. interval (if chosen large enough, automatically bounds to 6 std. deviations)
 				Imp_Param_Dist[d].params[0] 		= D_JUMP_DIST_MEAN[jump * DIMENSIONS + d]; 	// mean
 				Imp_Param_Dist[d].params[1] 		= D_JUMP_DIST_STD[jump * DIMENSIONS + d];		// std
@@ -101,8 +99,8 @@ INT IMPULSE_TRANSFORM_PDF(	const gridPoint*				MESH,			// Fixed Mesh
 		std::vector<float>		Full_Adapt_PDF(0);
 
 		for (INT i = 0; i < Random_Samples; i++) {
-			Full_Adapt_Grid.insert(Full_Adapt_Grid.end(), Adapt_MESH->begin(), Adapt_MESH->end());
-			Full_Adapt_PDF.insert(Full_Adapt_PDF.end(), Adapt_PDF->begin(), Adapt_PDF->end());
+			Full_Adapt_Grid.insert(Full_Adapt_Grid.end(), Adapt_MESH.begin(), Adapt_MESH.end());
+			Full_Adapt_PDF.insert(Full_Adapt_PDF.end(), Adapt_PDF.begin(), Adapt_PDF.end());
 		}
 
 		const INT Total_Particles = Full_Adapt_PDF.size();
@@ -117,8 +115,8 @@ INT IMPULSE_TRANSFORM_PDF(	const gridPoint*				MESH,			// Fixed Mesh
 
 	// FOR SOME REASON, I'M ONLY WRITING IN SOME VALUES...NOT ALL OF THEM
 
-	TRANSFORM_PARTICLES << <Blocks, Threads >> > (	raw_pointer_cast(&Particle_Positions[0]), 
-													raw_pointer_cast(&Impulses[0]), 
+	TRANSFORM_PARTICLES << <Blocks, Threads >> > (	rpc(Particle_Positions,0), 
+													rpc(Impulses,0), 
 													Adapt_Points, 
 													Total_Particles);
 	gpuError_Check( cudaDeviceSynchronize() );
@@ -128,48 +126,41 @@ INT IMPULSE_TRANSFORM_PDF(	const gridPoint*				MESH,			// Fixed Mesh
 	
 	// 2.1. - Find near particles
 	const UINT	 MaxNeighborNum = fmin(pow(2 * round(DISC_RADIUS) + 1, DIMENSIONS), Adapt_Points);
-	const float  disc_X 		= (MESH[1].dim[0] - MESH[0].dim[0]);	// H_Mesh discretization size (per dimension)
-	const float  search_radius 	= DISC_RADIUS * disc_X;						// max radius to search ([4,6] appears to be optimal)
+	const float  search_radius 	= DISC_RADIUS * Base_Mesh.Discr_length();						// max radius to search ([4,6] appears to be optimal)
 
 	const INT	 max_steps 		= 1000;		 		// max steps at the Conjugate Gradient (CG) algorithm
 	const float in_tolerance 	= TOLERANCE_ConjGrad; 	// CG stop tolerance
 	int16_t err = 0;
 
-	thrust::device_vector<INT>		GPU_Index_array;
-	thrust::device_vector<float>		GPU_Mat_entries;
-	thrust::device_vector<UINT>		GPU_Num_Neighbors;
-
-	GPU_Index_array.resize(MaxNeighborNum * Total_Particles);
-	GPU_Mat_entries.resize(MaxNeighborNum * Total_Particles);
-	GPU_Num_Neighbors.resize(Total_Particles);
+	thrust::device_vector<INT>		GPU_Index_array(MaxNeighborNum * Total_Particles,-1);
+	thrust::device_vector<float>	GPU_Mat_entries(MaxNeighborNum * Total_Particles, 0);
+	thrust::device_vector<UINT>		GPU_Num_Neighbors(Total_Particles, 1);
 
 	if (Adapt_Points < ptSEARCH_THRESHOLD) {
-		Exh_PP_Search << <Blocks, Threads >> > (raw_pointer_cast(&Particle_Positions[0]),
-			raw_pointer_cast(&Particle_Positions[0]),
-			raw_pointer_cast(&GPU_Index_array[0]),
-			raw_pointer_cast(&GPU_Mat_entries[0]),
-			raw_pointer_cast(&GPU_Num_Neighbors[0]),
-			MaxNeighborNum,
-			Adapt_Points,
-			Total_Particles,
-			search_radius,
-			rpc(D__Boundary, 0));
+		Exh_PP_Search<TYPE> << <Blocks, Threads >> > (	rpc(Particle_Positions, 0),
+														rpc(Particle_Positions, 0),
+														rpc(GPU_Index_array, 0),
+														rpc(GPU_Mat_entries, 0),
+														rpc(GPU_Num_Neighbors, 0),
+														MaxNeighborNum,
+														Adapt_Points,
+														Total_Particles,
+														search_radius,
+														Base_Mesh);
 		gpuError_Check(cudaDeviceSynchronize());
 	}
 	else {
 		err = _CS_Neighbor_Search<TYPE>(Particle_Positions,
-			PDF_Particles,
-			GPU_Index_array,
-			GPU_Mat_entries,
-			GPU_Num_Neighbors,
-			PtsPerDim,
-			Adapt_Points,
-			MaxNeighborNum,
-			search_radius,
-			disc_X,
-			D__Boundary);
+										PDF_Particles,
+										GPU_Index_array,
+										GPU_Mat_entries,
+										GPU_Num_Neighbors,
+										Adapt_Points,
+										MaxNeighborNum,
+										search_radius,
+										Base_Mesh);
 
-		if (err == -1) { return err; }
+		if (err == -1) { return -1; }
 	}
 
 	// 2.- Iterative solution (Conjugate Gradient) to obtain coefficients of the RBFs
@@ -190,48 +181,46 @@ INT IMPULSE_TRANSFORM_PDF(	const gridPoint*				MESH,			// Fixed Mesh
 // 
 // 
 // 3.- Reinitialization
-	GPU_PDF->resize(Grid_Nodes, 0);
+	GPU_PDF.resize(Base_Mesh.Total_Nodes(), 0);
 
 for (UINT s = 0; s < Random_Samples; s++){
 	Threads = fminf(THREADS_P_BLK, Adapt_Points);
 	Blocks = floorf((Adapt_Points - 1) / Threads) + 1;				// To compute the interpolation results at the GPU
 
-	RESTART_GRID_FIND_GN_II<<< Blocks, Threads >>>( raw_pointer_cast(&Particle_Positions[0]),
-													raw_pointer_cast(&(*GPU_PDF)[0]),
-													raw_pointer_cast(&GPU_lambdas[0]),
-													raw_pointer_cast(&Impulses[0]),
+	RESTART_GRID_FIND_GN_II<<< Blocks, Threads >>>(rpc(Particle_Positions, 0),
+													rpc(GPU_PDF, 0),
+													rpc(GPU_lambdas, 0),
+													rpc(Impulses, 0),
 													search_radius,
-													MESH[0],
-													disc_X,
-													PtsPerDim,
 													Adapt_Points,
 													s,
-													rpc(D__Boundary,0));
+													Base_Mesh);
 	gpuError_Check(cudaDeviceSynchronize());
 }			
 
 // Correction of any possible negative PDF values
 		// Re-define Threads and Blocks
-		Threads = fminf(THREADS_P_BLK, Grid_Nodes);
-		Blocks  = floorf((Grid_Nodes - 1) / Threads) + 1;
+		Threads = fminf(THREADS_P_BLK, Base_Mesh.Total_Nodes());
+		Blocks  = floorf((Base_Mesh.Total_Nodes() - 1) / Threads) + 1;
 		
-	CORRECTION<<<Blocks, Threads>>>(raw_pointer_cast(&(*GPU_PDF)[0]), Grid_Nodes);
+	CORRECTION <TYPE> <<<Blocks, Threads>>>(rpc(GPU_PDF,0), Base_Mesh.Total_Nodes());
 	gpuError_Check(cudaDeviceSynchronize());
 	
 
 	//std::cout << "Transformation reinitialization: done\n";
 	std::cout << "/-------------------------------------------------------------------/\n";
 
-	thrust::transform(GPU_PDF->begin(), GPU_PDF->end(), GPU_PDF->begin(), 1.00f / Sum_Rand_Params * _1); // we use the thrust::placeholders here (@ the last input argument)
-	*PDF = *GPU_PDF;
+	thrust::transform(GPU_PDF.begin(), GPU_PDF.end(), GPU_PDF.begin(), 1.00f / Sum_Rand_Params * _1); // we use the thrust::placeholders here (@ the last input argument)
+	*PDF = GPU_PDF;
 
 	return 0; // if this works
 }
 
-INT RANDOMIZE_II(const INT* 					n_samples, 
-				const INT 						Total_Samples, 
-				std::vector<Impulse_Param_vec>* Parameter_Mesh, 
-				const Distributions* 			Dist_Parameters) {
+// This function is for the Delta-impulsive case!
+int16_t RANDOMIZE_II(	const INT* 						n_samples, 
+					const INT 						Total_Samples, 
+					std::vector<Impulse_Param_vec>* Parameter_Mesh, 
+					const Distributions* 			Dist_Parameters) {
 
 	std::vector<Param_pair> aux_PM;
 

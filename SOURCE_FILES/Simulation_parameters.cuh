@@ -3,7 +3,7 @@
 
 #include "Classes.cuh"
 
-int Simul_Data_Def(std::vector<Time_Impulse_vec>& time_vector, FIXED_TYPE& deltaT, int64_t& ReinitSteps) {
+int16_t Simul_Data_Def(std::vector<Time_Impulse_vec>& time_vector, FIXED_TYPE& deltaT, INT& ReinitSteps) {
 // MODIFIABLE
 // 1.- Time values for output + impulse vectors
 	FIXED_TYPE t0 = 0;

@@ -23,9 +23,6 @@
 //Define the number of threads per block (128 for consumer GPUs such as the RTX3060 or Quadro RTX4000)
 #define THREADS_P_BLK 128
 
-// This variable controls the size of the '.csv' files where the simulations are saved
-#define MAX_FILE_SIZE_B 1024*1024*1024
-
 // Choosing whether showing full or simplified timing information
 #define OUTPUT_INFO true
 
@@ -38,8 +35,9 @@
 
 // State variables information
 #define DIMENSIONS  2
-#define DOMAIN_CTR  {0,0}
-#define DOMAIN_DIAM {5,5}
+#define DOMAIN_INF  {-2.5, -2.5}
+#define DOMAIN_SUP  {2.5, 2.5}
+
 inline const TYPE	IC_MEAN[DIMENSIONS] = {0.1, 1.75};	
 inline const TYPE	IC_STD [DIMENSIONS] = {sqrtf(0.015f),sqrtf(0.015f)};
 

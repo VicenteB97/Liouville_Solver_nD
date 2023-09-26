@@ -27,7 +27,7 @@
 /// @param Mesh 
 /// @param PDF_value 
 /// @param IC_dist_parameters 
-int16_t PDF_INITIAL_CONDITION(UINT Points_per_dimension, const grid& Mesh, thrust::host_vector<TYPE>& PDF_value, TYPE* IC_dist_parameters) {
+int16_t PDF_INITIAL_CONDITION(const grid& Mesh, thrust::host_vector<TYPE>& PDF_value, TYPE* IC_dist_parameters) {
 
 	// Due to obvious reasons, we will not make the choice of IC distributions automatically, as with the model parameters
 	boost::math::normal dist[DIMENSIONS];
@@ -92,6 +92,7 @@ int16_t PARAMETER_VEC_BUILD(const int n_Samples, Param_pair* PP, const Distribut
 			// Mesh discretization
 			dx = (xF - x0) / (n_Samples - 1);
 
+			#pragma omp parallel for
 			for (int i = 0; i < n_Samples; i++) {
 				TYPE x = x0 + i * dx;
 				PP[i] = { x, boost::math::pdf(dist, x) / rescale_cdf }; // other distributions could be used
@@ -101,6 +102,7 @@ int16_t PARAMETER_VEC_BUILD(const int n_Samples, Param_pair* PP, const Distribut
 
 		dx = (xF - x0) / (n_Samples - 1);
 
+		#pragma omp parallel for
 		for (int i = 0; i < n_Samples; i++) {
 			TYPE x = x0 + i * dx;
 			PP[i] = { x, boost::math::pdf(dist, x) }; // other distributions could be used
@@ -117,6 +119,8 @@ int16_t PARAMETER_VEC_BUILD(const int n_Samples, Param_pair* PP, const Distribut
 		auto dist = boost::math::uniform_distribution(x0, xF);
 
 		dx = (xF - x0) / (n_Samples - 1);
+
+		#pragma omp parallel for
 		for (int i = 0; i < n_Samples; i++) {
 			TYPE x = x0 + i * dx;
 			PP[i] = {x , boost::math::pdf(dist, x) }; // other distributions could be used
@@ -146,6 +150,7 @@ int16_t PARAMETER_VEC_BUILD(const int n_Samples, Param_pair* PP, const Distribut
 			// Mesh discretization
 			dx = (xF - x0) / (n_Samples - 1);
 
+			#pragma omp parallel for
 			for (int i = 0; i < n_Samples; i++) {
 				TYPE x = x0 + i * dx;
 				PP[i] = { x, boost::math::pdf(dist, x) / rescale_cdf }; // other distributions could be used
@@ -155,6 +160,7 @@ int16_t PARAMETER_VEC_BUILD(const int n_Samples, Param_pair* PP, const Distribut
 
 		dx = (xF - x0) / (n_Samples - 1);
 
+		#pragma omp parallel for
 		for (int i = 0; i < n_Samples; i++) {
 			TYPE x = x0 + i * dx;
 			PP[i] = { x, boost::math::pdf(dist, x) }; // other distributions could be used
@@ -184,6 +190,7 @@ int16_t PARAMETER_VEC_BUILD(const int n_Samples, Param_pair* PP, const Distribut
 			// Mesh discretization
 			dx = (xF - x0) / (n_Samples - 1);
 
+			#pragma omp parallel for
 			for (int i = 0; i < n_Samples; i++) {
 				TYPE x = x0 + i * dx;
 				PP[i] = { x, boost::math::pdf(dist, x) / rescale_cdf }; // other distributions could be used
@@ -192,7 +199,8 @@ int16_t PARAMETER_VEC_BUILD(const int n_Samples, Param_pair* PP, const Distribut
 		}
 
 		dx = (xF - x0) / (n_Samples - 1);
-
+		
+		#pragma omp parallel for
 		for (int i = 0; i < n_Samples; i++) {
 			TYPE x = x0 + i * dx;
 			PP[i] = { x, boost::math::pdf(dist, x) }; // other distributions could be used
@@ -205,11 +213,11 @@ int16_t PARAMETER_VEC_BUILD(const int n_Samples, Param_pair* PP, const Distribut
 }
 
 /// @brief This function builds the Parameter Mesh that will be used in the Liouville Solver 
-/// @param n_samples Array where the number of samples per parameter is stored 
-/// @param Parameter_Mesh Parameter Mesh 
-/// @param Dist_Parameters Parameters' (hyper)parameters
-/// @param Dist_Names Distributions that will be assigned (N = Normal, U = Uniform, etc.)
-int16_t RANDOMIZE(const INT* 		n_samples, 
+/// @param n_samples: Array where the number of samples per parameter is stored 
+/// @param Parameter_Mesh: Parameter Mesh 
+/// @param Dist_Parameters: Parameters' (hyper)parameters
+/// @param Dist_Names: Distributions that will be assigned (N = Normal, U = Uniform, etc.)
+int16_t RANDOMIZE(const INT* 			n_samples, 
 				Param_pair* 			Parameter_Mesh, 
 				const Distributions* 	Dist_Parameters) {
 
