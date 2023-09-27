@@ -24,7 +24,7 @@ int16_t RANDOMIZE_II(const INT* 					n_samples,
 /// <param name="Num_Particles_per_sample"></param>
 /// <param name="Total_Particles"></param>
 /// <returns></returns>
-__global__ void TRANSFORM_PARTICLES(gridPoint*					Particle_Positions,
+__global__ void TRANSFORM_PARTICLES(gridPoint<DIMENSIONS, TYPE>*					Particle_Positions,
 									const Impulse_Param_vec*	impulse_strengths, 
 									const INT					Num_Particles_per_sample,
 									const INT					Total_Particles) {
@@ -51,14 +51,14 @@ __global__ void TRANSFORM_PARTICLES(gridPoint*					Particle_Positions,
 /// <param name="Adapt_MESH"></param>
 /// <param name="PDF"></param>
 /// <param name="Adapt_PDF"></param>
-int16_t IMPULSE_TRANSFORM_PDF(const std::vector<gridPoint>&	Adapt_MESH,		// AMR-selected points
+int16_t IMPULSE_TRANSFORM_PDF(const std::vector<gridPoint<DIMENSIONS, TYPE>>&	Adapt_MESH,		// AMR-selected points
 							thrust::host_vector<float>*		PDF,			// PDF in Mesh
 							thrust::device_vector<float>&	GPU_PDF,			// PDF in Mesh
 							const std::vector<float>&		Adapt_PDF,		// PDF in AMR-selected points
 							const Time_Impulse_vec			time,			// time-impulse information 
 							const INT						jump,			// current jump 
-							const grid&						Base_Mesh,
-							grid&							Supp_BBox){	 
+							const grid<DIMENSIONS, TYPE>&	Base_Mesh,
+							grid<DIMENSIONS, TYPE>&			Supp_BBox){	 
 
 // 0.- Create the impulse samples
 
@@ -95,7 +95,7 @@ int16_t IMPULSE_TRANSFORM_PDF(const std::vector<gridPoint>&	Adapt_MESH,		// AMR-
 			Sum_Rand_Params += Impulse_Parameter_Mesh[i].Joint_PDF;
 		}
 
-		std::vector<gridPoint>	Full_Adapt_Grid(0);
+		std::vector<gridPoint<DIMENSIONS, TYPE>>	Full_Adapt_Grid(0);
 		std::vector<float>		Full_Adapt_PDF(0);
 
 		for (INT i = 0; i < Random_Samples; i++) {
@@ -106,7 +106,7 @@ int16_t IMPULSE_TRANSFORM_PDF(const std::vector<gridPoint>&	Adapt_MESH,		// AMR-
 		const INT Total_Particles = Full_Adapt_PDF.size();
 
 // 1.- Do the transformation of the points according to the info given by the time-impulse vector
-		thrust::device_vector<gridPoint>			Particle_Positions	= Full_Adapt_Grid;		// To compute the transformations at the GPU
+		thrust::device_vector<gridPoint<DIMENSIONS, TYPE>>			Particle_Positions	= Full_Adapt_Grid;		// To compute the transformations at the GPU
 		thrust::device_vector<float>				PDF_Particles		= Full_Adapt_PDF;		// PDF of the transformations at the GPU
 		thrust::device_vector<Impulse_Param_vec>	Impulses			= Impulse_Parameter_Mesh;
 
@@ -122,7 +122,7 @@ int16_t IMPULSE_TRANSFORM_PDF(const std::vector<gridPoint>&	Adapt_MESH,		// AMR-
 	gpuError_Check( cudaDeviceSynchronize() );
 
 
-// 2.- RBF interpolation into the fixed grid
+// 2.- RBF interpolation into the fixed grid<DIMENSIONS, TYPE>
 	
 	// 2.1. - Find near particles
 	const UINT	 MaxNeighborNum = fmin(pow(2 * round(DISC_RADIUS) + 1, DIMENSIONS), Adapt_Points);
@@ -137,7 +137,7 @@ int16_t IMPULSE_TRANSFORM_PDF(const std::vector<gridPoint>&	Adapt_MESH,		// AMR-
 	thrust::device_vector<UINT>		GPU_Num_Neighbors(Total_Particles, 1);
 
 	if (Adapt_Points < ptSEARCH_THRESHOLD) {
-		Exh_PP_Search<TYPE> << <Blocks, Threads >> > (	rpc(Particle_Positions, 0),
+		Exh_PP_Search<DIMENSIONS, TYPE> << <Blocks, Threads >> > (	rpc(Particle_Positions, 0),
 														rpc(Particle_Positions, 0),
 														rpc(GPU_Index_array, 0),
 														rpc(GPU_Mat_entries, 0),
@@ -150,7 +150,7 @@ int16_t IMPULSE_TRANSFORM_PDF(const std::vector<gridPoint>&	Adapt_MESH,		// AMR-
 		gpuError_Check(cudaDeviceSynchronize());
 	}
 	else {
-		err = _CS_Neighbor_Search<TYPE>(Particle_Positions,
+		err = _CS_Neighbor_Search<DIMENSIONS, TYPE>(Particle_Positions,
 										PDF_Particles,
 										GPU_Index_array,
 										GPU_Mat_entries,
@@ -162,6 +162,22 @@ int16_t IMPULSE_TRANSFORM_PDF(const std::vector<gridPoint>&	Adapt_MESH,		// AMR-
 
 		if (err == -1) { return -1; }
 	}
+
+	// Before going to the next step, define the bounding box of the advected particles!
+	thrust::device_vector<T> projection(Block_Particles);
+	for (uint16_t d = 0; d < DIMENSIONS; d++) {
+		findProjection<DIM, T> << <Blocks, Threads >> > (rpc(GPU_Part_Position, 0), rpc(projection, 0), Block_Particles, d);
+
+		T temp_1 = *(thrust::min_element(thrust::device, projection.begin(), projection.end()));
+		T temp_2 = *(thrust::max_element(thrust::device, projection.begin(), projection.end()));
+
+		Supp_BBox.Boundary_inf.dim[d] = fmax(Base_Mesh.Boundary_inf.dim[d], fmin(Supp_BBox.Boundary_inf.dim[d], temp_1));
+		Supp_BBox.Boundary_sup.dim[d] = fmin(Base_Mesh.Boundary_sup.dim[d], fmax(Supp_BBox.Boundary_sup.dim[d], temp_2));
+	}
+
+	// Final, updated support bounding box?
+	Supp_BBox.Boundary_inf = Base_Mesh.Get_node(Base_Mesh.Get_binIdx(Supp_BBox.Boundary_inf, -roundf(DISC_RADIUS)));
+	Supp_BBox.Boundary_sup = Base_Mesh.Get_node(Base_Mesh.Get_binIdx(Supp_BBox.Boundary_sup, roundf(DISC_RADIUS)));
 
 	// 2.- Iterative solution (Conjugate Gradient) to obtain coefficients of the RBFs
 	thrust::device_vector<float>	GPU_lambdas(Total_Particles);	// solution vector (RBF weights)
@@ -187,7 +203,7 @@ for (UINT s = 0; s < Random_Samples; s++){
 	Threads = fminf(THREADS_P_BLK, Adapt_Points);
 	Blocks = floorf((Adapt_Points - 1) / Threads) + 1;				// To compute the interpolation results at the GPU
 
-	RESTART_GRID_FIND_GN_II<<< Blocks, Threads >>>(rpc(Particle_Positions, 0),
+	RESTART_GRID_FIND_GN<DIMENSIONS, TYPE><<< Blocks, Threads >>>(rpc(Particle_Positions, 0),
 													rpc(GPU_PDF, 0),
 													rpc(GPU_lambdas, 0),
 													rpc(Impulses, 0),

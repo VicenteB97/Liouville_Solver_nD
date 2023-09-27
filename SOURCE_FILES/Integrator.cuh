@@ -16,8 +16,9 @@ using namespace thrust::placeholders; // this is useful for the multiplication o
 /// @param Adapt_Points Number of particles as computed by the AMR scheme
 /// @param Random_Samples Number of random parameter samples
 /// @return 
-__global__ void ODE_INTEGRATE(gridPoint* Particles,
-							TYPE* PDF,
+template<uint16_t DIM, class T>
+__global__ void ODE_INTEGRATE(gridPoint<DIM, T>* Particles,
+							T* PDF,
 							const Param_pair* parameters,
 							const INT* n_Samples,
 							float				t0,
@@ -26,8 +27,8 @@ __global__ void ODE_INTEGRATE(gridPoint* Particles,
 							const INT		Adapt_Points,
 							const INT		Random_Samples,
 							const UINT		mode,
-							const FIXED_TYPE* extra_param,
-							const grid D_Mesh) {
+							const double* extra_param,
+							const grid<DIM, T> D_Mesh) {
 
 	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -38,42 +39,42 @@ __global__ void ODE_INTEGRATE(gridPoint* Particles,
 		const UINT  i_sample = floorf((float)i / Adapt_Points);
 		const Param_vec parameter = _Gather_Param_Vec(i_sample, parameters, n_Samples);
 
-		gridPoint k0, k1, k2, k3, k_final, aux;
-		TYPE	  Int1, Int2, Int3;
+		gridPoint<DIM, T> k0, k1, k2, k3, k_final, aux;
+		T	  Int1, Int2, Int3;
 
-		gridPoint x0 = Particles[i]; 	// register storing the initial particle loc.
-		TYPE Int_PDF = PDF[i];		// register storing the initial particle value
+		gridPoint<DIM, T> x0 = Particles[i]; 	// register storing the initial particle loc.
+		T Int_PDF = PDF[i];		// register storing the initial particle value
 
 		while (t0 < tF - deltaT / 2) {
 			// Particle flow
-			k0 = VECTOR_FIELD(x0, t0, parameter, mode, extra_param);
+			k0 = VECTOR_FIELD<DIM, T>(x0, t0, parameter, mode, extra_param);
 
 			aux = k0.Mult_by_Scalar(deltaT / 2.0f);
-			k1 = VECTOR_FIELD(x0 + aux, t0 + deltaT / 2.0f, parameter, mode, extra_param);
+			k1 = VECTOR_FIELD<DIM, T>(x0 + aux, t0 + deltaT / 2.0f, parameter, mode, extra_param);
 
 			aux = k1.Mult_by_Scalar(deltaT / 2.0f);
-			k2 = VECTOR_FIELD(x0 + aux, t0 + deltaT / 2.0f, parameter, mode, extra_param);
+			k2 = VECTOR_FIELD<DIM, T>(x0 + aux, t0 + deltaT / 2.0f, parameter, mode, extra_param);
 
 			aux = k2.Mult_by_Scalar(deltaT);
-			k3 = VECTOR_FIELD(x0 + aux, t0 + deltaT, parameter, mode, extra_param);
+			k3 = VECTOR_FIELD<DIM, T>(x0 + aux, t0 + deltaT, parameter, mode, extra_param);
 
 			k1 = k1.Mult_by_Scalar(2.00f);
 			k2 = k2.Mult_by_Scalar(2.00f);
 
 			aux = k0 + k3 + k1 + k2;
-			aux = x0 + aux.Mult_by_Scalar((TYPE)deltaT / 6.00f); // New particle dim
+			aux = x0 + aux.Mult_by_Scalar((T)deltaT / 6.00f); // New particle dim
 
 			// Integration of PDF: The following line corresponds to computing the approximation via a Hermite interpolation (we know initial and final points and their velocities)
-			Int1 = DIVERGENCE_FIELD(x0, t0, parameter, mode, extra_param);
+			Int1 = DIVERGENCE_FIELD<DIM,T>(x0, t0, parameter, mode, extra_param);
 
-			k_final = VECTOR_FIELD(aux, t0 + deltaT, parameter, mode, extra_param);
+			k_final = VECTOR_FIELD<DIM, T>(aux, t0 + deltaT, parameter, mode, extra_param);
 			x0 = (x0 + aux).Mult_by_Scalar(0.50f);
 			x0 = x0 + (k0 + k_final).Mult_by_Scalar(0.125f);
-			Int2 = DIVERGENCE_FIELD(x0, (TYPE)(2.00f * t0 + deltaT) / 2.00f, parameter, mode, extra_param);
+			Int2 = DIVERGENCE_FIELD<DIM, T>(x0, (T)(2.00f * t0 + deltaT) / 2.00f, parameter, mode, extra_param);
 
-			Int3 = DIVERGENCE_FIELD(aux, (TYPE)t0 + deltaT, parameter, mode, extra_param);
+			Int3 = DIVERGENCE_FIELD<DIM, T>(aux, (T)t0 + deltaT, parameter, mode, extra_param);
 
-			Int_PDF *= expf((TYPE)-deltaT / 6.00f * (Int1 + 4.00f * Int2 + Int3)); // New particle value
+			Int_PDF *= expf((float) -deltaT / 6.00f * (Int1 + 4.00f * Int2 + Int3)); // New particle value
 
 			// Reinit step
 			x0 = aux;

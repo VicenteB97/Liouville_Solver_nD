@@ -23,33 +23,33 @@ inline void _1D_WVLET(T& s1, T& s2){
 	s1 	= aux;
 }
 
-template<class T>
+template<uint16_t DIM, class T>
 __global__ void D__Wavelet_Transform__F(T* 					PDF,
 										AMR_node_select* 	Activate_node,
-										const grid 			BoundingBox,
-										const grid 			Base_Mesh,
+										const grid<DIM, T> 			BoundingBox,
+										const grid<DIM, T> 			Base_Mesh,
 										const T				rescaling){
 
 	const uint64_t globalID = blockDim.x * blockIdx.x + threadIdx.x;
 
-	if(globalID >= BoundingBox.Total_Nodes() / powf(2,DIMENSIONS)) { return; }
+	if(globalID >= BoundingBox.Total_Nodes() / powf(2,DIM)) { return; }
 
 	// This way we can obtain the global index of the cube vertex from the cube vertex's relative position
 	INT main_node_idx = 0;
 
-	for (uint16_t j = 0; j < DIMENSIONS; j++) {
+	for (uint16_t j = 0; j < DIM; j++) {
 		main_node_idx += floor(positive_rem(globalID, pow(BoundingBox.Nodes_per_Dim / rescaling, j + 1)) / pow(BoundingBox.Nodes_per_Dim / rescaling, j)) * pow(BoundingBox.Nodes_per_Dim, j) * rescaling;
 	}
 
 	// find the dyadic cube indeces and do the wavelet transform at the same time
-	for(uint16_t d = 0; d < DIMENSIONS; d++){
-		for(UINT k = 0; k < powf(2,DIMENSIONS);k++){
+	for(uint16_t d = 0; d < DIM; d++){
+		for(UINT k = 0; k < powf(2,DIM);k++){
 
 			if( floor(positive_rem(k, pow(2, d + 1)) / pow(2, d))  == 0 ){ // this part decides whether it is an approximation node
 
 				INT approx_coef_idx = main_node_idx;
 
-				for (uint16_t j = 0; j < DIMENSIONS; j++){
+				for (uint16_t j = 0; j < DIM; j++){
 					approx_coef_idx += floor(positive_rem(k, pow(2, j + 1)) / pow(2, j)) * pow(BoundingBox.Nodes_per_Dim, j) * rescaling/2;
 				}
 
@@ -69,12 +69,12 @@ __global__ void D__Wavelet_Transform__F(T* 					PDF,
 	// Now, we will recheck all the wavelet coefficients and compare with the threshold
 	Activate_node[main_node_idx].node = Base_Mesh.Indx_here(main_node_idx, BoundingBox);
 
-	for(UINT k = 1; k < powf(2,DIMENSIONS); k++){
+	for(UINT k = 1; k < powf(2,DIM); k++){
 
 		INT temp_idx = main_node_idx;
 		
 		// PROBLEM HERE, PROBABLY
-		for (uint16_t j = 0; j < DIMENSIONS; j++){
+		for (uint16_t j = 0; j < DIM; j++){
 			temp_idx += floor(positive_rem(k, pow(2, j + 1)) / pow(2, j)) * pow(BoundingBox.Nodes_per_Dim, j) * rescaling / 2;
 		}
 
@@ -90,15 +90,15 @@ __global__ void D__Wavelet_Transform__F(T* 					PDF,
 	}
 }
 
-
-int16_t ADAPT_MESH_REFINEMENT_nD(const thrust::host_vector<TYPE>& H_PDF, 
-								thrust::device_vector<TYPE>& D__PDF, 
-								std::vector<TYPE>& AdaptPDF, 
-								std::vector<gridPoint>& AdaptGrid,
-								const grid& Base_Mesh,
-								grid&		Supp_BBox,
-								const int LvlFine, 
-								const int LvlCoarse) {
+template<uint16_t DIM, class T>
+int16_t ADAPT_MESH_REFINEMENT_nD(const thrust::host_vector<T>&	H_PDF, 
+								thrust::device_vector<T>&		D__PDF, 
+								std::vector<T>&					AdaptPDF, 
+								std::vector<gridPoint<DIM, T>>& AdaptGrid,
+								const grid<DIM, T>&				Base_Mesh,
+								grid<DIM, T>&					Supp_BBox,
+								const int						LvlFine, 
+								const int						LvlCoarse) {
 	// Final AMR procedure
 
 	// Create the effective bounding box for the PDF support!
@@ -111,13 +111,13 @@ int16_t ADAPT_MESH_REFINEMENT_nD(const thrust::host_vector<TYPE>& H_PDF,
 
 	for (uint16_t k = 0; k < Eff_Finest_Level; k++) {
 
-		uint16_t Threads = fmin(THREADS_P_BLK, Supp_BBox.Total_Nodes()/pow(rescaling,DIMENSIONS) );
-		UINT	 Blocks	 = floor((Supp_BBox.Total_Nodes()/pow(rescaling, DIMENSIONS) - 1) / Threads) + 1;
+		uint16_t Threads = fmin(THREADS_P_BLK, Supp_BBox.Total_Nodes()/pow(rescaling,DIM) );
+		UINT	 Blocks	 = floor((Supp_BBox.Total_Nodes()/pow(rescaling, DIM) - 1) / Threads) + 1;
 
-		D__Wavelet_Transform__F<TYPE> <<<Blocks, Threads>>> (rpc(D__PDF,0), rpc(D__Node_selection,0), Supp_BBox, Base_Mesh, rescaling);
+		D__Wavelet_Transform__F<DIM, T> <<<Blocks, Threads>>> (rpc(D__PDF,0), rpc(D__Node_selection,0), Supp_BBox, Base_Mesh, rescaling);
 		gpuError_Check(cudaDeviceSynchronize());
 
-		rescaling *= 2;	// our grid will now have half the number of points
+		rescaling *= 2;	// our grid<DIM, T> will now have half the number of points
 	}
 
 	thrust::sort(thrust::device, D__Node_selection.begin(),D__Node_selection.end());

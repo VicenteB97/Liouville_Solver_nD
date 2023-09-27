@@ -42,7 +42,7 @@
 
 #define RELATIVE_PATH "../../SIMULATION_OUTPUT/"
 
-#define FIXED_TYPE double
+#define double double
 
 #define MAX_FILE_SIZE_B (uint64_t)2*1024*1024*1024
 
@@ -77,17 +77,42 @@ inline UINT positive_rem(const INT a, const INT b) {
 //-------------------------- CLASSES USED ---------------------------------//
 //-------------------------------------------------------------------------//
 // Grid points----------------------------------------------------
+template<uint16_t DIM, class T>
 class gridPoint {
 public:
-	TYPE dim[DIMENSIONS];
+	T dim[DIM];
 
+	// Default constructor
+	__host__ __device__
+	gridPoint<DIM, T>() {
+		for (uint16_t d = 0; d < DIM; d++) {
+			dim[d] = (T)0;
+		}
+	}
+
+	// Parametric constructors
+	__host__ __device__
+		gridPoint<DIM, T>(const T(&input)[DIM]) {
+		for (uint16_t d = 0; d < DIM; d++) {
+			dim[d] = input[d];
+		}
+	}
+
+	__host__ __device__
+	gridPoint<DIM, T>(const gridPoint<DIM,T>& input) {
+		for (uint16_t d = 0; d < DIM; d++) {
+			dim[d] = input.dim[d];
+		}
+	}
+
+	// Operators and methods
 	__host__ __device__ 
-	gridPoint operator+(const gridPoint& other) const {
+	gridPoint<DIM, T> operator+(const gridPoint<DIM, T>& other) const {
 
-		gridPoint out;
+		gridPoint<DIM, T> out;
 
-		for (uint16_t d = 0; d < DIMENSIONS; d++) {
-			TYPE aux = dim[d];
+		for (uint16_t d = 0; d < DIM; d++) {
+			T aux = dim[d];
 			aux += other.dim[d];
 			out.dim[d] = aux;
 		}
@@ -95,11 +120,11 @@ public:
 		return out;
 	}
 	__host__ __device__ 
-	gridPoint operator-(const gridPoint& other) const {
-		gridPoint out;
+	gridPoint<DIM, T> operator-(const gridPoint<DIM, T>& other) const {
+		gridPoint<DIM, T> out;
 
-		for (uint16_t d = 0; d < DIMENSIONS; d++) {
-			TYPE aux = dim[d];
+		for (uint16_t d = 0; d < DIM; d++) {
+			T aux = dim[d];
 			aux -= other.dim[d];
 			out.dim[d] = aux;
 		}
@@ -107,18 +132,18 @@ public:
 		return out;
 	}
 	__host__ __device__ 
-	bool operator==(const gridPoint& other) const {
+	bool operator==(const gridPoint<DIM, T>& other) const {
 		bool out = true;
-		for (uint16_t d = 0; d < DIMENSIONS; d++) {
+		for (uint16_t d = 0; d < DIM; d++) {
 			if (dim[d] != other.dim[d]) { out = false; }
 		}
 		return out;
 	}
 
 	__host__ __device__ 
-	inline TYPE Distance(const gridPoint& other) const {
-		TYPE dist = 0;
-		for (uint16_t d = 0; d < DIMENSIONS; d++) {
+	inline T Distance(const gridPoint<DIM, T>& other) const {
+		T dist = 0;
+		for (uint16_t d = 0; d < DIM; d++) {
 			dist += (dim[d] - other.dim[d]) * (dim[d] - other.dim[d]);
 		}
 		return sqrtf(dist);
@@ -126,11 +151,11 @@ public:
 
 	
 	__host__ __device__ 
-	inline gridPoint Mult_by_Scalar(TYPE scalar) const {
-		gridPoint out;
+	inline gridPoint<DIM, T> Mult_by_Scalar(T scalar) const {
+		gridPoint<DIM, T> out;
 
 		
-		for (uint16_t d = 0; d < DIMENSIONS; d++) {
+		for (uint16_t d = 0; d < DIM; d++) {
 			out.dim[d] = scalar * dim[d];
 		}
 
@@ -139,10 +164,10 @@ public:
 
 	// This function tells us what is the first bin to search if we consider an offset (radius, actually) of bin_offset
 	__host__ __device__ 
-	INT GetBin(const TYPE discretization, const int16_t bin_offset, const gridPoint& lowest_node, const UINT PtsPerDimension) const {
+	INT GetBin(const T discretization, const int16_t bin_offset, const gridPoint<DIM, T>& lowest_node, const UINT PtsPerDimension) const {
 		INT bin_idx = 0;
  
-		for (uint16_t d = 0; d < DIMENSIONS; d++) {
+		for (uint16_t d = 0; d < DIM; d++) {
 			INT temp_idx = (INT)roundf((dim[d] - lowest_node.dim[d]) / discretization) + bin_offset;
 			bin_idx += temp_idx * powf(PtsPerDimension, d);
 		}
@@ -150,30 +175,31 @@ public:
 	};
 };
 
+template<uint16_t DIM, class T>
 class grid{
 public:
-	gridPoint 	Boundary_inf, Boundary_sup;
-	UINT		Nodes_per_Dim;
+	gridPoint<DIM, T> 	Boundary_inf, Boundary_sup;
+	UINT				Nodes_per_Dim;
 
 	// Default constructor:
 	__host__ __device__
-	grid(){
+	grid<DIM, T>(){
 		Nodes_per_Dim	= 1;
-		Boundary_inf	= DOMAIN_INF;
-		Boundary_sup	= DOMAIN_SUP;
+		Boundary_inf	= gridPoint<DIM, T>(DOMAIN_INF);
+		Boundary_sup	= gridPoint<DIM, T>(DOMAIN_SUP);
 	}
 
 	// Parametric constructors:
 	__host__ __device__
-		grid(const INT& Nodes_per_dim) {
+		grid<DIM, T>(const INT& Nodes_per_dim) {
 
 		Nodes_per_Dim = Nodes_per_dim;
-		Boundary_inf = DOMAIN_INF;
-		Boundary_sup = DOMAIN_SUP;
+		Boundary_inf  = gridPoint<DIM, T>(DOMAIN_INF);
+		Boundary_sup  = gridPoint<DIM, T>(DOMAIN_SUP);
 	}
 
 	__host__ __device__
-	grid(const gridPoint& Bnd_inf, const gridPoint& Bnd_sup, const INT& Nodes_per_dim){
+		grid<DIM, T>(const gridPoint<DIM, T>& Bnd_inf, const gridPoint<DIM, T>& Bnd_sup, const INT& Nodes_per_dim){
 
 		Nodes_per_Dim	= Nodes_per_dim;
 		Boundary_inf	= Bnd_inf;
@@ -184,18 +210,18 @@ public:
 	// This function gives the total amount of Mesh nodes
 	__host__ __device__
 	inline UINT Total_Nodes() const {
-		return pow(Nodes_per_Dim, DIMENSIONS);
+		return pow(Nodes_per_Dim, DIM);
 	}
 
 	// This function gives the length of each edge of our cubical mesh
 	__host__ __device__
-	inline gridPoint Edge_size() const {
+	inline gridPoint<DIM, T> Edge_size() const {
 		return (Boundary_sup - Boundary_inf);
 	}
 
 	// This function returns the center point of the mesh
 	__host__ __device__
-	inline gridPoint Center() const {
+	inline gridPoint<DIM, T> Center() const {
 		return (Boundary_sup + Boundary_inf).Mult_by_Scalar(0.5);
 	}
 
@@ -209,21 +235,20 @@ public:
 
 	// Given an index, this function returns the corresponding node
 	__host__ __device__
-	inline gridPoint Get_node(const INT& globalIdx) const {
-		gridPoint out;
+	inline gridPoint<DIM, T> Get_node(const INT& globalIdx) const {
+		gridPoint<DIM, T> out;
 
-		for (uint16_t d = 0; d < DIMENSIONS; d++) {
+		for (uint16_t d = 0; d < DIM; d++) {
 			INT j = floor( positive_rem(globalIdx, pow(Nodes_per_Dim, d + 1)) / pow(Nodes_per_Dim, d) );	// This line gives the index at each dimension
-			out.dim[d] = j * this->Discr_length() + Boundary_inf.dim[d];								// This line gives the grid node per se
+			out.dim[d] = j * this->Discr_length() + Boundary_inf.dim[d];								// This line gives the grid<DIM, TYPE> node per se
 		}
-
 		return out;
 	}
 
-	// Checks whether Particle belongs to the grid/mesh
+	// Checks whether Particle belongs to the grid<DIM, TYPE>/mesh
 	__host__ __device__
-	inline bool Contains_particle(const gridPoint& Particle) const {
-		for (uint16_t d = 0; d < DIMENSIONS; d++) {
+	inline bool Contains_particle(const gridPoint<DIM, T>& Particle) const {
+		for (uint16_t d = 0; d < DIM; d++) {
 			if (Particle.dim[d] < Boundary_inf.dim[d] || Particle.dim[d] > Boundary_sup.dim[d]) { return false; }
 		}
 		return true;
@@ -231,10 +256,10 @@ public:
 	
 	// Returns the bin (or ID of the closest node) where Particle belongs to, adding bin_offset.
 	__host__ __device__ 
-	inline INT Give_Bin(const gridPoint& Particle, const INT& bin_offset) const {
+	inline INT Get_binIdx(const gridPoint<DIM, T>& Particle, const INT& bin_offset) const {
 		INT bin_idx = 0;
  
-		for (uint16_t d = 0; d < DIMENSIONS; d++) {
+		for (uint16_t d = 0; d < DIM; d++) {
 			INT temp_idx = (INT)roundf((Particle.dim[d] - Boundary_inf.dim[d]) / this->Discr_length()) + bin_offset;
 			bin_idx += temp_idx * powf(Nodes_per_Dim, d);
 		}
@@ -243,15 +268,15 @@ public:
 
 	// Compute the global index at your mesh, given the global index in "other" mesh.
 	__host__ __device__
-	inline INT Indx_here(const INT& indx_at_other, const grid& other) const {
-		return this->Give_Bin(other.Get_node(indx_at_other),0);
+	inline INT Indx_here(const INT& indx_at_other, const grid<DIM, T>& other) const {
+		return this->Get_binIdx(other.Get_node(indx_at_other),0);
 	}
 };
 
 // Time + impulse: ----------------------------------------------
 class Time_Impulse_vec {
 public:
-	FIXED_TYPE 	time;
+	double 	time;
 	bool 		impulse;
 
 	bool operator < (const Time_Impulse_vec& other) const {
@@ -348,15 +373,16 @@ __host__ __device__ inline Param_vec _Gather_Param_Vec(const UINT index, const P
 // +===========================================================================+ //
 // +===========================================================================+ //
 // +===========================================================================+ //
+template<uint16_t DIM, class T>
+__device__ inline gridPoint<DIM, T> VECTOR_FIELD(gridPoint<DIM, T> X, T t, const Param_vec parameter, const UINT mode, const double extra_param[]) {
 
-__device__ inline gridPoint VECTOR_FIELD(gridPoint X, TYPE t, const Param_vec parameter, const UINT mode, const FIXED_TYPE extra_param[]) {
-
-	return VEC_FIELD;
+	return { VEC_FIELD };
 }
 //-------------------------------------------------------------------------
 
 //-------------------------------------------------------------------------
-__device__ inline TYPE DIVERGENCE_FIELD(gridPoint X, TYPE t, const Param_vec parameter, const UINT mode, const FIXED_TYPE extra_param[]) {
+template<uint16_t DIM, class T>
+__device__ inline T DIVERGENCE_FIELD(gridPoint<DIM, T> X, T t, const Param_vec parameter, const UINT mode, const double extra_param[]) {
 
 	return DIVERGENCE;
 }

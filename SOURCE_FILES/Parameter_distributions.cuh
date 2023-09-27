@@ -27,7 +27,7 @@
 /// @param Mesh 
 /// @param PDF_value 
 /// @param IC_dist_parameters 
-int16_t PDF_INITIAL_CONDITION(const grid& Mesh, thrust::host_vector<TYPE>& PDF_value, TYPE* IC_dist_parameters) {
+int16_t PDF_INITIAL_CONDITION(const grid<DIMENSIONS, TYPE>& Mesh, thrust::host_vector<TYPE>& PDF_value, TYPE* IC_dist_parameters) {
 
 	// Due to obvious reasons, we will not make the choice of IC distributions automatically, as with the model parameters
 	boost::math::normal dist[DIMENSIONS];
@@ -35,7 +35,7 @@ int16_t PDF_INITIAL_CONDITION(const grid& Mesh, thrust::host_vector<TYPE>& PDF_v
 	//create the distributions per dimension:
 	 
 	for (UINT d = 0; d < DIMENSIONS; d++){
-		dist[d] = boost::math::normal_distribution((FIXED_TYPE)IC_dist_parameters[2*d], (FIXED_TYPE)IC_dist_parameters[2*d + 1]);
+		dist[d] = boost::math::normal_distribution((double)IC_dist_parameters[2*d], (double)IC_dist_parameters[2*d + 1]);
 	}
 
 #pragma omp parallel for

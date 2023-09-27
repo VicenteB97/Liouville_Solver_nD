@@ -45,14 +45,14 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 	// ----------------------------------------------------------------------------------------------- //
 	// ----------------------------------------------------------------------------------------------- //
 
-	grid Base_Mesh = grid(pow(2, LvlFine));
+	grid<DIMENSIONS, TYPE> Base_Mesh(pow(2, LvlFine));
 
 // -------------------------------------------------------------------------------------------------------------- //
 // -------------------------------------------------------------------------------------------------------------- //
 // -------------------------------------------------------------------------------------------------------------- //
 	// Time simulation data Definition: -------------------------------------------------------------------------------
 	INT	ReinitSteps;
-	FIXED_TYPE	deltaT;
+	double	deltaT;
 
 	std::vector<Time_Impulse_vec> time_vector;
 	
@@ -104,7 +104,7 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 		Param_pair*		Parameter_Mesh 	= new Param_pair[PM_length];				// Full parameter array
 		Distributions* 	Param_dist  	= new Distributions[PARAM_DIMENSIONS];		// Array for storing the model parameters' distribution information
 	
-		thrust::host_vector<TYPE> H_PDF(Base_Mesh.Total_Nodes(), 0);	 							// PDF values at the fixed, high-res grid (CPU)
+		thrust::host_vector<TYPE> H_PDF(Base_Mesh.Total_Nodes(), 0);	 			// PDF values at the fixed, high-res grid<DIMENSIONS, TYPE> (CPU)
 
 		for (UINT p = 0; p < PARAM_DIMENSIONS; p++){
 			Param_dist[p].Name  			= _DIST_NAMES[p];		// N, G or U distributions
@@ -114,8 +114,7 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 			Param_dist[p].params[0] 		= _DIST_MEAN[p];		// mean
 			Param_dist[p].params[1] 		= _DIST_STD[p];			// std
 		}
-
-		 
+				 
 		for (UINT d = 0; d < DIMENSIONS; d++){
 			IC_dist_params[2*d] 	= IC_MEAN[d];
 			IC_dist_params[2*d + 1] = IC_STD[d];
@@ -125,7 +124,7 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 	error_check = RANDOMIZE(n_samples, Parameter_Mesh, Param_dist);
 	if (error_check == -1){return -1;}
 
-	error_check = PDF_INITIAL_CONDITION(Base_Mesh, H_PDF, IC_dist_params); 	// initialize the grid and the PDF at the grid nodes (change so as to change the parameters as well)
+	error_check = PDF_INITIAL_CONDITION(Base_Mesh, H_PDF, IC_dist_params); 	// initialize the grid<DIMENSIONS, TYPE> and the PDF at the grid<DIMENSIONS, TYPE> nodes (change so as to change the parameters as well)
 	if (error_check == -1){return -1;}
 
 // --------------------------------------------------------------------------------------------
@@ -139,8 +138,9 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 
 auto start = std::chrono::high_resolution_clock::now();
 	
-	error_check = PDF_ITERATIONS(prop, &store_PDFs, Parameter_Mesh, Base_Mesh, &H_PDF, n_samples, LvlFine, LvlCoarse, time_vector, deltaT, ReinitSteps);
-	if (error_check == -1){	std::cout << "An error has occured. Exiting simulation.\n"; return error_check;}
+	error_check = PDF_ITERATIONS<DIMENSIONS, TYPE>(prop, &store_PDFs, Parameter_Mesh, Base_Mesh, &H_PDF, n_samples, LvlFine, LvlCoarse, time_vector, deltaT, ReinitSteps);
+	//if (error_check == -1){	std::cout << "An error has occured. Exiting simulation.\n"; return error_check;}
+	assert(error_check == 0);
 
 auto end = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<float> duration = end - start; // duration

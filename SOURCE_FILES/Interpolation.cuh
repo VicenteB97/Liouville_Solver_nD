@@ -18,9 +18,9 @@
 
 __device__ inline TYPE RBF(const TYPE support_radius, const TYPE x);
 
-template<class T>
+template<uint16_t DIM, class T>
 __global__
-void findProjection(const gridPoint* particles, T* projections, const UINT totalParticles, const UINT dimension) {
+void findProjection(const gridPoint<DIM, T>* particles, T* projections, const UINT totalParticles, const UINT dimension) {
 	
 	const uint64_t globalID = blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -29,13 +29,13 @@ void findProjection(const gridPoint* particles, T* projections, const UINT total
 	projections[globalID] = particles[globalID].dim[dimension];
 }
 
-template<class T>
+template<uint16_t DIM, class T>
 __global__ 
 void Bin_Insertion_Count(INT*		Bin_locations,
 						INT*		Bin_count,
 						INT*		Bin_local_accSum,
-						const gridPoint* Search_Particles,
-						const grid	Bounding_Box,
+						const gridPoint<DIM, T>* Search_Particles,
+						const grid<DIM, T>	Bounding_Box,
 						const UINT	Total_Particles,
 						const UINT	offset){
 		
@@ -43,11 +43,11 @@ void Bin_Insertion_Count(INT*		Bin_locations,
 
 	if (globalID >= Total_Particles) { return; }
 
-	gridPoint temp_GP = Search_Particles[globalID + offset];
+	gridPoint<DIM, T> temp_GP = Search_Particles[globalID + offset];
 
 	// Find the Bin where it belongs. We use an unsigned int because since we are working with the bounding box,
 	// we're never going to have a point outside. Therefore, there will be a positive index for the bin location.
-	UINT bin_idx = Bounding_Box.Give_Bin(temp_GP, 0);
+	UINT bin_idx = Bounding_Box.Get_binIdx(temp_GP, 0);
 
 	// Now, we've got the nearest bin index. This tells the idx of the bin center containing a given particle
 	Bin_locations[globalID] = bin_idx;
@@ -56,10 +56,10 @@ void Bin_Insertion_Count(INT*		Bin_locations,
 	Bin_local_accSum[globalID] = atomicAdd((UINT*) & Bin_count[bin_idx], (UINT)1);
 }
 
-template<class T>
+template<uint16_t DIM, class T>
 __global__ 
-void Count_sort(const gridPoint*	fixed_Particles, 
-				gridPoint*			Particles_2sort, 
+void Count_sort(const gridPoint<DIM, T>*	fixed_Particles, 
+				gridPoint<DIM, T>*			Particles_2sort, 
 				const T*			fixed_values, 
 				T*					values_2sort,
 				const INT*		Bin_count, 
@@ -90,9 +90,9 @@ void Count_sort(const gridPoint*	fixed_Particles,
 
 }
 
-template<class T>
+template<uint16_t DIM, class T>
 __global__ 
-void Neighbor_search(gridPoint*		Search_Particles,
+void Neighbor_search(gridPoint<DIM, T>*		Search_Particles,
 					const INT* Bin_count,
 					INT*		Index_Array,
 					T*				Matrix_Entries,
@@ -101,8 +101,8 @@ void Neighbor_search(gridPoint*		Search_Particles,
 					const UINT	Total_Particles,
 					const UINT	offset,
 					const T			search_distance,			// This tells us how many discretizations we have to move back to find initial bin to search from
-					const grid		Bounding_Box,
-					const grid		Base_Mesh) {
+					const grid<DIM, T>		Bounding_Box,
+					const grid<DIM, T>		Base_Mesh) {
 
 	const uint64_t globalID = blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -114,7 +114,7 @@ void Neighbor_search(gridPoint*		Search_Particles,
 // But! Since we know the particles assigned in each bin and how many particles there are in each bin, we can visit efficiently!
 	
 // Read the input from the sorted Particle array
-	gridPoint fixed_GP = Search_Particles[globalID + offset];
+	gridPoint<DIM, T> fixed_GP = Search_Particles[globalID + offset];
 
 	UINT temp_counter = 0;
 	UINT temp_ID = (globalID + offset) * max_neighbor_num;
@@ -131,7 +131,7 @@ void Neighbor_search(gridPoint*		Search_Particles,
 	const UINT Bin_offset = roundf(DISC_RADIUS);
 
 // We find the lowest corner in the neighboring bins (Hence, the Bin_offset variable)
-	INT bin_idx = Bounding_Box.Give_Bin(fixed_GP, -Bin_offset);
+	INT bin_idx = Bounding_Box.Get_binIdx(fixed_GP, -Bin_offset);
 
 	for (UINT k = 0; k < powf(2 * Bin_offset + 1, DIMENSIONS); k++) { // That's the total number of bins to visit
 
@@ -155,7 +155,7 @@ void Neighbor_search(gridPoint*		Search_Particles,
 			// Add the points in the current bin
 			for (INT m = startIdx; m < endIdx; m++) {
 
-				gridPoint	temp_GP = Search_Particles[m + offset];
+				gridPoint<DIM, T>	temp_GP = Search_Particles[m + offset];
 				TYPE		dist = fixed_GP.Distance(temp_GP) / search_distance;
 
 				if (dist <= 1 && Base_Mesh.Contains_particle(temp_GP) && temp_counter < max_neighbor_num) {
@@ -172,10 +172,10 @@ void Neighbor_search(gridPoint*		Search_Particles,
 	Num_Neighbors[globalID + offset] = temp_counter;
 }
 
-// Counting sort! This operation orders the grid indeces and it sets the number of nodes inside each bin
-template<class T>
+// Counting sort! This operation orders the grid<DIM, T> indeces and it sets the number of nodes inside each bin
+template<uint16_t DIM, class T>
 __host__
-int16_t _CS_Neighbor_Search(thrust::device_vector<gridPoint>& Search_Particles,
+int16_t _CS_Neighbor_Search(thrust::device_vector<gridPoint<DIM, T>>& Search_Particles,
 							thrust::device_vector<T> &PDF_vals,
 							thrust::device_vector<INT>& Index_Array,
 							thrust::device_vector<T>& Matrix_Entries,
@@ -183,8 +183,7 @@ int16_t _CS_Neighbor_Search(thrust::device_vector<gridPoint>& Search_Particles,
 							const UINT Adapt_Points, 
 							const UINT max_neighbor_num,
 							const T search_radius,
-							const grid& Base_Mesh,
-							grid&		Supp_BBox) {
+							const grid<DIM, T>& Base_Mesh) {
 
 	// We need our particles
 	UINT Total_Particles = Search_Particles.size();
@@ -192,8 +191,8 @@ int16_t _CS_Neighbor_Search(thrust::device_vector<gridPoint>& Search_Particles,
 
 	thrust::device_vector<INT> Bin_locations(Adapt_Points,0);
 
-	thrust::device_vector<gridPoint> temp_Particles(Adapt_Points);		// this one will store the ordered particles!
-	thrust::device_vector<T>		 temp_values(Adapt_Points,0);		// this one will store the values of the particles in the new order!
+	thrust::device_vector<gridPoint<DIM, T>> temp_Particles(Adapt_Points);		// this one will store the ordered particles!
+	thrust::device_vector<T>				 temp_values(Adapt_Points,0);		// this one will store the values of the particles in the new order!
 
 	// Bin the particles!
 	UINT Threads = fmin(THREADS_P_BLK, Adapt_Points);
@@ -207,27 +206,18 @@ int16_t _CS_Neighbor_Search(thrust::device_vector<gridPoint>& Search_Particles,
 		// IN THE GENERAL CASE, WE HAVE TO BUILD THIS THINGO IN THE MAIN LOOP
 
 	// First, we have to determine the bounding box of the particle set
-		grid CS_BBox; // create the bounding box for the Counting Sort algorithm
+		grid<DIM, T> CS_BBox; // create the bounding box for the Counting Sort algorithm
 		thrust::device_vector<T> projection(Adapt_Points);
 
 		for (uint16_t d = 0; d < DIMENSIONS; d++) {
-			findProjection<T> << <Threads, Blocks >> > (rpc(Search_Particles, offset), rpc(projection, 0), Adapt_Points, d);
+			findProjection<DIM, T> << <Threads, Blocks >> > (rpc(Search_Particles, offset), rpc(projection, 0), Adapt_Points, d);
 			gpuError_Check(cudaDeviceSynchronize());
 
 			CS_BBox.Boundary_inf.dim[d] = *(thrust::min_element(thrust::device, projection.begin(), projection.end()));
 			CS_BBox.Boundary_sup.dim[d] = *(thrust::max_element(thrust::device, projection.begin(), projection.end()));
-
-			// Support bounding box update!
-			Supp_BBox.Boundary_inf.dim[d] = fmax(Base_Mesh.Boundary_inf.dim[d],fmin(CS_BBox.Boundary_inf.dim[d], Supp_BBox.Boundary_inf.dim[d]));
-			Supp_BBox.Boundary_sup.dim[d] = fmin(Base_Mesh.Boundary_sup.dim[d],fmax(CS_BBox.Boundary_sup.dim[d], Supp_BBox.Boundary_sup.dim[d]));
 		}
 
-		// Final, updated support bounding box? Nope, still have to fix the issue with the number of points!
-		Supp_BBox.Boundary_inf = Base_Mesh.Get_node(Base_Mesh.Give_Bin(Supp_BBox.Boundary_inf, -roundf(DISC_RADIUS)));
-		Supp_BBox.Boundary_sup = Base_Mesh.Get_node(Base_Mesh.Give_Bin(Supp_BBox.Boundary_sup, roundf(DISC_RADIUS)));
-
-		
-
+		// No need for the projection array
 		projection.clear();
 
 	// We obtain the number of bins/nodes of our bounding box (per dimension). We build it as a square/cube
@@ -238,7 +228,7 @@ int16_t _CS_Neighbor_Search(thrust::device_vector<gridPoint>& Search_Particles,
 		thrust::device_vector<INT> Bin_localCount(Adapt_Points, 0);
 
 	// Insert and count the particles inside each bin
-		Bin_Insertion_Count<T> << <Threads, Blocks >> > (rpc(Bin_locations, 0), 
+		Bin_Insertion_Count<DIM, T> << <Threads, Blocks >> > (rpc(Bin_locations, 0), 
 														rpc(Bin_globalCount, 0),
 														rpc(Bin_localCount, 0),
 														rpc(Search_Particles, 0), 
@@ -251,7 +241,7 @@ int16_t _CS_Neighbor_Search(thrust::device_vector<gridPoint>& Search_Particles,
 		thrust::exclusive_scan(thrust::device, Bin_globalCount.begin(), Bin_globalCount.end(), Bin_globalCount.begin());
 
 	// Counting sort...we want to sort Search_Particles!
-		Count_sort<T> << <Threads, Blocks >> > (rpc(Search_Particles, 0), 
+		Count_sort<DIM,T> << <Threads, Blocks >> > (rpc(Search_Particles, 0), 
 												rpc(temp_Particles, 0), 
 												rpc(PDF_vals,0),
 												rpc(temp_values,0),
@@ -267,7 +257,7 @@ int16_t _CS_Neighbor_Search(thrust::device_vector<gridPoint>& Search_Particles,
 		thrust::copy(temp_values.begin(), temp_values.end(), &PDF_vals[offset]);
 
 	// Find particle neighbors using all the previous information
-		Neighbor_search<T> << <Threads, Blocks >> >(rpc(Search_Particles, 0),
+		Neighbor_search<DIM,T> << <Threads, Blocks >> >(rpc(Search_Particles, 0),
 													rpc(Bin_globalCount, 0),
 													rpc(Index_Array, 0),
 													rpc(Matrix_Entries, 0),
@@ -283,7 +273,6 @@ int16_t _CS_Neighbor_Search(thrust::device_vector<gridPoint>& Search_Particles,
 	return 0;
 }
 
-template<class T>
 /// @brief Exhaustive PP search (in the respective parameter sample neighborhood)
 /// @param Search_Particles 
 /// @param Fixed_Particles 
@@ -295,9 +284,10 @@ template<class T>
 /// @param Total_Particles 
 /// @param search_radius 
 /// @return 
+template<uint16_t DIM, class T>
 __global__ 
-void Exh_PP_Search(const gridPoint* Search_Particles,
-					const gridPoint* Fixed_Particles,
+void Exh_PP_Search(const gridPoint<DIM, T>* Search_Particles,
+					const gridPoint<DIM, T>* Fixed_Particles,
 					INT* Index_Array,
 					T* Matrix_Entries,
 					UINT* Num_Neighbors,
@@ -305,13 +295,13 @@ void Exh_PP_Search(const gridPoint* Search_Particles,
 					const UINT Adapt_Points,
 					const UINT Total_Particles,
 					const T search_radius,
-					const grid Mesh) {
+					const grid<DIM, T> Mesh) {
 
 	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
 
 	if (i >= Total_Particles) { return; }
 
-	gridPoint		FP_aux	= Fixed_Particles[i];									// Tells me what parameter sample I'm at
+	gridPoint<DIM, T>		FP_aux	= Fixed_Particles[i];									// Tells me what parameter sample I'm at
 	const INT	k			= i * max_neighbor_num;
 
 	Index_Array[k]	= i;
@@ -325,7 +315,7 @@ void Exh_PP_Search(const gridPoint* Search_Particles,
 
 	for (UINT j = i_aux * Adapt_Points; j < (i_aux + 1) * Adapt_Points; j++) {		// neighborhood where I'm searching
 
-		gridPoint Temp_Particle = Search_Particles[j];
+		gridPoint<DIM, T> Temp_Particle = Search_Particles[j];
 
 		dist = Temp_Particle.Distance(FP_aux) / search_radius;	// normalized distance between particles
 
@@ -377,7 +367,7 @@ void MATRIX_VECTOR_MULTIPLICATION(T* X, const T* x0, const INT* Matrix_idxs, con
 
 // 1.- Compute A*X0										
 	// 1.1.- Determine where my particles are!!
-	const UINT n = Interaction_Lengths[i];	// total neighbors to look at
+	const UINT n  = Interaction_Lengths[i];	// total neighbors to look at
 	const UINT i0 = i * Max_Neighbors;		// where does my search index start
 
 	T a = 0;					// auxiliary value for sum (the diagonal is always 1 in our case)
@@ -508,9 +498,9 @@ int16_t CONJUGATE_GRADIENT_SOLVE(	thrust::device_vector<T>&		GPU_lambdas,
 	return output;
 }
 
-template<class T>
+template<uint16_t DIM, class T>
 __global__ 
-void RESTART_GRID_FIND_GN(gridPoint*		Particle_Positions,
+void RESTART_GRID_FIND_GN(gridPoint<DIM, T>*		Particle_Positions,
 							T*				PDF,
 							T*				lambdas,
 							const Param_pair* Parameter_Mesh,
@@ -519,13 +509,13 @@ void RESTART_GRID_FIND_GN(gridPoint*		Particle_Positions,
 							const UINT	 	Adapt_Pts,
 							const UINT	 	Block_samples,
 							const UINT	 	offset,
-							const grid 		Mesh) {
-	// OUTPUT: New values of the PDF at the fixed grid
+							const grid<DIM, T> 		Mesh) {
+	// OUTPUT: New values of the PDF at the fixed grid<DIM, T>
 
 	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
 
 	if (i >= Adapt_Pts * Block_samples) { return; }
-	gridPoint particle = Particle_Positions[i];
+	gridPoint<DIM, T> particle = Particle_Positions[i];
 
 	if (!Mesh.Contains_particle(particle)) { return; }
 
@@ -534,17 +524,17 @@ void RESTART_GRID_FIND_GN(gridPoint*		Particle_Positions,
 
 	T weighted_lambda = lambdas[i] * aux.Joint_PDF;
 
-	// I want to compute the index of the lowest neighboring grid node (imagine the lowest corner of a box) and build its nearest neighbors
-	INT lowest_idx  = Mesh.Give_Bin(particle, -roundf(DISC_RADIUS));
-	INT highest_idx = Mesh.Give_Bin(particle,  roundf(DISC_RADIUS));
+	// I want to compute the index of the lowest neighboring grid<DIM, T> node (imagine the lowest corner of a box) and build its nearest neighbors
+	INT lowest_idx  = Mesh.Get_binIdx(particle, -roundf(DISC_RADIUS));
+	INT highest_idx = Mesh.Get_binIdx(particle,  roundf(DISC_RADIUS));
 
-	grid Search_grid(Mesh.Get_node(lowest_idx), Mesh.Get_node(highest_idx), 2 * roundf(DISC_RADIUS) + 1);
+	grid<DIM, T> Search_grid(Mesh.Get_node(lowest_idx), Mesh.Get_node(highest_idx), 2 * roundf(DISC_RADIUS) + 1);
 
-	// now, go through all the neighboring grid nodes and add the values to the PDF field
+	// now, go through all the neighboring grid<DIM, T> nodes and add the values to the PDF field
 	for (UINT j = 0; j < Search_grid.Total_Nodes(); j++) {
 
-		INT idx = Mesh.Give_Bin(Search_grid.Get_node(j), 0);
-		gridPoint temp_gridNode = Mesh.Get_node(idx);
+		INT idx = Mesh.Get_binIdx(Search_grid.Get_node(j), 0);
+		gridPoint<DIM, T> temp_gridNode = Mesh.Get_node(idx);
 
 		if (Mesh.Contains_particle(temp_gridNode))
 		{
@@ -557,42 +547,42 @@ void RESTART_GRID_FIND_GN(gridPoint*		Particle_Positions,
 	}
 }
 
-
+template<uint16_t DIM, class T>
 __global__ 
-void RESTART_GRID_FIND_GN_II(gridPoint* Particle_Positions,
+void RESTART_GRID_FIND_GN(gridPoint<DIM, T>* Particle_Positions,
 							float* PDF,
 							float* lambdas,
 							const Impulse_Param_vec* Impulse_weights,
-							const float 	search_radius,
+							const T 	search_radius,
 							const UINT	 	Adapt_Pts,
 							const UINT	 	Current_sample,
-							const grid		Mesh) {
-	// OUTPUT: New values of the PDF at the fixed grid
+							const grid<DIM, T>		Mesh) {
+	// OUTPUT: New values of the PDF at the fixed grid<DIM, T>
 
 	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
 
 	if (i >= Adapt_Pts) { return; }
-	gridPoint particle = Particle_Positions[i + Current_sample * Adapt_Pts];
+	gridPoint<DIM, T> particle = Particle_Positions[i + Current_sample * Adapt_Pts];
 	
 	if (!Mesh.Contains_particle(particle)) { return; }
 
-	float weighted_lambda = lambdas[i + Current_sample * Adapt_Pts] * Impulse_weights[Current_sample].Joint_PDF;				// the specific sample weight
+	T weighted_lambda = lambdas[i + Current_sample * Adapt_Pts] * Impulse_weights[Current_sample].Joint_PDF;				// the specific sample weight
 
-	// I want to compute the index of the lowest neighboring grid node (imagine the lowest corner of a box) and build its nearest neighbors
-	INT lowest_idx = Mesh.Give_Bin(particle, -roundf(DISC_RADIUS));
-	INT highest_idx = Mesh.Give_Bin(particle, roundf(DISC_RADIUS));
+	// I want to compute the index of the lowest neighboring grid<DIM, T> node (imagine the lowest corner of a box) and build its nearest neighbors
+	INT lowest_idx = Mesh.Get_binIdx(particle, -roundf(DISC_RADIUS));
+	INT highest_idx = Mesh.Get_binIdx(particle, roundf(DISC_RADIUS));
 
-	grid Search_grid(Mesh.Get_node(lowest_idx), Mesh.Get_node(highest_idx), 2 * roundf(DISC_RADIUS) + 1);
+	grid<DIM, T> Search_grid(Mesh.Get_node(lowest_idx), Mesh.Get_node(highest_idx), 2 * roundf(DISC_RADIUS) + 1);
 
-	// now, go through all the neighboring grid nodes and add the values to the PDF field
+	// now, go through all the neighboring grid<DIM, T> nodes and add the values to the PDF field
 	for (UINT j = 0; j < Search_grid.Total_Nodes(); j++) {
 
-		INT idx = Mesh.Give_Bin(Search_grid.Get_node(j), 0);
-		gridPoint temp_gridNode = Mesh.Get_node(idx);
+		INT idx = Mesh.Get_binIdx(Search_grid.Get_node(j), 0);
+		gridPoint<DIM, T> temp_gridNode = Mesh.Get_node(idx);
 
 		if (Mesh.Contains_particle(temp_gridNode))
 		{
-			float dist = temp_gridNode.Distance(particle) / search_radius;
+			T dist = temp_gridNode.Distance(particle) / search_radius;
 			if (dist <= 1) {
 				dist = RBF(search_radius, dist) * weighted_lambda;
 				atomicAdd(&PDF[idx], dist);
