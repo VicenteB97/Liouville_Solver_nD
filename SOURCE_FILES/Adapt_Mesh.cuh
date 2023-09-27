@@ -101,6 +101,17 @@ int16_t ADAPT_MESH_REFINEMENT_nD(const thrust::host_vector<T>&	H_PDF,
 								const int						LvlCoarse) {
 	// Final AMR procedure
 
+
+	// 1st.- Tweak the Support Bounding Box so that the AMR is useful!
+	UINT temp_val = (UINT) ceil(log2(Supp_BBox.Nodes_per_Dim));
+
+	if (temp_val >= log2(Base_Mesh.Nodes_per_Dim)) {
+		Supp_BBox = Base_Mesh;
+	}
+	//else {
+		// Here we have to add the "make bigger bounding box" part
+	//}
+
 	// Create the effective bounding box for the PDF support!
 	uint16_t Eff_Finest_Level	= (uint16_t)log2(Supp_BBox.Nodes_per_Dim);
 

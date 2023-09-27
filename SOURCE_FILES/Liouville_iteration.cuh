@@ -220,10 +220,10 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*				prop,
 			// Number of particles to advect
 			Adapt_Points = AdaptGrid.size();
 
-			// maximum neighbors to search. Diameter number of points powered to the dimension
-			MaxNeighborNum = fmin(pow(2 * round(DISC_RADIUS) + 1, DIMENSIONS), Adapt_Points);
+			// Maximum neighbors to search. Diameter number of points powered to the dimension
+			MaxNeighborNum = fmin(pow(2 * round(DISC_RADIUS) + 1, DIM), Adapt_Points);
 
-			// Total memory requirements for next Liouville step
+			// Max. memory requirements for next Liouville step
 			const UINT mem_requested_per_sample = (UINT)Adapt_Points * (sizeof(T) * (6 + MaxNeighborNum) + sizeof(gridPoint<DIM, T>) + sizeof(INT) * (MaxNeighborNum + 1));
 
 			// Set number of random samples to work with, and number of blocks to use
@@ -304,7 +304,7 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*				prop,
 
 				// Dynamical choice of either exhaustive or counting sort-based point search
 				if (Adapt_Points < ptSEARCH_THRESHOLD) {
-					Exh_PP_Search<DIMENSIONS,T> << <Blocks, Threads >> > (	rpc(GPU_Part_Position, 0),
+					Exh_PP_Search<DIM,T> << <Blocks, Threads >> > (	rpc(GPU_Part_Position, 0),
 																	rpc(GPU_Part_Position, 0),
 																	rpc(GPU_Index_array, 0),
 																	rpc(GPU_Mat_entries, 0),
@@ -333,7 +333,7 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*				prop,
 
 				// Before going to the next step, define the bounding box of the advected particles!
 				thrust::device_vector<T> projection(Block_Particles);
-				for (uint16_t d = 0; d < DIMENSIONS; d++) {
+				for (uint16_t d = 0; d < DIM; d++) {
 					findProjection<DIM, T> << <Blocks, Threads >> > (rpc(GPU_Part_Position, 0), rpc(projection, 0), Block_Particles, d);
 
 					T temp_1 = *(thrust::min_element(thrust::device, projection.begin(), projection.end()));
@@ -343,9 +343,12 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*				prop,
 					Supp_BBox.Boundary_sup.dim[d] = fmin(Base_Mesh.Boundary_sup.dim[d], fmax(Supp_BBox.Boundary_sup.dim[d], temp_2));
 				}
 
+				// FOLLOW THE SAME IDEA AS IN THE CASE OF THE CS_BOUNDING BOX...TAKE THE MAXIMUM LENGTH AND THEN USE IT TO BUILD THE BOX
+
 				// Final, updated support bounding box?
 				Supp_BBox.Boundary_inf = Base_Mesh.Get_node(Base_Mesh.Get_binIdx(Supp_BBox.Boundary_inf, -roundf(DISC_RADIUS)));
 				Supp_BBox.Boundary_sup = Base_Mesh.Get_node(Base_Mesh.Get_binIdx(Supp_BBox.Boundary_sup,  roundf(DISC_RADIUS)));
+				Supp_BBox.Nodes_per_Dim = ceil((Supp_BBox.Boundary_sup.dim[0] - Supp_BBox.Boundary_inf.dim[0]) / Base_Mesh.Discr_length());
 
 				end_3 = std::chrono::high_resolution_clock::now();
 				duration_3 = end_3 - start_3;
@@ -385,7 +388,7 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*				prop,
 				// ----------------------------------------------------------------------------------- //
 				// THIS PART ONLY GRABS THE LAST "OPTIMAL" LAMBDA AND COMPUTES ITS "PROJECTION" INTO THE SUBSPACE
 				
-				#if DIMENSIONS == 2
+				#if DIM == 2
 					T temp = thrust::reduce(thrust::device, GPU_lambdas.begin(), GPU_lambdas.end());
 					thrust::transform(GPU_lambdas.begin(), GPU_lambdas.end(), GPU_lambdas.begin(), Random_Samples_Blk_size / temp * _1);
 				#endif
@@ -399,7 +402,7 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*				prop,
 				Blocks  = floorf((Block_Particles - 1) / Threads) + 1;
 
 				start_3 = std::chrono::high_resolution_clock::now();
-				RESTART_GRID_FIND_GN<DIMENSIONS,T> << < Blocks, Threads >> > (	rpc(GPU_Part_Position, 0),
+				RESTART_GRID_FIND_GN<DIM,T> << < Blocks, Threads >> > (	rpc(GPU_Part_Position, 0),
 																		rpc(GPU_PDF, 0),
 																		rpc(GPU_lambdas, 0),
 																		rpc(GPU_Parameter_Mesh, 0),

@@ -245,13 +245,24 @@ public:
 		return out;
 	}
 
-	// Checks whether Particle belongs to the grid<DIM, TYPE>/mesh
+	// Checks whether Particle belongs to the INTERIOR+BOUNDARY of the grid/mesh
 	__host__ __device__
 	inline bool Contains_particle(const gridPoint<DIM, T>& Particle) const {
 		for (uint16_t d = 0; d < DIM; d++) {
 			if (Particle.dim[d] < Boundary_inf.dim[d] || Particle.dim[d] > Boundary_sup.dim[d]) { return false; }
 		}
 		return true;
+	}
+
+	// Checks whether Particle is in the BOUNDARY of the grid/mesh
+	__host__ __device__
+	inline int16_t Is_in_boundary(const gridPoint<DIM, T>& Particle) const {
+		int16_t out = 0;
+		for (uint16_t d = 0; d < DIM; d++) {
+			if(Particle.dim[d] == Boundary_inf.dim[d]) { out++; } 
+			if(Particle.dim[d] == Boundary_sup.dim[d]) { out++; }
+		}
+		return -1;
 	}
 	
 	// Returns the bin (or ID of the closest node) where Particle belongs to, adding bin_offset.
