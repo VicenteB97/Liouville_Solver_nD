@@ -236,11 +236,16 @@ public:
 	// Given an index, this function returns the corresponding node
 	__host__ __device__
 	inline gridPoint<DIM, T> Get_node(const INT& globalIdx) const {
-		gridPoint<DIM, T> out;
+
+		gridPoint<DIM, T> out = Boundary_inf;
+
+		if (globalIdx <= 0) { return Boundary_inf; }
+		if (globalIdx >= this->Total_Nodes()) { return Boundary_sup; }
 
 		for (uint16_t d = 0; d < DIM; d++) {
 			INT j = floor( positive_rem(globalIdx, pow(Nodes_per_Dim, d + 1)) / pow(Nodes_per_Dim, d) );	// This line gives the index at each dimension
-			out.dim[d] = j * this->Discr_length() + Boundary_inf.dim[d];								// This line gives the grid<DIM, TYPE> node per se
+
+			out.dim[d] += j * this->Discr_length();															// This line gives the grid<DIM, TYPE> node per se
 		}
 		return out;
 	}
@@ -272,6 +277,12 @@ public:
  
 		for (uint16_t d = 0; d < DIM; d++) {
 			INT temp_idx = (INT)roundf((Particle.dim[d] - Boundary_inf.dim[d]) / this->Discr_length()) + bin_offset;
+
+			// Attempt to access a correct value but...some problems for sure!
+			if (temp_idx < 0 || temp_idx >= Nodes_per_Dim) {
+				return 0;
+			}
+
 			bin_idx += temp_idx * powf(Nodes_per_Dim, d);
 		}
 		return bin_idx;

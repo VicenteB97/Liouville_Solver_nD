@@ -76,8 +76,6 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 // --------------------------------------------------------------------------------------------
 // 1.- PARAMETERS biuld up
 		INT n_samples[PARAM_DIMENSIONS];	// number of samples per parameter
-
-		TYPE IC_dist_params[DIMENSIONS * 2];	// distribution parameters for the IC
 		
 	// ----------------------------------------------------------------------------------------------- //
 	// ---------------------------------- OBTAIN INFO FROM TERMINAL ---------------------------------- //
@@ -103,6 +101,8 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 
 		Param_pair*		Parameter_Mesh 	= new Param_pair[PM_length];				// Full parameter array
 		Distributions* 	Param_dist  	= new Distributions[PARAM_DIMENSIONS];		// Array for storing the model parameters' distribution information
+
+		Distributions IC_dist_params[DIMENSIONS];
 	
 		thrust::host_vector<TYPE> H_PDF(Base_Mesh.Total_Nodes(), 0);	 			// PDF values at the fixed, high-res grid<DIMENSIONS, TYPE> (CPU)
 
@@ -115,9 +115,13 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 			Param_dist[p].params[1] 		= _DIST_STD[p];			// std
 		}
 				 
-		for (UINT d = 0; d < DIMENSIONS; d++){
-			IC_dist_params[2*d] 	= IC_MEAN[d];
-			IC_dist_params[2*d + 1] = IC_STD[d];
+		for (UINT d = 0; d < DIMENSIONS; d++) {
+			IC_dist_params[d].Name = 'N';
+			IC_dist_params[d].Truncated = true;
+			IC_dist_params[d].trunc_interval[0] = Base_Mesh.Boundary_inf.dim[d];
+			IC_dist_params[d].trunc_interval[1] = Base_Mesh.Boundary_sup.dim[d];
+			IC_dist_params[d].params[0] = IC_MEAN[d];
+			IC_dist_params[d].params[1] = IC_STD[d];
 		}
 
 // CALL JOINT PDF BUILDING FUNCTIONS: (PARAMETERS AND INITIAL CONDITION)
@@ -139,8 +143,7 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 auto start = std::chrono::high_resolution_clock::now();
 	
 	error_check = PDF_ITERATIONS<DIMENSIONS, TYPE>(prop, &store_PDFs, Parameter_Mesh, Base_Mesh, &H_PDF, n_samples, LvlFine, LvlCoarse, time_vector, deltaT, ReinitSteps);
-	//if (error_check == -1){	std::cout << "An error has occured. Exiting simulation.\n"; return error_check;}
-	assert(error_check == 0);
+	if (error_check == -1){	std::cout << "An error has occured. Exiting simulation.\n"; return error_check;}
 
 auto end = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<float> duration = end - start; // duration

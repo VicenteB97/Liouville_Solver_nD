@@ -103,17 +103,23 @@ int16_t ADAPT_MESH_REFINEMENT_nD(const thrust::host_vector<T>&	H_PDF,
 
 
 	// 1st.- Tweak the Support Bounding Box so that the AMR is useful!
-	UINT temp_val = (UINT) ceil(log2(Supp_BBox.Nodes_per_Dim));
+	UINT Eff_Finest_Level = (UINT) ceil(log2(Supp_BBox.Nodes_per_Dim));
 
-	if (temp_val >= log2(Base_Mesh.Nodes_per_Dim)) {
+	// If I'm going to need, at least, the same amount of points as in my base mesh...just use the base mesh!
+	if (Eff_Finest_Level >= log2(Base_Mesh.Nodes_per_Dim)) {
 		Supp_BBox = Base_Mesh;
 	}
-	//else {
-		// Here we have to add the "make bigger bounding box" part
-	//}
+	else {
+		// Here we have to add the "make bigger bounding box" part (we need 2^something points per dimension)
+		Supp_BBox.Nodes_per_Dim = pow(2, Eff_Finest_Level);
 
-	// Create the effective bounding box for the PDF support!
-	uint16_t Eff_Finest_Level	= (uint16_t)log2(Supp_BBox.Nodes_per_Dim);
+		for (uint16_t d = 0; d < DIM; d++) {
+			Supp_BBox.Boundary_sup.dim[d] = Supp_BBox.Boundary_inf.dim[d] + Base_Mesh.Discr_length() * (Supp_BBox.Nodes_per_Dim - 1);
+		}
+	}
+
+	// JUST TO CHECK IT OUT:
+	assert(Base_Mesh.Discr_length() == Supp_BBox.Discr_length());
 
 	thrust::host_vector<AMR_node_select> 	H__Node_selection(Supp_BBox.Total_Nodes(), {0,0});
 	thrust::device_vector<AMR_node_select>	D__Node_selection = H__Node_selection;

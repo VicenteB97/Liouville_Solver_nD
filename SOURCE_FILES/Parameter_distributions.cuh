@@ -27,23 +27,30 @@
 /// @param Mesh 
 /// @param PDF_value 
 /// @param IC_dist_parameters 
-int16_t PDF_INITIAL_CONDITION(const grid<DIMENSIONS, TYPE>& Mesh, thrust::host_vector<TYPE>& PDF_value, TYPE* IC_dist_parameters) {
-
-	// Due to obvious reasons, we will not make the choice of IC distributions automatically, as with the model parameters
-	boost::math::normal dist[DIMENSIONS];
-
-	//create the distributions per dimension:
-	 
-	for (UINT d = 0; d < DIMENSIONS; d++){
-		dist[d] = boost::math::normal_distribution((double)IC_dist_parameters[2*d], (double)IC_dist_parameters[2*d + 1]);
-	}
+int16_t PDF_INITIAL_CONDITION(const grid<DIMENSIONS, TYPE>& Mesh, thrust::host_vector<TYPE>& PDF_value, const Distributions IC_dist_parameters[]) {
 
 #pragma omp parallel for
 	for (INT k = 0; k < PDF_value.size(); k++){
 		TYPE aux = 1;
 
 		for (UINT d = 0; d < DIMENSIONS; d++){
-			aux *= boost::math::pdf(dist[d], Mesh.Get_node(k).dim[d]);
+
+			TYPE expectation = IC_dist_parameters[d].params[0], std_dev = IC_dist_parameters[d].params[1];
+
+			auto dist = boost::math::normal_distribution(expectation, std_dev);
+
+			TYPE x0 = fmaxf(expectation - 7 * std_dev, IC_dist_parameters[d].trunc_interval[0]);
+			TYPE xF = fminf(expectation + 7 * std_dev, IC_dist_parameters[d].trunc_interval[1]);
+
+			// Re-scaling for the truncation of the random variables
+			TYPE rescale_cdf = boost::math::cdf(dist, xF) - boost::math::cdf(dist, x0);
+
+			if (Mesh.Get_node(k).dim[d] < xF && Mesh.Get_node(k).dim[d] > x0) {
+				aux *= boost::math::pdf(dist, Mesh.Get_node(k).dim[d]);
+			}
+			else {
+				aux = 0;
+			}
 		}
 		PDF_value[k] = aux; // with positive and negative parts!
 	}

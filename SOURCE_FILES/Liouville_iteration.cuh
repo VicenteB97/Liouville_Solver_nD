@@ -133,10 +133,6 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*				prop,
 // IN THIS LINE WE COMMENCE WITH THE ACTUAL ITERATIONS OF THE LIOUVILLE EQUATION
 	while (j < time_vector.size() - 1 && error_check == 0) {
 
-		// ERASEEEEEEEEEEEEEEEEEEEEEE
-		Supp_BBox = Base_Mesh;
-		/////////////////////////////
-
 	auto start_2 = std::chrono::high_resolution_clock::now();
 
 		float	t0 = time_vector[j].time, tF = time_vector[j + 1].time;
@@ -268,17 +264,17 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*				prop,
 				// ------------------------------------------------------------------------------------ //
 				start_3 = std::chrono::high_resolution_clock::now();
 				ODE_INTEGRATE<DIM, T><< <Blocks, Threads >> > (	rpc(GPU_Part_Position, 0),
-																			rpc(GPU_AdaptPDF, 0),
-																			rpc(GPU_Parameter_Mesh, Sample_idx_offset_init),
-																			rpc(GPU_nSamples, 0),
-																			t0,
-																			deltaT,
-																			tF,
-																			Adapt_Points,
-																			Random_Samples_Blk_size,
-																			mode,
-																			rpc(Extra_Parameter, 0),
-																			Base_Mesh);
+																rpc(GPU_AdaptPDF, 0),
+																rpc(GPU_Parameter_Mesh, Sample_idx_offset_init),
+																rpc(GPU_nSamples, 0),
+																t0,
+																deltaT,
+																tF,
+																Adapt_Points,
+																Random_Samples_Blk_size,
+																mode,
+																rpc(Extra_Parameter, 0),
+																Base_Mesh);
 				gpuError_Check(cudaDeviceSynchronize()); // Here, the entire Base_Mesh points (those that were selected) and PDF points (same) have been updated.
 
 				end_3 = std::chrono::high_resolution_clock::now();
@@ -317,37 +313,44 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*				prop,
 					gpuError_Check(cudaDeviceSynchronize());
 				}
 				else {
-					error_check = _CS_Neighbor_Search<DIM, T>(GPU_Part_Position,
-																		GPU_AdaptPDF,
-																		GPU_Index_array,
-																		GPU_Mat_entries,
-																		GPU_Num_Neighbors,
-																		Adapt_Points,
-																		MaxNeighborNum,
-																		search_radius,
-																		Base_Mesh);
+					error_check = _CS_Neighbor_Search<DIM, T>(	GPU_Part_Position,
+																GPU_AdaptPDF,
+																GPU_Index_array,
+																GPU_Mat_entries,
+																GPU_Num_Neighbors,
+																Adapt_Points,
+																MaxNeighborNum,
+																search_radius,
+																Base_Mesh);
 
 					if (error_check == -1) { break; }
 				}
 
 
 				// Before going to the next step, define the bounding box of the advected particles!
-				thrust::device_vector<T> projection(Block_Particles);
+				thrust::device_vector<T> projection(Block_Particles,(T)0);
+				T max_length = 0;
+
 				for (uint16_t d = 0; d < DIM; d++) {
 					findProjection<DIM, T> << <Blocks, Threads >> > (rpc(GPU_Part_Position, 0), rpc(projection, 0), Block_Particles, d);
 
 					T temp_1 = *(thrust::min_element(thrust::device, projection.begin(), projection.end()));
 					T temp_2 = *(thrust::max_element(thrust::device, projection.begin(), projection.end()));
 
+					max_length = fmax(max_length, temp_2 - temp_1);
+
 					Supp_BBox.Boundary_inf.dim[d] = fmax(Base_Mesh.Boundary_inf.dim[d], fmin(Supp_BBox.Boundary_inf.dim[d], temp_1));
-					Supp_BBox.Boundary_sup.dim[d] = fmin(Base_Mesh.Boundary_sup.dim[d], fmax(Supp_BBox.Boundary_sup.dim[d], temp_2));
 				}
 
 				// FOLLOW THE SAME IDEA AS IN THE CASE OF THE CS_BOUNDING BOX...TAKE THE MAXIMUM LENGTH AND THEN USE IT TO BUILD THE BOX
+				for (uint16_t d = 0; d < DIM; d++) {
+					Supp_BBox.Boundary_sup.dim[d] = Supp_BBox.Boundary_inf.dim[d] + max_length;
+				}
 
 				// Final, updated support bounding box?
 				Supp_BBox.Boundary_inf = Base_Mesh.Get_node(Base_Mesh.Get_binIdx(Supp_BBox.Boundary_inf, -roundf(DISC_RADIUS)));
 				Supp_BBox.Boundary_sup = Base_Mesh.Get_node(Base_Mesh.Get_binIdx(Supp_BBox.Boundary_sup,  roundf(DISC_RADIUS)));
+
 				Supp_BBox.Nodes_per_Dim = ceil((Supp_BBox.Boundary_sup.dim[0] - Supp_BBox.Boundary_inf.dim[0]) / Base_Mesh.Discr_length());
 
 				end_3 = std::chrono::high_resolution_clock::now();
@@ -372,7 +375,7 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*				prop,
 															MaxNeighborNum,
 															max_steps,
 															in_tolerance);
-				if (error_check == -1) { break; }
+				if (error_check == -1) { std::cout << "Convergence failure.\n"; break; }
 				end_3 = std::chrono::high_resolution_clock::now();
 				duration_3 = end_3 - start_3;
 				
