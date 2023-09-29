@@ -125,6 +125,7 @@ int16_t ADAPT_MESH_REFINEMENT_nD(const thrust::host_vector<T>&	H_PDF,
 
 	for (uint16_t k = 0; k < Eff_Finest_Level; k++) {
 
+		//Possible optimization: DO SEVERAL BLOCKS PER THREAD!!!
 		uint16_t Threads = fmin(THREADS_P_BLK, Supp_BBox.Total_Nodes()/pow(rescaling,DIM) );
 		UINT	 Blocks	 = floor((Supp_BBox.Total_Nodes()/pow(rescaling, DIM) - 1) / Threads) + 1;
 

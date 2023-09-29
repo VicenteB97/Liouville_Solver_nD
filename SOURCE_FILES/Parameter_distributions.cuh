@@ -35,7 +35,9 @@ int16_t PDF_INITIAL_CONDITION(const grid<DIM, T>& Mesh, thrust::host_vector<T>& 
 	for (uint16_t d = 0; d < DIM; d++) {
 		// Create the arrays for each dimension!
 		T expectation = IC_dist_parameters[d].params[0], std_dev = IC_dist_parameters[d].params[1],
-		  x0 = expectation - 7 * std_dev, xF = expectation + 7 * std_dev, rescale_CDF = 1;
+			x0 = fmax(Mesh.Boundary_inf.dim[d], expectation - 8 * std_dev), 
+			xF = fmin(Mesh.Boundary_sup.dim[d], expectation + 8 * std_dev), 
+			rescale_CDF = 1;
 
 		if(IC_dist_parameters[d].Name == 'N' || IC_dist_parameters[d].Name == 'n') {
 			auto dist = boost::math::normal_distribution(expectation, std_dev);
@@ -62,7 +64,6 @@ int16_t PDF_INITIAL_CONDITION(const grid<DIM, T>& Mesh, thrust::host_vector<T>& 
 
 			val *= temp_val[temp_idx + Mesh.Nodes_per_Dim * d];
 		}
-
 		PDF_value[k] = val;
 	}
 	return 0;
