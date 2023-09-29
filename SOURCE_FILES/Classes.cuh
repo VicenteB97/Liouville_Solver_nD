@@ -161,18 +161,6 @@ public:
 
 		return out;
 	};
-
-	// This function tells us what is the first bin to search if we consider an offset (radius, actually) of bin_offset
-	__host__ __device__ 
-	INT GetBin(const T discretization, const int16_t bin_offset, const gridPoint<DIM, T>& lowest_node, const UINT PtsPerDimension) const {
-		INT bin_idx = 0;
- 
-		for (uint16_t d = 0; d < DIM; d++) {
-			INT temp_idx = (INT)roundf((dim[d] - lowest_node.dim[d]) / discretization) + bin_offset;
-			bin_idx += temp_idx * powf(PtsPerDimension, d);
-		}
-		return bin_idx;
-	};
 };
 
 template<uint16_t DIM, class T>

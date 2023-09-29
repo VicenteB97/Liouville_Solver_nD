@@ -100,7 +100,7 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 		}
 
 		Param_pair*		Parameter_Mesh 	= new Param_pair[PM_length];				// Full parameter array
-		Distributions* 	Param_dist  	= new Distributions[PARAM_DIMENSIONS];		// Array for storing the model parameters' distribution information
+		Distributions 	Param_dist[PARAM_DIMENSIONS];		// Array for storing the model parameters' distribution information
 
 		Distributions IC_dist_params[DIMENSIONS];
 	
@@ -116,10 +116,10 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 		}
 				 
 		for (UINT d = 0; d < DIMENSIONS; d++) {
-			IC_dist_params[d].Name = 'N';
-			IC_dist_params[d].Truncated = true;
-			IC_dist_params[d].trunc_interval[0] = Base_Mesh.Boundary_inf.dim[d];
-			IC_dist_params[d].trunc_interval[1] = Base_Mesh.Boundary_sup.dim[d];
+			IC_dist_params[d].Name = IC_NAMES[d];
+			IC_dist_params[d].Truncated = IC_TRUNC[d];
+			IC_dist_params[d].trunc_interval[0] = IC_InfTVAL[d];
+			IC_dist_params[d].trunc_interval[1] = IC_SupTVAL[d];
 			IC_dist_params[d].params[0] = IC_MEAN[d];
 			IC_dist_params[d].params[1] = IC_STD[d];
 		}
@@ -285,7 +285,6 @@ auto end = std::chrono::high_resolution_clock::now();
 		saving_active = false;
 	}
 
-	delete[] Param_dist;
 	delete[] Parameter_Mesh;
 	gpuError_Check(cudaDeviceReset());
 

@@ -67,7 +67,7 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*				prop,
 	std::vector<gridPoint<DIM, T>>	Full_AdaptGrid;		// Final adapted grid<DIM, T> (adapted grid<DIM, T> x number of samples)
 	std::vector<T>		Full_AdaptPDF;		// Final adapted PDF (adapted grid<DIM, T> x number of samples)
 
-	grid<DIM, T> Supp_BBox = Base_Mesh;		// Initialize the Support bounding box as the initial mesh.First iteration will be slower but...whatcha gonna do?
+	grid<DIM, T> Supp_BBox((gridPoint<DIM,T>)IC_InfTVAL, (gridPoint<DIM,T>)IC_SupTVAL, Base_Mesh.Nodes_per_Dim);		// Initialize the Support bounding box as the initial mesh.First iteration will be slower but...whatcha gonna do?
 
 	INT Random_Samples = 1;
 	INT aux_Samples = 0;

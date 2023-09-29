@@ -118,9 +118,6 @@ int16_t ADAPT_MESH_REFINEMENT_nD(const thrust::host_vector<T>&	H_PDF,
 		}
 	}
 
-	// JUST TO CHECK IT OUT:
-	assert(Base_Mesh.Discr_length() == Supp_BBox.Discr_length());
-
 	thrust::host_vector<AMR_node_select> 	H__Node_selection(Supp_BBox.Total_Nodes(), {0,0});
 	thrust::device_vector<AMR_node_select>	D__Node_selection = H__Node_selection;
 

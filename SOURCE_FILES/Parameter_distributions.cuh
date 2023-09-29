@@ -27,34 +27,44 @@
 /// @param Mesh 
 /// @param PDF_value 
 /// @param IC_dist_parameters 
-int16_t PDF_INITIAL_CONDITION(const grid<DIMENSIONS, TYPE>& Mesh, thrust::host_vector<TYPE>& PDF_value, const Distributions IC_dist_parameters[]) {
+template<uint16_t DIM, class T>
+int16_t PDF_INITIAL_CONDITION(const grid<DIM, T>& Mesh, thrust::host_vector<T>& PDF_value, const Distributions *IC_dist_parameters) {
 
-#pragma omp parallel for
-	for (INT k = 0; k < PDF_value.size(); k++){
-		TYPE aux = 1;
+	std::vector<T> temp_val(Mesh.Nodes_per_Dim * DIM);
 
-		for (UINT d = 0; d < DIMENSIONS; d++){
+	for (uint16_t d = 0; d < DIM; d++) {
+		// Create the arrays for each dimension!
+		T expectation = IC_dist_parameters[d].params[0], std_dev = IC_dist_parameters[d].params[1],
+		  x0 = expectation - 7 * std_dev, xF = expectation + 7 * std_dev, rescale_CDF = 1;
 
-			TYPE expectation = IC_dist_parameters[d].params[0], std_dev = IC_dist_parameters[d].params[1];
-
+		if(IC_dist_parameters[d].Name == 'N' || IC_dist_parameters[d].Name == 'n') {
 			auto dist = boost::math::normal_distribution(expectation, std_dev);
 
-			TYPE x0 = fmaxf(expectation - 7 * std_dev, IC_dist_parameters[d].trunc_interval[0]);
-			TYPE xF = fminf(expectation + 7 * std_dev, IC_dist_parameters[d].trunc_interval[1]);
+			if (IC_dist_parameters[d].Truncated) {
+				x0 = fmaxf(x0, IC_dist_parameters[d].trunc_interval[0]);
+				xF = fminf(xF, IC_dist_parameters[d].trunc_interval[1]);
 
-			// Re-scaling for the truncation of the random variables
-			TYPE rescale_cdf = boost::math::cdf(dist, xF) - boost::math::cdf(dist, x0);
-
-			if (Mesh.Get_node(k).dim[d] < xF && Mesh.Get_node(k).dim[d] > x0) {
-				aux *= boost::math::pdf(dist, Mesh.Get_node(k).dim[d]);
+				rescale_CDF = boost::math::cdf(dist, xF) - boost::math::cdf(dist, x0);
 			}
-			else {
-				aux = 0;
+
+		#pragma omp parallel for
+			for (INT k = Mesh.Nodes_per_Dim * d; k < Mesh.Nodes_per_Dim * (d + 1); k++) {
+				temp_val[k] = boost::math::pdf(dist, Mesh.Get_node((k - Mesh.Nodes_per_Dim * d) * pow(Mesh.Nodes_per_Dim, d)).dim[d]) / rescale_CDF;
 			}
 		}
-		PDF_value[k] = aux; // with positive and negative parts!
 	}
 
+#pragma omp parallel for
+	for (INT k = 0; k < Mesh.Total_Nodes(); k++) {
+		T val = 1;
+		for (uint16_t d = 0; d < DIM; d++) {
+			INT temp_idx = floor(positive_rem(k, pow(Mesh.Nodes_per_Dim, d + 1)) / pow(Mesh.Nodes_per_Dim, d));
+
+			val *= temp_val[temp_idx + Mesh.Nodes_per_Dim * d];
+		}
+
+		PDF_value[k] = val;
+	}
 	return 0;
 }
 
@@ -226,7 +236,7 @@ int16_t PARAMETER_VEC_BUILD(const int n_Samples, Param_pair* PP, const Distribut
 /// @param Dist_Names: Distributions that will be assigned (N = Normal, U = Uniform, etc.)
 int16_t RANDOMIZE(const INT* 			n_samples, 
 				Param_pair* 			Parameter_Mesh, 
-				const Distributions* 	Dist_Parameters) {
+				const Distributions		*Dist_Parameters) {
 
 	UINT aux = 0;
 
