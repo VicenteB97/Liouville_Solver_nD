@@ -24,9 +24,6 @@
 // Name of the case being simulated
 #define CASE "Allelochemicals' system"
 
-//Define the number of threads per block (128 for consumer GPUs such as the RTX3060 or Quadro RTX4000)
-#define THREADS_P_BLK 128
-
 // Choosing whether showing full or simplified timing information
 #define OUTPUT_INFO true
 
