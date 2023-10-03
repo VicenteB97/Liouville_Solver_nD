@@ -146,7 +146,8 @@ int16_t IMPULSE_TRANSFORM_PDF(const std::vector<gridPoint<DIMENSIONS, TYPE>>&	Ad
 														MaxNeighborNum,
 														Adapt_Points,
 														Total_Particles,
-														search_radius);
+														search_radius,
+														Underlying_Mesh);
 		gpuError_Check(cudaDeviceSynchronize());
 	}
 	else {
@@ -157,7 +158,8 @@ int16_t IMPULSE_TRANSFORM_PDF(const std::vector<gridPoint<DIMENSIONS, TYPE>>&	Ad
 										GPU_Num_Neighbors,
 										Adapt_Points,
 										MaxNeighborNum,
-										search_radius);
+										search_radius,
+										Underlying_Mesh);
 
 		if (err == -1) { return -1; }
 	}

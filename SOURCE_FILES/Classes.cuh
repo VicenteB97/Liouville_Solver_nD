@@ -254,9 +254,6 @@ public:
 
 		gridPoint<DIM, T> out = Boundary_inf;
 
-		if (globalIdx <= 0) { return Boundary_inf; }
-		if (globalIdx >= this->Total_Nodes()) { return Boundary_sup; }
-
 		for (uint16_t d = 0; d < DIM; d++) {
 			INT j = floor( positive_rem(globalIdx, pow(Nodes_per_Dim, d + 1)) / pow(Nodes_per_Dim, d) );	// This line gives the index at each dimension
 
@@ -291,7 +288,7 @@ public:
 		INT bin_idx = 0;
  
 		for (uint16_t d = 0; d < DIM; d++) {
-			INT temp_idx = (INT)roundf((Particle.dim[d] - Boundary_inf.dim[d]) / this->Discr_length()) + bin_offset;
+			INT temp_idx = roundf((Particle.dim[d] - Boundary_inf.dim[d]) / this->Discr_length()) + bin_offset;
 
 			// Attempt to access a correct value but...some problems for sure!
 			if (temp_idx < 0 || temp_idx >= Nodes_per_Dim) {

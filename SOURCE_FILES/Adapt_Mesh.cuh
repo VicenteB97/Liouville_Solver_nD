@@ -68,24 +68,25 @@ __global__ void D__Wavelet_Transform__F(T* 					PDF,
 	}
 
 	// Now, we will recheck all the wavelet coefficients and compare with the threshold
-	if (Problem_Domain.Contains_particle(BoundingBox.Get_node(main_node_idx))) {
-		Activate_node[main_node_idx].node = Problem_Domain.Indx_here(main_node_idx, BoundingBox);
-	}
 
 	for(UINT k = 1; k < powf(2,DIM); k++){
 
 		INT temp_idx = main_node_idx;
 		
 		for (uint16_t j = 0; j < DIM; j++){
+
 			temp_idx += floor(positive_rem(k, pow(2, j + 1)) / pow(2, j)) * pow(BoundingBox.Nodes_per_Dim, j) * rescaling / 2;
 		}
+		// Global index at the bounding box grid 
 
 		if (Problem_Domain.Contains_particle(BoundingBox.Get_node(temp_idx))) {
+
 			INT temp_2 = Problem_Domain.Indx_here(temp_idx, BoundingBox);
 			
 			Activate_node[temp_idx].node = temp_2;
 
 			if (abs(PDF[temp_2]) >= TOLERANCE_AMR) {
+
 				Activate_node[temp_idx].AMR_selected = 1;
 			}
 		}
@@ -120,7 +121,7 @@ int16_t ADAPT_MESH_REFINEMENT_nD(const thrust::host_vector<T>&	H_PDF,
 		rescaling *= 2;	// our grid<DIM, T> will now have half the number of points
 	}
 
-	thrust::sort(thrust::device, D__Node_selection.begin(),D__Node_selection.end());
+	thrust::sort(thrust::device, D__Node_selection.begin(), D__Node_selection.end());
 	H__Node_selection = D__Node_selection;
 
 	UINT counter = 0;

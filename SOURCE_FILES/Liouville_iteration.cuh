@@ -99,8 +99,8 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 	// Now we make a slightly larger domain for the computations:
 	grid<DIMENSIONS, TYPE> Base_Mesh;
 
-	const TYPE expand_length = search_radius * 2;
-	Base_Mesh.Expand_From(Problem_Domain, expand_length);				// We have created a mesh that is 5% larger than the original one...can be changed of course
+	const TYPE expand_length = 1.1 * Problem_Domain.Discr_length();		// 10% of the domain
+	Base_Mesh.Expand_From(Problem_Domain, expand_length);				// From the initial Problem domain, we create an expanded version (with the same discretization!)
 
 	// --------------------------------------------------------------------------------------------
 	// --------------------------------------------------------------------------------------------
@@ -310,7 +310,8 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 																	MaxNeighborNum,
 																	Adapt_Points,
 																	Block_Particles,
-																	search_radius);
+																	search_radius,
+																	Base_Mesh);
 					gpuError_Check(cudaDeviceSynchronize());
 				}
 				else {
@@ -321,7 +322,8 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 																GPU_Num_Neighbors,
 																Adapt_Points,
 																MaxNeighborNum,
-																search_radius);
+																search_radius,
+																Base_Mesh);
 
 					if (error_check == -1) { break; }
 				}
@@ -342,6 +344,10 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 					Supp_BBox.Boundary_inf.dim[d] = fmax(Problem_Domain.Boundary_inf.dim[d], fmin(Supp_BBox.Boundary_inf.dim[d], temp_1));
 					Supp_BBox.Boundary_sup.dim[d] = fmin(Problem_Domain.Boundary_sup.dim[d], fmax(Supp_BBox.Boundary_sup.dim[d], temp_2));
 				}
+
+				// Make sure that we put these values in the same locations as the base mesh
+				Supp_BBox.Boundary_inf = Problem_Domain.Get_node(Problem_Domain.Get_binIdx(Supp_BBox.Boundary_inf, 0));
+				Supp_BBox.Boundary_sup = Problem_Domain.Get_node(Problem_Domain.Get_binIdx(Supp_BBox.Boundary_sup, 0));
 
 				Supp_BBox.Squarify(Problem_Domain);
 
