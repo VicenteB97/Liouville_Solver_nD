@@ -6,23 +6,51 @@
 int16_t Simul_Data_Def(std::vector<Time_Impulse_vec>& time_vector, double& deltaT, INT& ReinitSteps) {
 // MODIFIABLE
 // 1.- Time values for output + impulse vectors
-	double t0 = 0;
-	double tF;
-	std::cout << "Choose end simulation time: ";
-	std::cin >> tF;
-	if (tF == -1){
-		return -1;
+	double t0 = Time_0, tF;
+
+	bool get_answer = true;
+	while (get_answer) {
+		std::cout << "Choose end simulation time: ";
+		std::cin >> tF;
+		if (tF == -1) {
+			return -1;
+		}
+		else if (tF <= t0) {
+			std::cout << "You must choose a STRICTLY positive time value.\n";
+		}
+		else {
+			get_answer = false;
+		}
 	}
 
-	std::cout << "Choose time-step: ";
-	std::cin >> deltaT;
-	if (deltaT == -1){
-		return -1;
+	get_answer = true; 
+	while (get_answer) {
+		std::cout << "Choose time-step: ";
+		std::cin >> deltaT;
+		if (deltaT == -1) {
+			return -1;
+		}
+		else if (deltaT == 0) {
+			std::cout << "You must choose a STRICTLY positive timestep.\n";
+		}
+		else {
+			get_answer = false;
+		}
 	}
-	std::cout << "Re-initialization steps? (Ideally 2 or 4): ";
-	std::cin >> ReinitSteps;
-	if (ReinitSteps == -1){
-		return -1;
+
+	get_answer = true;
+	while (get_answer) {
+		std::cout << "Re-initialization steps? (Ideally 2 or 4): ";
+		std::cin >> ReinitSteps;
+		if (ReinitSteps == -1) {
+			return -1;
+		}
+		else if (ReinitSteps == 0) {
+			std::cout << "You must choose a STRICTLY positive number of steps.\n";
+		}
+		else {
+			get_answer = false;
+		}
 	}
 
 	while (t0 < tF + ReinitSteps * deltaT / 2) {						// THIS WAY, WE MAKE SURE THAT ROUND-OFF ERRORS ARE NOT ALLOWED!!

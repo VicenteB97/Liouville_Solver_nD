@@ -54,6 +54,9 @@
 	#define UINT uint64_t
 #endif
 
+//Define the number of threads per block (128 for consumer GPUs such as the RTX3060 or Quadro RTX4000)
+#define THREADS_P_BLK 128
+
 inline void gpuAssert (cudaError_t code, const char *file, int line, bool abort = true){
 if (code != cudaSuccess) {
 		fprintf(stderr, "GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
@@ -179,7 +182,7 @@ public:
 
 	// Parametric constructors:
 	__host__ __device__
-		grid<DIM, T>(const INT& Nodes_per_dim) {
+	grid<DIM, T>(const INT& Nodes_per_dim) {
 
 		Nodes_per_Dim = Nodes_per_dim;
 		Boundary_inf  = gridPoint<DIM, T>(DOMAIN_INF);
@@ -187,11 +190,35 @@ public:
 	}
 
 	__host__ __device__
-		grid<DIM, T>(const gridPoint<DIM, T>& Bnd_inf, const gridPoint<DIM, T>& Bnd_sup, const INT& Nodes_per_dim){
+	grid<DIM, T>(const T& Discretization_length) {
+
+		Boundary_inf = gridPoint<DIM, T>(DOMAIN_INF);
+		Boundary_sup = gridPoint<DIM, T>(DOMAIN_SUP);
+		Nodes_per_Dim = ceil((Boundary_sup.dim[0] - Boundary_inf.dim[0]) / Discretization_length);
+	}
+
+	__host__ __device__
+	grid<DIM, T>(const gridPoint<DIM, T>& Bnd_inf, const gridPoint<DIM, T>& Bnd_sup) {
+
+		Nodes_per_Dim = 2;
+		Boundary_inf = Bnd_inf;
+		Boundary_sup = Bnd_sup;
+	}
+
+	__host__ __device__
+	grid<DIM, T>(const gridPoint<DIM, T>& Bnd_inf, const gridPoint<DIM, T>& Bnd_sup, const INT& Nodes_per_dim){
 
 		Nodes_per_Dim	= Nodes_per_dim;
 		Boundary_inf	= Bnd_inf;
 		Boundary_sup	= Bnd_sup;
+	}
+
+	__host__ __device__
+	grid<DIM, T>(const gridPoint<DIM, T>& Bnd_inf, const gridPoint<DIM, T>& Bnd_sup, const T& Discretization_length) {
+
+		Boundary_inf = Bnd_inf;
+		Boundary_sup = Bnd_sup;
+		Nodes_per_Dim = ceil((Boundary_sup.dim[0] - Boundary_inf.dim[0]) / Discretization_length);
 	}
 
 // Methods/functions
@@ -280,6 +307,55 @@ public:
 	__host__ __device__
 	inline INT Indx_here(const INT& indx_at_other, const grid<DIM, T>& other) const {
 		return this->Get_binIdx(other.Get_node(indx_at_other),0);
+	}
+
+	__host__ __device__
+	inline void Expand_From(const grid& Other, const T& expansion_length) {
+		
+		for (uint16_t d = 0; d < DIM; d++) {
+			Boundary_inf.dim[d] = Other.Boundary_inf.dim[d] - expansion_length;
+			Boundary_sup.dim[d] = Other.Boundary_sup.dim[d] + expansion_length;
+		}
+
+		Nodes_per_Dim = ceil((Boundary_sup.dim[0] - Boundary_inf.dim[0]) / Other.Discr_length());
+	}
+
+	/// @brief This function makes you domain a square (same Lebesgue-length in every direction)
+	__host__ __device__ inline void Squarify() {
+		// Get the max distance between the edges and then make the box larger!
+		T max_dist = Boundary_sup.dim[0] - Boundary_inf.dim[0];
+		for (uint16_t d = 1; d < DIM; d++) {
+			max_dist = fmax(max_dist, Boundary_sup.dim[d] - Boundary_inf.dim[d]);
+		}
+
+		// Now that we know the max dist, let's expand the edges!
+		for (uint16_t d = 0; d < DIM; d++) {
+			Boundary_sup.dim[d] = Boundary_inf.dim[d] + max_dist;
+		}
+	}
+
+	/// @brief This function makes the grid a square, with the number of nodes per dim. equal to a power of 2 and the discretization to be equal to that of the "Other" grid
+	__host__ __device__ inline void Squarify(const grid& Other) {
+
+		// Get the max distance between the edges
+		T max_dist = Boundary_sup.dim[0] - Boundary_inf.dim[0];
+		for (uint16_t d = 1; d < DIM; d++) {
+			max_dist = fmax(max_dist, Boundary_sup.dim[d] - Boundary_inf.dim[d]);
+		}
+
+		// How many points do we need with the same discretization of the base mesh?
+		UINT temp_nodes = max_dist / Other.Discr_length() + 1;
+
+		if (fmod(log2(temp_nodes),1)!= 0) { // This means that there are a number of points that is not adequate for the Wavelet transform
+			max_dist = pow(2, ceil(log2(temp_nodes))) * Other.Discr_length();
+		}
+
+		// Now that we know the max dist, let's expand the edges!
+		for (uint16_t d = 0; d < DIM; d++) {
+			Boundary_sup.dim[d] = Boundary_inf.dim[d] + max_dist;
+		}
+
+		Nodes_per_Dim = ceil((Boundary_sup.dim[0] - Boundary_inf.dim[0]) / Other.Discr_length());
 	}
 };
 

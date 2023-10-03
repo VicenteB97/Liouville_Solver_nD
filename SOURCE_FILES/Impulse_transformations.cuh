@@ -57,7 +57,8 @@ int16_t IMPULSE_TRANSFORM_PDF(const std::vector<gridPoint<DIMENSIONS, TYPE>>&	Ad
 							const std::vector<float>&		Adapt_PDF,		// PDF in AMR-selected points
 							const Time_Impulse_vec			time,			// time-impulse information 
 							const INT						jump,			// current jump 
-							const grid<DIMENSIONS, TYPE>&	Base_Mesh,
+							const grid<DIMENSIONS, TYPE>&	Problem_Domain,
+							const grid<DIMENSIONS, TYPE>&	Underlying_Mesh,
 							grid<DIMENSIONS, TYPE>&			Supp_BBox){	 
 
 // 0.- Create the impulse samples
@@ -126,7 +127,7 @@ int16_t IMPULSE_TRANSFORM_PDF(const std::vector<gridPoint<DIMENSIONS, TYPE>>&	Ad
 	
 	// 2.1. - Find near particles
 	const UINT	 MaxNeighborNum = fmin(pow(2 * round(DISC_RADIUS) + 1, DIMENSIONS), Adapt_Points);
-	const float  search_radius 	= DISC_RADIUS * Base_Mesh.Discr_length();						// max radius to search ([4,6] appears to be optimal)
+	const float  search_radius 	= DISC_RADIUS * Problem_Domain.Discr_length();						// max radius to search ([4,6] appears to be optimal)
 
 	const INT	 max_steps 		= 1000;		 		// max steps at the Conjugate Gradient (CG) algorithm
 	const float in_tolerance 	= TOLERANCE_ConjGrad; 	// CG stop tolerance
@@ -145,8 +146,7 @@ int16_t IMPULSE_TRANSFORM_PDF(const std::vector<gridPoint<DIMENSIONS, TYPE>>&	Ad
 														MaxNeighborNum,
 														Adapt_Points,
 														Total_Particles,
-														search_radius,
-														Base_Mesh);
+														search_radius);
 		gpuError_Check(cudaDeviceSynchronize());
 	}
 	else {
@@ -157,8 +157,7 @@ int16_t IMPULSE_TRANSFORM_PDF(const std::vector<gridPoint<DIMENSIONS, TYPE>>&	Ad
 										GPU_Num_Neighbors,
 										Adapt_Points,
 										MaxNeighborNum,
-										search_radius,
-										Base_Mesh);
+										search_radius);
 
 		if (err == -1) { return -1; }
 	}
@@ -171,13 +170,13 @@ int16_t IMPULSE_TRANSFORM_PDF(const std::vector<gridPoint<DIMENSIONS, TYPE>>&	Ad
 		T temp_1 = *(thrust::min_element(thrust::device, projection.begin(), projection.end()));
 		T temp_2 = *(thrust::max_element(thrust::device, projection.begin(), projection.end()));
 
-		Supp_BBox.Boundary_inf.dim[d] = fmax(Base_Mesh.Boundary_inf.dim[d], fmin(Supp_BBox.Boundary_inf.dim[d], temp_1));
-		Supp_BBox.Boundary_sup.dim[d] = fmin(Base_Mesh.Boundary_sup.dim[d], fmax(Supp_BBox.Boundary_sup.dim[d], temp_2));
+		Supp_BBox.Boundary_inf.dim[d] = fmax(Problem_Domain.Boundary_inf.dim[d], fmin(Supp_BBox.Boundary_inf.dim[d], temp_1));
+		Supp_BBox.Boundary_sup.dim[d] = fmin(Problem_Domain.Boundary_sup.dim[d], fmax(Supp_BBox.Boundary_sup.dim[d], temp_2));
 	}
 
 	// Final, updated support bounding box?
-	Supp_BBox.Boundary_inf = Base_Mesh.Get_node(Base_Mesh.Get_binIdx(Supp_BBox.Boundary_inf, -roundf(DISC_RADIUS)));
-	Supp_BBox.Boundary_sup = Base_Mesh.Get_node(Base_Mesh.Get_binIdx(Supp_BBox.Boundary_sup, roundf(DISC_RADIUS)));
+	Supp_BBox.Boundary_inf = Problem_Domain.Get_node(Problem_Domain.Get_binIdx(Supp_BBox.Boundary_inf, -roundf(DISC_RADIUS)));
+	Supp_BBox.Boundary_sup = Problem_Domain.Get_node(Problem_Domain.Get_binIdx(Supp_BBox.Boundary_sup, roundf(DISC_RADIUS)));
 
 	// 2.- Iterative solution (Conjugate Gradient) to obtain coefficients of the RBFs
 	thrust::device_vector<float>	GPU_lambdas(Total_Particles);	// solution vector (RBF weights)
@@ -197,7 +196,7 @@ int16_t IMPULSE_TRANSFORM_PDF(const std::vector<gridPoint<DIMENSIONS, TYPE>>&	Ad
 // 
 // 
 // 3.- Reinitialization
-	GPU_PDF.resize(Base_Mesh.Total_Nodes(), 0);
+	GPU_PDF.resize(Problem_Domain.Total_Nodes(), 0);
 
 for (UINT s = 0; s < Random_Samples; s++){
 	Threads = fminf(THREADS_P_BLK, Adapt_Points);
@@ -210,16 +209,17 @@ for (UINT s = 0; s < Random_Samples; s++){
 													search_radius,
 													Adapt_Points,
 													s,
-													Base_Mesh);
+													Problem_Domain,
+													Underlying_Mesh);
 	gpuError_Check(cudaDeviceSynchronize());
 }			
 
 // Correction of any possible negative PDF values
 		// Re-define Threads and Blocks
-		Threads = fminf(THREADS_P_BLK, Base_Mesh.Total_Nodes());
-		Blocks  = floorf((Base_Mesh.Total_Nodes() - 1) / Threads) + 1;
+		Threads = fminf(THREADS_P_BLK, Problem_Domain.Total_Nodes());
+		Blocks  = floorf((Problem_Domain.Total_Nodes() - 1) / Threads) + 1;
 		
-	CORRECTION <TYPE> <<<Blocks, Threads>>>(rpc(GPU_PDF,0), Base_Mesh.Total_Nodes());
+	CORRECTION <TYPE> <<<Blocks, Threads>>>(rpc(GPU_PDF,0), Problem_Domain.Total_Nodes());
 	gpuError_Check(cudaDeviceSynchronize());
 	
 

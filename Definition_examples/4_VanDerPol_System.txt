@@ -39,7 +39,12 @@
 #define DOMAIN_INF {-5.5, -5.5}
 #define DOMAIN_SUP {5.5 , 5.5}
 
-// inline const TYPE	IC_MEAN[DIMENSIONS] = {0, 0};	
+
+
+static const char   IC_NAMES[DIMENSIONS] = { 'N','N' };
+static const bool   IC_TRUNC[DIMENSIONS] = { true, true};
+static const TYPE   IC_InfTVAL[DIMENSIONS] = { -2, 0.5};
+static const TYPE   IC_SupTVAL[DIMENSIONS] = { 2, 4.5 };
 static const TYPE	IC_MEAN[DIMENSIONS] = { 0, 2.5 };
 static const TYPE	IC_STD[DIMENSIONS] = { sqrtf(0.015f),sqrtf(0.015f) };
 

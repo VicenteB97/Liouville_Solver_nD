@@ -25,30 +25,29 @@
 // Name of the case being simulated
 #define CASE "SIR System"
 
-//Define the number of threads per block (128 for consumer GPUs such as the RTX3060 or Quadro RTX4000)
-#define THREADS_P_BLK 128
-
 // Choosing whether showing full or simplified timing information
 #define OUTPUT_INFO true
 
 #define TYPE float     // only supported values are 'float' and 'double'
 
 // AMR tolerance, Conjugate Gradient tolerance and number of discretization size for the radius of the RBFs
-#define TOLERANCE_AMR       0.75
+#define TOLERANCE_AMR       1
 #define TOLERANCE_ConjGrad  powf(10,-6)     // RECOMMENDED: This appears to give good results...no need to change it
 #define DISC_RADIUS         3.49
+
+#define Time_0 0
 
 // State variables information
 #define DIMENSIONS  3
 #define DOMAIN_INF {0, 0, 0}
 #define DOMAIN_SUP {1, 1, 1}
 
-static const char   IC_NAMES[DIMENSIONS]    = { 'N','N','N' };
-static const bool   IC_TRUNC[DIMENSIONS]    = { true, true, true};
-static const TYPE   IC_InfTVAL[DIMENSIONS]  = { 0.5,0,0 };
-static const TYPE   IC_SupTVAL[DIMENSIONS]  = { 1,0.3,0.25 };
-static const TYPE	IC_MEAN[DIMENSIONS]     = { 0.75, 0.15, 0.1 };
-static const TYPE	IC_STD[DIMENSIONS]      = { sqrtf(0.0001), sqrtf(0.0001), sqrtf(0.0001) };
+static const char   IC_NAMES[DIMENSIONS] = { 'N','N','N' };
+static const bool   IC_TRUNC[DIMENSIONS] = { true, true, true };
+static const TYPE   IC_InfTVAL[DIMENSIONS] = { 0.5,0,0 };
+static const TYPE   IC_SupTVAL[DIMENSIONS] = { 1,0.3,0.25 };
+static const TYPE	IC_MEAN[DIMENSIONS] = { 0.75, 0.15, 0.1 };
+static const TYPE	IC_STD[DIMENSIONS] = { sqrtf(0.0001), sqrtf(0.0001), sqrtf(0.0001) };
 
 // Vector field definition
     // explanation: p0 = \Delta (birth rate), p1 = \mu (death rate), p2 = \beta (S to I transmission), p3 = \gamma (I to R transmission)
