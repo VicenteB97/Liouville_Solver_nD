@@ -310,8 +310,7 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 																	MaxNeighborNum,
 																	Adapt_Points,
 																	Block_Particles,
-																	search_radius,
-																	Base_Mesh);
+																	search_radius);
 					gpuError_Check(cudaDeviceSynchronize());
 				}
 				else {
@@ -322,12 +321,10 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 																GPU_Num_Neighbors,
 																Adapt_Points,
 																MaxNeighborNum,
-																search_radius,
-																Base_Mesh);
+																search_radius);
 
 					if (error_check == -1) { break; }
 				}
-
 
 				// Before going to the next step, define the bounding box of the advected particles!
 				thrust::device_vector<T> projection(Block_Particles,(T)0);
@@ -341,13 +338,13 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 
 					max_length = fmax(max_length, temp_2 - temp_1);
 
-					Supp_BBox.Boundary_inf.dim[d] = fmax(Problem_Domain.Boundary_inf.dim[d], fmin(Supp_BBox.Boundary_inf.dim[d], temp_1));
-					Supp_BBox.Boundary_sup.dim[d] = fmin(Problem_Domain.Boundary_sup.dim[d], fmax(Supp_BBox.Boundary_sup.dim[d], temp_2));
+					Supp_BBox.Boundary_inf.dim[d] = fmax(Base_Mesh.Boundary_inf.dim[d], fmin(Supp_BBox.Boundary_inf.dim[d], temp_1));
+					Supp_BBox.Boundary_sup.dim[d] = fmin(Base_Mesh.Boundary_sup.dim[d], fmax(Supp_BBox.Boundary_sup.dim[d], temp_2));
 				}
 
 				// Make sure that we put these values in the same locations as the base mesh
-				Supp_BBox.Boundary_inf = Problem_Domain.Get_node(Problem_Domain.Get_binIdx(Supp_BBox.Boundary_inf, 0));
-				Supp_BBox.Boundary_sup = Problem_Domain.Get_node(Problem_Domain.Get_binIdx(Supp_BBox.Boundary_sup, 0));
+				Supp_BBox.Boundary_inf = Base_Mesh.Get_node(Base_Mesh.Get_binIdx(Supp_BBox.Boundary_inf, 0));
+				Supp_BBox.Boundary_sup = Base_Mesh.Get_node(Base_Mesh.Get_binIdx(Supp_BBox.Boundary_sup, 0));
 
 				Supp_BBox.Squarify(Problem_Domain);
 

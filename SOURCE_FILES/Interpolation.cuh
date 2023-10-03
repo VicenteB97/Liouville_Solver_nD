@@ -101,8 +101,7 @@ void Neighbor_search(gridPoint<DIM, T>*		Search_Particles,
 					const UINT	Total_Particles,
 					const UINT	offset,
 					const T			search_distance,			// This tells us how many discretizations we have to move back to find initial bin to search from
-					const grid<DIM, T>		Bounding_Box,
-					const grid<DIM, T>		Base_Mesh) {
+					const grid<DIM, T>		Bounding_Box) {
 
 	const uint64_t globalID = blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -118,14 +117,6 @@ void Neighbor_search(gridPoint<DIM, T>*		Search_Particles,
 
 	UINT temp_counter = 0;
 	UINT temp_ID = (globalID + offset) * max_neighbor_num;
-
-	// If the particle is not in the domain, we ignore it
-	if (!Base_Mesh.Contains_particle(fixed_GP)) {
-		Num_Neighbors[globalID + offset] = 1;
-		Matrix_Entries[temp_ID] = RBF(search_distance, 0);
-		Index_Array[temp_ID] = globalID + offset;		// take the number of previous particles into account!
-		return;
-	}
 
 // Now, we go to the lowest bin and we search all the way up!
 	const UINT Bin_offset = roundf(DISC_RADIUS);
@@ -158,7 +149,7 @@ void Neighbor_search(gridPoint<DIM, T>*		Search_Particles,
 				gridPoint<DIM, T>	temp_GP = Search_Particles[m + offset];
 				TYPE		dist = fixed_GP.Distance(temp_GP) / search_distance;
 
-				if (dist <= 1 && temp_counter < max_neighbor_num && Base_Mesh.Contains_particle(temp_GP)) {
+				if (dist <= 1 && temp_counter < max_neighbor_num) {
 					// include particle index into COO-sparse information
 					// include RBF-distance value into matrix values
 					// add count to number of neighbors (maybe optional)
@@ -182,8 +173,7 @@ int16_t _CS_Neighbor_Search(thrust::device_vector<gridPoint<DIM, T>>& Search_Par
 							thrust::device_vector<UINT>& Num_Neighbors,
 							const UINT Adapt_Points, 
 							const UINT max_neighbor_num,
-							const T search_radius,
-							const grid<DIM,T>	Base_Mesh) {
+							const T search_radius) {
 
 	// We need our particles
 	UINT Total_Particles = Search_Particles.size();
@@ -265,8 +255,7 @@ int16_t _CS_Neighbor_Search(thrust::device_vector<gridPoint<DIM, T>>& Search_Par
 													Adapt_Points,
 													offset,
 													search_radius,
-													CS_BBox,
-													Base_Mesh);
+													CS_BBox);
 		gpuError_Check(cudaDeviceSynchronize());
 	}
 	return 0;
@@ -293,8 +282,7 @@ void Exh_PP_Search(const gridPoint<DIM, T>* Search_Particles,
 					const INT max_neighbor_num,
 					const UINT Adapt_Points,
 					const UINT Total_Particles,
-					const T search_radius,
-					const grid<DIM, T> Base_Mesh) {
+					const T search_radius) {
 
 	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -306,8 +294,6 @@ void Exh_PP_Search(const gridPoint<DIM, T>* Search_Particles,
 	Index_Array[k]	= i;
 	Matrix_Entries[k] = RBF(search_radius, 0);
 
-	if (!Base_Mesh.Contains_particle(FP_aux)) { Num_Neighbors[i] = 1; return; }
-
 	UINT		aux = 1;
 	const UINT	i_aux = floorf(i / Adapt_Points);
 	T			dist;
@@ -318,7 +304,7 @@ void Exh_PP_Search(const gridPoint<DIM, T>* Search_Particles,
 
 		dist = Temp_Particle.Distance(FP_aux) / search_radius;	// normalized distance between particles
 
-		if (dist <= 1 && aux < max_neighbor_num && j != i && Base_Mesh.Contains_particle(Temp_Particle)) {
+		if (dist <= 1 && aux < max_neighbor_num && j != i) {
 			Index_Array[k + aux] = j;
 			Matrix_Entries[k + aux] = RBF(search_radius, dist);
 			aux++;
@@ -524,10 +510,8 @@ void RESTART_GRID_FIND_GN(gridPoint<DIM, T>*	Particle_Positions,
 
 	T weighted_lambda = lambdas[i] * aux.Joint_PDF;
 
-	if (!Underlying_Mesh.Contains_particle(particle)) { return; }
-
 	// I want to compute the index of the lowest neighboring grid<DIM, T> node (imagine the lowest corner of a box) and build its nearest neighbors
-	INT lowest_idx  = Underlying_Mesh.Get_binIdx(particle, -roundf(DISC_RADIUS));
+	INT lowest_idx	= Underlying_Mesh.Get_binIdx(particle, -roundf(DISC_RADIUS));
 	INT highest_idx = Underlying_Mesh.Get_binIdx(particle,  roundf(DISC_RADIUS));
 
 	// Use the underlying mesh and then transfer the output to the Problem Domain
@@ -537,14 +521,27 @@ void RESTART_GRID_FIND_GN(gridPoint<DIM, T>*	Particle_Positions,
 	// now, go through all the neighboring grid<DIM, T> nodes and add the values to the PDF field
 	for (UINT j = 0; j < Search_grid.Total_Nodes(); j++) {
 
-		gridPoint<DIM, T> temp_gridNode = Search_grid.Get_node(j);
+		gridPoint<DIM, T> temp_gridNode = Search_grid.Boundary_inf;/*Search_grid.Get_node(j);*/
+		
+		INT idx;
+		if (Mesh.Contains_particle(temp_gridNode)) {
+			 idx = Mesh.Get_binIdx(temp_gridNode,0);
+		}
+
+
+		for (uint16_t d = 0; d < DIMENSIONS; d++) {
+			UINT temp_idx = floorf(positive_rem(j, pow(Search_grid.Nodes_per_Dim, d + 1)) / pow(Search_grid.Nodes_per_Dim, d));
+			idx += temp_idx * pow(Mesh.Nodes_per_Dim, d);
+
+			temp_gridNode.dim[d] += temp_idx * Mesh.Discr_length();
+		}
 
 		if (Mesh.Contains_particle(temp_gridNode))
 		{
 			T dist = temp_gridNode.Distance(particle) / search_radius;
 			if (dist <= 1) {
 
-				INT idx = Mesh.Indx_here(j, Search_grid);
+				//INT idx = Mesh.Indx_here(j, Search_grid);
 				dist = RBF(search_radius, dist) * weighted_lambda;
 				atomicAdd(&PDF[idx], dist);
 			}
