@@ -173,48 +173,42 @@ public:
 	UINT				Nodes_per_Dim;
 
 	// Default constructor:
-	__host__ __device__
-	grid<DIM, T>(){
+	__host__ __device__	grid<DIM, T>(){
 		Nodes_per_Dim	= 1;
 		Boundary_inf	= gridPoint<DIM, T>(DOMAIN_INF);
 		Boundary_sup	= gridPoint<DIM, T>(DOMAIN_SUP);
 	}
 
 	// Parametric constructors:
-	__host__ __device__
-	grid<DIM, T>(const INT& Nodes_per_dim) {
+	__host__ __device__	grid<DIM, T>(const INT& Nodes_per_dim) {
 
 		Nodes_per_Dim = Nodes_per_dim;
 		Boundary_inf  = gridPoint<DIM, T>(DOMAIN_INF);
 		Boundary_sup  = gridPoint<DIM, T>(DOMAIN_SUP);
 	}
 
-	__host__ __device__
-	grid<DIM, T>(const T& Discretization_length) {
+	__host__ __device__	grid<DIM, T>(const T& Discretization_length) {
 
 		Boundary_inf = gridPoint<DIM, T>(DOMAIN_INF);
 		Boundary_sup = gridPoint<DIM, T>(DOMAIN_SUP);
 		Nodes_per_Dim = ceil((Boundary_sup.dim[0] - Boundary_inf.dim[0]) / Discretization_length);
 	}
 
-	__host__ __device__
-	grid<DIM, T>(const gridPoint<DIM, T>& Bnd_inf, const gridPoint<DIM, T>& Bnd_sup) {
+	__host__ __device__	grid<DIM, T>(const gridPoint<DIM, T>& Bnd_inf, const gridPoint<DIM, T>& Bnd_sup) {
 
 		Nodes_per_Dim = 2;
 		Boundary_inf = Bnd_inf;
 		Boundary_sup = Bnd_sup;
 	}
 
-	__host__ __device__
-	grid<DIM, T>(const gridPoint<DIM, T>& Bnd_inf, const gridPoint<DIM, T>& Bnd_sup, const INT& Nodes_per_dim){
+	__host__ __device__	grid<DIM, T>(const gridPoint<DIM, T>& Bnd_inf, const gridPoint<DIM, T>& Bnd_sup, const INT& Nodes_per_dim){
 
 		Nodes_per_Dim	= Nodes_per_dim;
 		Boundary_inf	= Bnd_inf;
 		Boundary_sup	= Bnd_sup;
 	}
 
-	__host__ __device__
-	grid<DIM, T>(const gridPoint<DIM, T>& Bnd_inf, const gridPoint<DIM, T>& Bnd_sup, const T& Discretization_length) {
+	__host__ __device__	grid<DIM, T>(const gridPoint<DIM, T>& Bnd_inf, const gridPoint<DIM, T>& Bnd_sup, const T& Discretization_length) {
 
 		Boundary_inf = Bnd_inf;
 		Boundary_sup = Bnd_sup;
@@ -223,77 +217,54 @@ public:
 
 // Methods/functions
 	// This function gives the total amount of Mesh nodes
-	__host__ __device__
-	inline UINT Total_Nodes() const {
+	__host__ __device__	inline UINT Total_Nodes() const {
 		return pow(Nodes_per_Dim, DIM);
 	}
 
 	// This function gives the length of each edge of our cubical mesh
-	__host__ __device__
-	inline gridPoint<DIM, T> Edge_size() const {
-		return (Boundary_sup - Boundary_inf);
+	__host__ __device__	inline T Edge_size() const {
+		return (Boundary_sup.dim[0] - Boundary_inf.dim[0]);
 	}
 
 	// This function returns the center point of the mesh
-	__host__ __device__
-	inline gridPoint<DIM, T> Center() const {
+	__host__ __device__	inline gridPoint<DIM, T> Center() const {
 		return (Boundary_sup + Boundary_inf).Mult_by_Scalar(0.5);
 	}
 
 	// This function gives the mesh discretization length
-	__host__ __device__
-	inline TYPE Discr_length() const {
+	__host__ __device__	inline TYPE Discr_length() const {
 		if (Nodes_per_Dim == 1) { return (TYPE)0; }
 
-		return (TYPE)(this->Edge_size().dim[0] / (Nodes_per_Dim - 1));
+		return (TYPE)(this->Edge_size() / (Nodes_per_Dim - 1));
 	}
 
 	// Given an index, this function returns the corresponding node
-	__host__ __device__
-	inline gridPoint<DIM, T> Get_node(const INT& globalIdx) const {
+	__host__ __device__	inline gridPoint<DIM, T> Get_node(const INT& globalIdx) const {
 
-		gridPoint<DIM, T> out = Boundary_inf;
+		gridPoint<DIM, T> out;
 
 		for (uint16_t d = 0; d < DIM; d++) {
 			INT j = floor( positive_rem(globalIdx, pow(Nodes_per_Dim, d + 1)) / pow(Nodes_per_Dim, d) );	// This line gives the index at each dimension
 
-			out.dim[d] += j * this->Discr_length();															// This line gives the grid<DIM, TYPE> node per se
+			out.dim[d] = j * this->Discr_length() + Boundary_inf.dim[d];									// This line gives the grid<DIM, TYPE> node per se
 		}
 		return out;
 	}
 
 	// Checks whether Particle belongs to the INTERIOR+BOUNDARY of the grid/mesh
-	__host__ __device__
-	inline bool Contains_particle(const gridPoint<DIM, T>& Particle) const {
+	__host__ __device__	inline bool Contains_particle(const gridPoint<DIM, T>& Particle) const {
 		for (uint16_t d = 0; d < DIM; d++) {
 			if (Particle.dim[d] < Boundary_inf.dim[d] || Particle.dim[d] > Boundary_sup.dim[d]) { return false; }
 		}
 		return true;
 	}
-
-	// Checks whether Particle is in the BOUNDARY of the grid/mesh
-	__host__ __device__
-	inline int16_t Is_in_boundary(const gridPoint<DIM, T>& Particle) const {
-		int16_t out = 0;
-		for (uint16_t d = 0; d < DIM; d++) {
-			if(Particle.dim[d] == Boundary_inf.dim[d]) { out++; } 
-			if(Particle.dim[d] == Boundary_sup.dim[d]) { out++; }
-		}
-		return -1;
-	}
 	
 	// Returns the bin (or ID of the closest node) where Particle belongs to, adding bin_offset.
-	__host__ __device__ 
-	inline INT Get_binIdx(const gridPoint<DIM, T>& Particle, const INT& bin_offset) const {
+	__host__ __device__ inline INT Get_binIdx(const gridPoint<DIM, T>& Particle, const INT& bin_offset) const {
 		INT bin_idx = 0;
  
 		for (uint16_t d = 0; d < DIM; d++) {
 			INT temp_idx = roundf((Particle.dim[d] - Boundary_inf.dim[d]) / this->Discr_length()) + bin_offset;
-
-			// Attempt to access a correct value but...some problems for sure!
-			if (temp_idx < 0 || temp_idx >= Nodes_per_Dim) {
-				return 0;
-			}
 
 			bin_idx += temp_idx * powf(Nodes_per_Dim, d);
 		}
@@ -301,17 +272,17 @@ public:
 	};
 
 	// Compute the global index at your mesh, given the global index in "other" mesh.
-	__host__ __device__
-	inline INT Indx_here(const INT& indx_at_other, const grid<DIM, T>& other) const {
+	__host__ __device__	inline INT Indx_here(const INT& indx_at_other, const grid<DIM, T>& other) const {
 		return this->Get_binIdx(other.Get_node(indx_at_other),0);
 	}
 
-	__host__ __device__
-	inline void Expand_From(const grid& Other, const T& expansion_length) {
+	/// @brief This function expands a fixed grid "Other" by a length of  "expansion_length" in each direction/dimension
+	__host__ __device__	inline void Expand_From(const grid& Other, const T& expansion_length) {
 		
 		for (uint16_t d = 0; d < DIM; d++) {
-			Boundary_inf.dim[d] = Other.Boundary_inf.dim[d] - expansion_length;
-			Boundary_sup.dim[d] = Other.Boundary_sup.dim[d] + expansion_length;
+			// To make sure that the points fall into the grid nodes
+			Boundary_inf.dim[d] = Other.Boundary_inf.dim[d] - Other.Discr_length() * floorf(expansion_length / Other.Discr_length());
+			Boundary_sup.dim[d] = Other.Boundary_sup.dim[d] + Other.Discr_length() * ceilf( expansion_length / Other.Discr_length());
 		}
 
 		Nodes_per_Dim = ceil((Boundary_sup.dim[0] - Boundary_inf.dim[0]) / Other.Discr_length());
@@ -321,6 +292,7 @@ public:
 	__host__ __device__ inline void Squarify() {
 		// Get the max distance between the edges and then make the box larger!
 		T max_dist = Boundary_sup.dim[0] - Boundary_inf.dim[0];
+
 		for (uint16_t d = 1; d < DIM; d++) {
 			max_dist = fmax(max_dist, Boundary_sup.dim[d] - Boundary_inf.dim[d]);
 		}
@@ -329,30 +301,6 @@ public:
 		for (uint16_t d = 0; d < DIM; d++) {
 			Boundary_sup.dim[d] = Boundary_inf.dim[d] + max_dist;
 		}
-	}
-
-	/// @brief This function makes the grid a square, with the number of nodes per dim. equal to a power of 2 and the discretization to be equal to that of the "Other" grid
-	__host__ __device__ inline void Squarify(const grid& Other) {
-
-		// Get the max distance between the edges
-		T max_dist = Boundary_sup.dim[0] - Boundary_inf.dim[0];
-		for (uint16_t d = 1; d < DIM; d++) {
-			max_dist = fmax(max_dist, Boundary_sup.dim[d] - Boundary_inf.dim[d]);
-		}
-
-		// How many points do we need with the same discretization of the base mesh?
-		UINT temp_nodes = max_dist / Other.Discr_length() + 1;
-
-		if (fmod(log2(temp_nodes),1)!= 0) { // This means that there are a number of points that is not adequate for the Wavelet transform
-			max_dist = pow(2, ceil(log2(temp_nodes))) * Other.Discr_length();
-		}
-
-		// Now that we know the max dist, let's expand the edges!
-		for (uint16_t d = 0; d < DIM; d++) {
-			Boundary_sup.dim[d] = Boundary_inf.dim[d] + max_dist;
-		}
-
-		Nodes_per_Dim = ceil((Boundary_sup.dim[0] - Boundary_inf.dim[0]) / Other.Discr_length());
 	}
 };
 

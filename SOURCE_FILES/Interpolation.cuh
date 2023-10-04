@@ -503,50 +503,82 @@ void RESTART_GRID_FIND_GN(gridPoint<DIM, T>*	Particle_Positions,
 
 	if (i >= Adapt_Pts * Block_samples) { return; }
 
-	gridPoint<DIM, T> particle = Particle_Positions[i]; // This part gives the node in space!
+	gridPoint<DIM, T> particle = Particle_Positions[i], fixed_gridNode = Mesh.Boundary_inf; // This part gives the node in space!
 
 	UINT Current_sample = offset + floorf(i / Adapt_Pts);
 	Param_vec aux = _Gather_Param_Vec(Current_sample, Parameter_Mesh, n_Samples);
 
 	T weighted_lambda = lambdas[i] * aux.Joint_PDF;
 
-	// I want to compute the index of the lowest neighboring grid<DIM, T> node (imagine the lowest corner of a box) and build its nearest neighbors
-	INT lowest_idx	= Underlying_Mesh.Get_binIdx(particle, -roundf(DISC_RADIUS));
-	INT highest_idx = Underlying_Mesh.Get_binIdx(particle,  roundf(DISC_RADIUS));
+	INT lowest_idx = 0;
+	for (uint16_t d = 0; d < DIM; d++) {
+		INT temp_idx = roundf((T)(particle.dim[d] - Mesh.Boundary_inf.dim[d]) / Mesh.Discr_length()) - roundf(DISC_RADIUS);
+		lowest_idx += temp_idx * pow(Mesh.Nodes_per_Dim, d);
 
-	// Use the underlying mesh and then transfer the output to the Problem Domain
-	grid<DIM, T> Search_grid(Underlying_Mesh.Get_node(lowest_idx), Underlying_Mesh.Get_node(highest_idx));
-	Search_grid.Nodes_per_Dim = 2 * roundf(DISC_RADIUS) + 1;
+		fixed_gridNode.dim[d] += temp_idx * Mesh.Discr_length();
+	}
 
-	// now, go through all the neighboring grid<DIM, T> nodes and add the values to the PDF field
-	for (UINT j = 0; j < Search_grid.Total_Nodes(); j++) {
+	INT num_neighbors_per_dim = 2 * roundf(DISC_RADIUS) + 1, num_neighbors_per_particle = powf(num_neighbors_per_dim, DIM);
+	gridPoint<DIM, T> temp_gridNode;
+	// now, go through all the neighboring grid nodes and add the values to the PDF field
+	for (UINT j = 0; j < num_neighbors_per_particle; j++) {
+		INT idx = lowest_idx;
 
-		gridPoint<DIM, T> temp_gridNode = Search_grid.Boundary_inf;/*Search_grid.Get_node(j);*/
-		
-		INT idx;
-		if (Mesh.Contains_particle(temp_gridNode)) {
-			 idx = Mesh.Get_binIdx(temp_gridNode,0);
-		}
-
-
-		for (uint16_t d = 0; d < DIMENSIONS; d++) {
-			UINT temp_idx = floorf(positive_rem(j, pow(Search_grid.Nodes_per_Dim, d + 1)) / pow(Search_grid.Nodes_per_Dim, d));
+		for (uint16_t d = 0; d < DIM; d++) {
+			UINT temp_idx = floorf(positive_rem(j, pow(num_neighbors_per_dim, d + 1)) / pow(num_neighbors_per_dim, d));
 			idx += temp_idx * pow(Mesh.Nodes_per_Dim, d);
 
-			temp_gridNode.dim[d] += temp_idx * Mesh.Discr_length();
+			temp_gridNode.dim[d] = temp_idx * Mesh.Discr_length() + fixed_gridNode.dim[d];
 		}
 
-		if (Mesh.Contains_particle(temp_gridNode))
+		if (idx >= 0 && idx < Mesh.Total_Nodes())
 		{
 			T dist = temp_gridNode.Distance(particle) / search_radius;
 			if (dist <= 1) {
-
-				//INT idx = Mesh.Indx_here(j, Search_grid);
 				dist = RBF(search_radius, dist) * weighted_lambda;
 				atomicAdd(&PDF[idx], dist);
 			}
 		}
 	}
+
+
+
+
+
+
+
+
+
+
+
+
+	/*// I want to compute the index of the lowest neighboring grid<DIM, T> node (imagine the lowest corner of a box) and build its nearest neighbors
+	INT lowest_idx	= Underlying_Mesh.Get_binIdx(particle, -roundf(DISC_RADIUS));
+	INT highest_idx = Underlying_Mesh.Get_binIdx(particle,  roundf(DISC_RADIUS));
+
+	// Now I create a grid with the extremal points given by the previous indeces
+	grid<DIM, T> Search_grid(Underlying_Mesh.Get_node(lowest_idx), Underlying_Mesh.Get_node(highest_idx), (T) Underlying_Mesh.Discr_length());
+	
+	// Now, I visit all the nodes from the Search grid and I see whether they're overwriting a problem-grid node
+	for (UINT k = 0; k < Search_grid.Total_Nodes(); k++) {
+
+		gridPoint<DIM, T> visit_node = Search_grid.Get_node(k);
+
+		if (Mesh.Contains_particle(visit_node)) {
+
+			T dist = particle.Distance(visit_node) / search_radius;
+
+			if (dist <= 1) {
+				INT idx = Mesh.Get_binIdx(visit_node, 0);
+
+				dist = RBF(search_radius, dist) * weighted_lambda;
+				atomicAdd(&PDF[idx], dist);
+
+			}
+
+		}
+
+	}*/
 }
 
 template<uint16_t DIM, class T>
@@ -573,25 +605,29 @@ void RESTART_GRID_FIND_GN(gridPoint<DIM, T>*	Particle_Positions,
 	INT lowest_idx = Underlying_Mesh.Get_binIdx(particle, -roundf(DISC_RADIUS));
 	INT highest_idx = Underlying_Mesh.Get_binIdx(particle, roundf(DISC_RADIUS));
 
-	// Here is the problem...we have to use the underlying mesh and then transfer the output to the Problem Domain
+	// Now I create a grid with the extremal points given by the previous indeces
 	grid<DIM, T> Search_grid(Underlying_Mesh.Get_node(lowest_idx), Underlying_Mesh.Get_node(highest_idx));
 	Search_grid.Nodes_per_Dim = 2 * roundf(DISC_RADIUS) + 1;
 
-	// now, go through all the neighboring grid<DIM, T> nodes and add the values to the PDF field
-	for (UINT j = 0; j < Search_grid.Total_Nodes(); j++) {
+	// Now, I visit all the nodes from the Search grid and I see whether they're overwriting a problem-grid node
+	for (UINT k = 0; k < Search_grid.Total_Nodes(); k++) {
 
-		gridPoint<DIM, T> temp_gridNode = Search_grid.Get_node(j);
+		gridPoint<DIM, T> visit_node = Search_grid.Get_node(k);
 
-		if (Mesh.Contains_particle(temp_gridNode))
-		{
-			T dist = temp_gridNode.Distance(particle) / search_radius;
+		if (Mesh.Contains_particle(visit_node)) {
+
+			T dist = particle.Distance(visit_node) / search_radius;
+
 			if (dist <= 1) {
+				INT idx = Mesh.Get_binIdx(dist, 0);
 
-				INT idx = Mesh.Indx_here(j, Search_grid);
 				dist = RBF(search_radius, dist) * weighted_lambda;
 				atomicAdd(&PDF[idx], dist);
+
 			}
+
 		}
+
 	}
 }
 

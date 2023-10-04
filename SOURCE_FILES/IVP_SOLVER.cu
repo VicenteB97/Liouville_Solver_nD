@@ -126,7 +126,8 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 
 		// This one will be defined by the support bounding box of the data. Now we need to get the number of points needed! And, we have to "squarify" it
 		grid<DIMENSIONS, TYPE> Supp_BBox(IC_InfTVAL, IC_SupTVAL);
-		Supp_BBox.Squarify(Problem_Domain);
+		Supp_BBox.Squarify();
+		Supp_BBox.Nodes_per_Dim = ceil((IC_SupTVAL[0] - IC_InfTVAL[0]) / Problem_Domain.Discr_length());
 
 		thrust::host_vector<TYPE> H_PDF(Problem_Domain.Total_Nodes(), 0);	 			// PDF values at the fixed, high-res grid<DIMENSIONS, TYPE> (CPU)
 

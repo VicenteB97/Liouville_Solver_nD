@@ -99,7 +99,7 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 	// Now we make a slightly larger domain for the computations:
 	grid<DIMENSIONS, TYPE> Base_Mesh;
 
-	const TYPE expand_length = 1.1 * Problem_Domain.Discr_length();		// 10% of the domain
+	const TYPE expand_length = 0.5 * Problem_Domain.Edge_size();		// 10% of the domain length
 	Base_Mesh.Expand_From(Problem_Domain, expand_length);				// From the initial Problem domain, we create an expanded version (with the same discretization!)
 
 	// --------------------------------------------------------------------------------------------
@@ -143,7 +143,7 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 
 	auto start_3 = std::chrono::high_resolution_clock::now();
 
-		error_check = ADAPT_MESH_REFINEMENT_nD<DIM, T>(*H_PDF, GPU_PDF, AdaptPDF, AdaptGrid, Problem_Domain, Supp_BBox);
+		error_check = ADAPT_MESH_REFINEMENT_nD<DIM, T>(*H_PDF, GPU_PDF, AdaptPDF, AdaptGrid, Problem_Domain, Base_Mesh, Supp_BBox);
 		if (error_check == -1) { break; }
 
 	auto end_3 = std::chrono::high_resolution_clock::now();
@@ -327,26 +327,25 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 				}
 
 				// Before going to the next step, define the bounding box of the advected particles!
-				thrust::device_vector<T> projection(Block_Particles,(T)0);
-				T max_length = 0;
+					thrust::device_vector<T> projection(Block_Particles,(T)0);
 
-				for (uint16_t d = 0; d < DIM; d++) {
-					findProjection<DIM, T> << <Blocks, Threads >> > (rpc(GPU_Part_Position, 0), rpc(projection, 0), Block_Particles, d);
+					for (uint16_t d = 0; d < DIM; d++) {
+						findProjection<DIM, T> << <Blocks, Threads >> > (rpc(GPU_Part_Position, 0), rpc(projection, 0), Block_Particles, d);
 
-					T temp_1 = *(thrust::min_element(thrust::device, projection.begin(), projection.end()));
-					T temp_2 = *(thrust::max_element(thrust::device, projection.begin(), projection.end()));
+						T temp_1 = *(thrust::min_element(thrust::device, projection.begin(), projection.end())); // min element from the projection in that direction
+						T temp_2 = *(thrust::max_element(thrust::device, projection.begin(), projection.end()));
 
-					max_length = fmax(max_length, temp_2 - temp_1);
+						Supp_BBox.Boundary_inf.dim[d] = fmax(Base_Mesh.Boundary_inf.dim[d], fmin(Supp_BBox.Boundary_inf.dim[d],temp_1)); // So that we don't get out of the underlying mesh
+						Supp_BBox.Boundary_sup.dim[d] = fmin(Base_Mesh.Boundary_sup.dim[d], fmax(Supp_BBox.Boundary_sup.dim[d],temp_2)); // So that we don't get out of the underlying mesh
+					}
 
-					Supp_BBox.Boundary_inf.dim[d] = fmax(Base_Mesh.Boundary_inf.dim[d], fmin(Supp_BBox.Boundary_inf.dim[d], temp_1));
-					Supp_BBox.Boundary_sup.dim[d] = fmin(Base_Mesh.Boundary_sup.dim[d], fmax(Supp_BBox.Boundary_sup.dim[d], temp_2));
-				}
+					Supp_BBox.Boundary_inf = Base_Mesh.Get_node(Base_Mesh.Get_binIdx(Supp_BBox.Boundary_inf, -roundf(DISC_RADIUS)));
+					Supp_BBox.Boundary_sup = Base_Mesh.Get_node(Base_Mesh.Get_binIdx(Supp_BBox.Boundary_sup,  roundf(DISC_RADIUS)));
 
-				// Make sure that we put these values in the same locations as the base mesh
-				Supp_BBox.Boundary_inf = Base_Mesh.Get_node(Base_Mesh.Get_binIdx(Supp_BBox.Boundary_inf, 0));
-				Supp_BBox.Boundary_sup = Base_Mesh.Get_node(Base_Mesh.Get_binIdx(Supp_BBox.Boundary_sup, 0));
 
-				Supp_BBox.Squarify(Problem_Domain);
+					// THIS IS FOR DEBUGGING!!!!!
+					//Supp_BBox = Problem_Domain;
+					////////////////////////////
 
 				end_3 = std::chrono::high_resolution_clock::now();
 				duration_3 = end_3 - start_3;
