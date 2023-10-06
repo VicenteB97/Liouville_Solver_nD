@@ -461,7 +461,7 @@ __global__ void RESTART_GRID_FIND_GN(gridPoint<DIM, T>* Particle_Positions,
 
 	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
 
-	if (i >= Adapt_Pts * Block_samples) { return; }
+	/*if (i >= Adapt_Pts * Block_samples) { return; }
 
 	gridPoint<DIM, T> particle = Particle_Positions[i], fixed_gridNode = Mesh.Boundary_inf; // This part gives the node in space!
 
@@ -499,49 +499,60 @@ __global__ void RESTART_GRID_FIND_GN(gridPoint<DIM, T>* Particle_Positions,
 				atomicAdd(&PDF[idx], dist);
 			}
 		}
-	}
+	}*/
 
-	/*		if (i >= Adapt_Pts * Block_samples) { return; }
+	if (i >= Adapt_Pts * Block_samples) { return; }
 
-	UINT Current_sample = offset + floorf(i / Adapt_Pts);
-	Param_vec aux = _Gather_Param_Vec(Current_sample, Parameter_Mesh, n_Samples);
+	UINT		Current_sample	= offset + floorf(i / Adapt_Pts);
+	Param_vec	aux				= _Gather_Param_Vec(Current_sample, Parameter_Mesh, n_Samples);
 
 	T weighted_lambda = lambdas[i] * aux.Joint_PDF;
 
-gridPoint<DIM, T>	particle = Particle_Positions[i], fixed_gridNode = Mesh.Boundary_inf; // This part gives the node in space!
+	gridPoint<DIM, T>	particle = Particle_Positions[i];
 
+	// Find the point in the lowest corner of the search box!
+	gridPoint<DIM, T> Lowest_node;
 
-	// Find the point in the lowest corner 
 	for (uint16_t d = 0; d < DIM; d++) {
-		INT temp_idx = roundf((T)(particle.dim[d] - Mesh.Boundary_inf.dim[d]) / Mesh.Discr_length()) - roundf(DISC_RADIUS);
-		fixed_gridNode.dim[d] += temp_idx * Mesh.Discr_length();
+		INT temp_idx = roundf((particle.dim[d] - Mesh.Boundary_inf.dim[d]) / Mesh.Discr_length()) - roundf(DISC_RADIUS);
+		Lowest_node.dim[d] = temp_idx * Mesh.Discr_length();
 	}
 
-	INT num_neighbors_per_dim		= 2 * roundf(DISC_RADIUS) + 1, 
-		num_neighbors_per_particle	= powf(num_neighbors_per_dim, DIM);
+	INT Neighbors_per_dim = 2 * roundf(DISC_RADIUS) + 1;
+	
+	// Go through all the nodes where rewriting will be possible
+	for (uint16_t k = 0; k < pow(Neighbors_per_dim, DIM); k++) {
 
-	gridPoint<DIM, T> temp_gridNode = fixed_gridNode;
+		gridPoint<DIM, T> visit_node = Lowest_node;
 
-	// now, go through all the neighboring grid nodes and add the values to the PDF field
-	for (UINT j = 0; j < num_neighbors_per_particle; j++) {
-
+		// Get the node at that point
 		for (uint16_t d = 0; d < DIM; d++) {
-			UINT temp_idx = floorf(positive_rem(j, pow(num_neighbors_per_dim, d + 1)) / pow(num_neighbors_per_dim, d));
-			temp_gridNode.dim[d] += temp_idx * Mesh.Discr_length();
+			INT temp_idx = floorf(positive_rem(k, pow(Neighbors_per_dim, d + 1)) / pow(Neighbors_per_dim, d));
+			visit_node.dim[d] += temp_idx * Mesh.Discr_length();
 		}
 
-		if (Mesh.Contains_particle(temp_gridNode))
-		{
-			T dist = temp_gridNode.Distance(particle) / search_radius;
-			INT idx = Mesh.Get_binIdx(temp_gridNode);
+		// If it is inside our problem mesh...
+		if (Mesh.Contains_particle(visit_node)) {
 
-			if (dist <= 1 && idx > -1 && idx <= Mesh.Total_Nodes()) {
+			// Calculate normalized distance
+			T dist = visit_node.Distance(particle) / search_radius;
+
+			// if it's inside the RBF support...
+			if (dist <= 1) {
 
 				dist = RBF(search_radius, dist) * weighted_lambda;
+
+				INT idx = 0;
+				for (uint16_t d = 0; d < DIM; d++) {
+					idx += roundf((visit_node.dim[d] - Mesh.Boundary_inf.dim[d]) / Mesh.Discr_length()) * pow(Mesh.Nodes_per_Dim, d);
+				}
+
 				atomicAdd(&PDF[idx], dist);
 			}
+
 		}
-	}*/
+	}
+
 }
 
 

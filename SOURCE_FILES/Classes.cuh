@@ -191,7 +191,7 @@ public:
 
 		Boundary_inf = gridPoint<DIM, T>(DOMAIN_INF);
 		Boundary_sup = gridPoint<DIM, T>(DOMAIN_SUP);
-		Nodes_per_Dim = 1 + floor((Boundary_sup.dim[0] - Boundary_inf.dim[0]) / Discretization_length);
+		Nodes_per_Dim = roundf((Boundary_sup.dim[0] - Boundary_inf.dim[0]) / Discretization_length);
 	}
 
 	__host__ __device__	grid<DIM, T>(const gridPoint<DIM, T>& Bnd_inf, const gridPoint<DIM, T>& Bnd_sup) {
@@ -212,7 +212,7 @@ public:
 
 		Boundary_inf = Bnd_inf;
 		Boundary_sup = Bnd_sup;
-		Nodes_per_Dim = 1 + floor((Boundary_sup.dim[0] - Boundary_inf.dim[0]) / Discretization_length);
+		Nodes_per_Dim = roundf((Boundary_sup.dim[0] - Boundary_inf.dim[0]) / Discretization_length);
 	}
 
 // Methods/functions
@@ -232,19 +232,19 @@ public:
 	}
 
 	// This function gives the mesh discretization length
-	__host__ __device__	inline TYPE Discr_length() const {
-		if (Nodes_per_Dim == 1) { return (TYPE)0; }
+	__host__ __device__	inline T Discr_length() const {
+		if (Nodes_per_Dim == 1) { return (T)0; }
 
-		return (TYPE)(this->Edge_size() / (Nodes_per_Dim - 1));
+		return (T)(this->Edge_size() / (Nodes_per_Dim - 1));
 	}
 
 	// Given an index, this function returns the corresponding node at the grid
 	__host__ __device__	inline gridPoint<DIM, T> Get_node(const INT& globalIdx) const {
 
-		gridPoint<DIM, T> out = Boundary_inf;
+		gridPoint<DIM, T> out(Boundary_inf);
 
 		for (uint16_t d = 0; d < DIM; d++) {
-			INT j = floor( positive_rem(globalIdx, pow(Nodes_per_Dim, d + 1)) / pow(Nodes_per_Dim, d) );	// This line gives the index at each dimension
+			INT j = floorf( positive_rem(globalIdx, pow(Nodes_per_Dim, d + 1)) / pow(Nodes_per_Dim, d) );	// This line gives the index at each dimension
 
 			out.dim[d] += j * this->Discr_length();															// This line gives the grid node per se
 		}
@@ -289,15 +289,15 @@ public:
 	}
 
 	/// @brief This function expands a fixed grid "Other" by a length of  "expansion_length" in each direction/dimension
-	__host__ __device__	inline void Expand_From(const grid& Other, const T& expansion_length) {
+	__host__ __device__	inline void Expand_From(const grid& Other, const UINT& expansion_nodes) {
 		
 		for (uint16_t d = 0; d < DIM; d++) {
 			// To make sure that the points fall into the grid nodes
-			Boundary_inf.dim[d] = Other.Boundary_inf.dim[d] - Other.Discr_length() * floorf(expansion_length / Other.Discr_length());
-			Boundary_sup.dim[d] = Other.Boundary_sup.dim[d] + Other.Discr_length() * ceilf( expansion_length / Other.Discr_length());
+			Boundary_inf.dim[d] = Other.Boundary_inf.dim[d] - Other.Discr_length() * expansion_nodes;
+			Boundary_sup.dim[d] = Other.Boundary_sup.dim[d] + Other.Discr_length() * expansion_nodes;
 		}
 
-		Nodes_per_Dim = 1 + round((Boundary_sup.dim[0] - Boundary_inf.dim[0]) / Other.Discr_length());
+		Nodes_per_Dim = Other.Nodes_per_Dim + 2 * expansion_nodes;
 	}
 
 	/// @brief This function makes you domain a square (same Lebesgue-length in every direction)
@@ -306,7 +306,7 @@ public:
 		T max_dist = Boundary_sup.dim[0] - Boundary_inf.dim[0];
 
 		for (uint16_t d = 1; d < DIM; d++) {
-			max_dist = fmax(max_dist, Boundary_sup.dim[d] - Boundary_inf.dim[d]);
+			max_dist = fmaxf(max_dist, Boundary_sup.dim[d] - Boundary_inf.dim[d]);
 		}
 
 		// Now that we know the max dist, let's expand the edges!
@@ -411,6 +411,16 @@ __host__ __device__ inline Param_vec _Gather_Param_Vec(const UINT index, const P
 		aux_samples_sum  += aux3;
 	}
 	return Output;
+}
+
+template<uint16_t DIM, class T>
+__host__ __device__ T Distance(const gridPoint<DIM,T> &Particle_1, const gridPoint<DIM, T>& Particle_2) {
+	T output = 0;
+	for (uint16_t d = 0; d < DIM; d++) {
+		output += (Particle_1.dim[d] - Particle_2.dim[d]) * (Particle_1.dim[d] - Particle_2.dim[d]);
+	}
+
+	return sqrt(output);
 }
 // +===========================================================================+ //
 // +===========================================================================+ //

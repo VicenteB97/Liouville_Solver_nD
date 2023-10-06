@@ -99,8 +99,8 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 	// Now we make a slightly larger domain for the computations:
 	grid<DIMENSIONS, TYPE> Base_Mesh;
 
-	const TYPE expand_length = 0.3 * Problem_Domain.Edge_size();		// 30% of the domain length
-	Base_Mesh.Expand_From(Problem_Domain, expand_length);				// From the initial Problem domain, we create an expanded version (with the same discretization!)
+	const UINT expansion_nodes = 40;									// 30% of the domain length
+	Base_Mesh.Expand_From(Problem_Domain, expansion_nodes);				// From the initial Problem domain, we create an expanded version (with the same discretization!)
 
 	// --------------------------------------------------------------------------------------------
 	// --------------------------------------------------------------------------------------------
@@ -397,6 +397,9 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 				GPU_PDF.resize(Problem_Domain.Total_Nodes(), 0);	// PDF is reset to 0, so that we may use atomic adding at the remeshing step
 				Threads = fminf(THREADS_P_BLK, Block_Particles);
 				Blocks  = floorf((Block_Particles - 1) / Threads) + 1;
+
+				T temp_debug = Base_Mesh.Discr_length();
+				T temp_debug_2 = Problem_Domain.Discr_length();
 
 				start_3 = std::chrono::high_resolution_clock::now();
 				RESTART_GRID_FIND_GN<DIM,T> << < Blocks, Threads >> > (	rpc(GPU_Part_Position, 0),
