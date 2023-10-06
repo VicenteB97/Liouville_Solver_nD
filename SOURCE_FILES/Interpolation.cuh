@@ -19,8 +19,7 @@
 __device__ inline TYPE RBF(const TYPE support_radius, const TYPE x);
 
 template<uint16_t DIM, class T>
-__global__
-void findProjection(const gridPoint<DIM, T>* particles, T* projections, const UINT totalParticles, const UINT dimension) {
+__global__ void findProjection(const gridPoint<DIM, T>* particles, T* projections, const UINT totalParticles, const UINT dimension) {
 	
 	const uint64_t globalID = blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -29,25 +28,25 @@ void findProjection(const gridPoint<DIM, T>* particles, T* projections, const UI
 	projections[globalID] = particles[globalID].dim[dimension];
 }
 
+
 template<uint16_t DIM, class T>
-__global__ 
-void Bin_Insertion_Count(INT*		Bin_locations,
+__global__ void Bin_Insertion_Count(INT*		Bin_locations,
 						INT*		Bin_count,
 						INT*		Bin_local_accSum,
 						const gridPoint<DIM, T>* Search_Particles,
 						const grid<DIM, T>	Bounding_Box,
-						const UINT	Total_Particles,
-						const UINT	offset){
+						const UINT	Total_Particles){
 		
 	const uint64_t globalID = blockDim.x * blockIdx.x + threadIdx.x;
 
 	if (globalID >= Total_Particles) { return; }
 
-	gridPoint<DIM, T> temp_GP = Search_Particles[globalID + offset];
+	gridPoint<DIM, T> temp_GP = Search_Particles[globalID];
 
 	// Find the Bin where it belongs. We use an unsigned int because since we are working with the bounding box,
 	// we're never going to have a point outside. Therefore, there will be a positive index for the bin location.
-	UINT bin_idx = Bounding_Box.Get_binIdx(temp_GP, 0);
+
+	INT bin_idx = Bounding_Box.Get_binIdx(temp_GP);	// this part should be positive...why aren't we getting a positive number?
 
 	// Now, we've got the nearest bin index. This tells the idx of the bin center containing a given particle
 	Bin_locations[globalID] = bin_idx;
@@ -56,9 +55,9 @@ void Bin_Insertion_Count(INT*		Bin_locations,
 	Bin_local_accSum[globalID] = atomicAdd((UINT*) & Bin_count[bin_idx], (UINT)1);
 }
 
+
 template<uint16_t DIM, class T>
-__global__ 
-void Count_sort(const gridPoint<DIM, T>*	fixed_Particles, 
+__global__ void Count_sort(const gridPoint<DIM, T>*	fixed_Particles,
 				gridPoint<DIM, T>*			Particles_2sort, 
 				const T*			fixed_values, 
 				T*					values_2sort,
@@ -90,9 +89,9 @@ void Count_sort(const gridPoint<DIM, T>*	fixed_Particles,
 
 }
 
+
 template<uint16_t DIM, class T>
-__global__ 
-void Neighbor_search(gridPoint<DIM, T>*		Search_Particles,
+__global__ void Neighbor_search(gridPoint<DIM, T>*		Search_Particles,
 					const INT* Bin_count,
 					INT*		Index_Array,
 					T*				Matrix_Entries,
@@ -164,9 +163,9 @@ void Neighbor_search(gridPoint<DIM, T>*		Search_Particles,
 }
 
 // Counting sort! This operation orders the grid<DIM, T> indeces and it sets the number of nodes inside each bin
+
 template<uint16_t DIM, class T>
-__host__
-int16_t _CS_Neighbor_Search(thrust::device_vector<gridPoint<DIM, T>>& Search_Particles,
+__host__ int16_t _CS_Neighbor_Search(thrust::device_vector<gridPoint<DIM, T>>& Search_Particles,
 							thrust::device_vector<T> &PDF_vals,
 							thrust::device_vector<INT>& Index_Array,
 							thrust::device_vector<T>& Matrix_Entries,
@@ -210,7 +209,7 @@ int16_t _CS_Neighbor_Search(thrust::device_vector<gridPoint<DIM, T>>& Search_Par
 		projection.clear();
 
 	// We obtain the number of bins/nodes of our bounding box (per dimension). We build it as a square/cube
-		CS_BBox.Nodes_per_Dim = 64;
+		CS_BBox.Nodes_per_Dim = 128;
 
 	// Reinitialize the particle count array
 		thrust::device_vector<INT> Bin_globalCount(CS_BBox.Total_Nodes(), 0);
@@ -220,10 +219,9 @@ int16_t _CS_Neighbor_Search(thrust::device_vector<gridPoint<DIM, T>>& Search_Par
 		Bin_Insertion_Count<DIM, T> << <Threads, Blocks >> > (rpc(Bin_locations, 0), 
 														rpc(Bin_globalCount, 0),
 														rpc(Bin_localCount, 0),
-														rpc(Search_Particles, 0), 
+														rpc(Search_Particles, offset), 
 														CS_BBox, 
-														Adapt_Points,
-														offset);
+														Adapt_Points);
 		gpuError_Check(cudaDeviceSynchronize());
 
 	// Prefix sum of the bin-count array, which gives the cumulative points in each bin (without including the bin itself; thus the name exclusive)
@@ -261,20 +259,9 @@ int16_t _CS_Neighbor_Search(thrust::device_vector<gridPoint<DIM, T>>& Search_Par
 	return 0;
 }
 
-/// @brief Exhaustive PP search (in the respective parameter sample neighborhood)
-/// @param Search_Particles 
-/// @param Fixed_Particles 
-/// @param Index_Array 
-/// @param Matrix_Entries 
-/// @param Num_Neighbors 
-/// @param max_neighbor_num 
-/// @param Adapt_Points 
-/// @param Total_Particles 
-/// @param search_radius 
-/// @return 
+
 template<uint16_t DIM, class T>
-__global__ 
-void Exh_PP_Search(const gridPoint<DIM, T>* Search_Particles,
+__global__ void Exh_PP_Search(const gridPoint<DIM, T>* Search_Particles,
 					const gridPoint<DIM, T>* Fixed_Particles,
 					INT* Index_Array,
 					T* Matrix_Entries,
@@ -295,7 +282,7 @@ void Exh_PP_Search(const gridPoint<DIM, T>* Search_Particles,
 	Matrix_Entries[k] = RBF(search_radius, 0);
 
 	UINT		aux = 1;
-	const UINT	i_aux = floorf(i / Adapt_Points);
+	const INT	i_aux = floorf(i / Adapt_Points);
 	T			dist;
 
 	for (UINT j = i_aux * Adapt_Points; j < (i_aux + 1) * Adapt_Points; j++) {		// neighborhood where I'm searching
@@ -316,16 +303,9 @@ void Exh_PP_Search(const gridPoint<DIM, T>* Search_Particles,
 //---------------------------------------------------------------------------------------------------------------------//
 //---------------------------------------------------------------------------------------------------------------------//
 
+
 template<class T>
-/// @brief General function for computing the "update" of a vector x0, storing it in x
-/// @param x Output vector
-/// @param x0 Vec. to be updated
-/// @param scalar "Strength" of the updating vector
-/// @param v "Direction" of the updating vector
-/// @param Max_Length Length of the vectors
-/// @return 
-__global__ 
-void UPDATE_VEC(T* x, const T* x0, const T scalar, const T* v, const INT Max_Length) {
+__global__ void UPDATE_VEC(T* x, const T* x0, const T scalar, const T* v, const INT Max_Length) {
 	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
 
 	if (i < Max_Length) {
@@ -333,18 +313,10 @@ void UPDATE_VEC(T* x, const T* x0, const T scalar, const T* v, const INT Max_Len
 	}
 }
 
+
+
 template<class T>
-/// @brief This function performs a sparse matrix multiplication
-/// @param X 
-/// @param x0 
-/// @param Matrix_idxs 
-/// @param Matrix_entries 
-/// @param total_length 
-/// @param Interaction_Lengths 
-/// @param Max_Neighbors 
-/// @return 
-__global__ 
-void MATRIX_VECTOR_MULTIPLICATION(T* X, const T* x0, const INT* Matrix_idxs, const T* Matrix_entries, const INT total_length, const UINT* Interaction_Lengths, const INT Max_Neighbors) {
+__global__ void MATRIX_VECTOR_MULTIPLICATION(T* X, const T* x0, const INT* Matrix_idxs, const T* Matrix_entries, const INT total_length, const UINT* Interaction_Lengths, const INT Max_Neighbors) {
 
 	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;	// For each i, which represents the matrix row, we read the index positions and multiply against the particle weights
 
@@ -368,20 +340,9 @@ void MATRIX_VECTOR_MULTIPLICATION(T* X, const T* x0, const INT* Matrix_idxs, con
 	X[i] = a;								// particle weights
 }
 
+
 template<class T>
-/// @brief This function solves a linear system of equations where the matrix is SPARSE, SYMMETRIC AND POSITIVE DEFINITE
-/// @param GPU_lambdas 
-/// @param GPU_Index_array 
-/// @param GPU_Mat_entries 
-/// @param GPU_Num_Neighbors 
-/// @param GPU_AdaptPDF 
-/// @param Total_Particles 
-/// @param MaxNeighborNum 
-/// @param max_steps 
-/// @param in_tolerance 
-/// @return An integer for determining whether it has exited successfully or not
-__host__ 
-int16_t CONJUGATE_GRADIENT_SOLVE(	thrust::device_vector<T>&		GPU_lambdas,
+__host__ int16_t CONJUGATE_GRADIENT_SOLVE(	thrust::device_vector<T>&		GPU_lambdas,
 									thrust::device_vector<INT>& GPU_Index_array,
 									thrust::device_vector<T>&		GPU_Mat_entries,
 									thrust::device_vector<UINT>& GPU_Num_Neighbors,
@@ -465,7 +426,7 @@ int16_t CONJUGATE_GRADIENT_SOLVE(	thrust::device_vector<T>&		GPU_lambdas,
 		}
 		else if (k > max_steps) {
 			std::cout << "No convergence was obtained after reaching max. allowed iterations. Last residual norm was: " << r_norm << "\n";
-			std::cout << "/-------------------------------------------------------------------/\n";
+			std::cout << "+-------------------------------------------------------------------+\n";
 
 			std::cin.get();
 			output = -1;
@@ -484,20 +445,19 @@ int16_t CONJUGATE_GRADIENT_SOLVE(	thrust::device_vector<T>&		GPU_lambdas,
 }
 
 
+
 template<uint16_t DIM, class T>
-__global__ 
-void RESTART_GRID_FIND_GN(gridPoint<DIM, T>*	Particle_Positions,
-							T*					PDF,
-							T*					lambdas,
-							const Param_pair*	Parameter_Mesh,
-							const INT* 			n_Samples,
-							const T 	 		search_radius,
-							const UINT	 		Adapt_Pts,
-							const UINT	 		Block_samples,
-							const UINT	 		offset,
-							const grid<DIM, T> 	Mesh,
-							const grid<DIM, T>	Underlying_Mesh) {
-	// OUTPUT: New values of the PDF at the fixed grid<DIM, T>
+__global__ void RESTART_GRID_FIND_GN(gridPoint<DIM, T>* Particle_Positions,
+									T* PDF,
+									T* lambdas,
+									const Param_pair* Parameter_Mesh,
+									const INT* n_Samples,
+									const T 	 		search_radius,
+									const UINT	 		Adapt_Pts,
+									const UINT	 		Block_samples,
+									const UINT	 		offset,
+									const grid<DIM, T> 	Mesh,
+									const grid<DIM, T>	Underlying_Mesh) {
 
 	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -541,49 +501,52 @@ void RESTART_GRID_FIND_GN(gridPoint<DIM, T>*	Particle_Positions,
 		}
 	}
 
+	/*		if (i >= Adapt_Pts * Block_samples) { return; }
+
+	UINT Current_sample = offset + floorf(i / Adapt_Pts);
+	Param_vec aux = _Gather_Param_Vec(Current_sample, Parameter_Mesh, n_Samples);
+
+	T weighted_lambda = lambdas[i] * aux.Joint_PDF;
+
+gridPoint<DIM, T>	particle = Particle_Positions[i], fixed_gridNode = Mesh.Boundary_inf; // This part gives the node in space!
 
 
+	// Find the point in the lowest corner 
+	for (uint16_t d = 0; d < DIM; d++) {
+		INT temp_idx = roundf((T)(particle.dim[d] - Mesh.Boundary_inf.dim[d]) / Mesh.Discr_length()) - roundf(DISC_RADIUS);
+		fixed_gridNode.dim[d] += temp_idx * Mesh.Discr_length();
+	}
 
+	INT num_neighbors_per_dim		= 2 * roundf(DISC_RADIUS) + 1, 
+		num_neighbors_per_particle	= powf(num_neighbors_per_dim, DIM);
 
+	gridPoint<DIM, T> temp_gridNode = fixed_gridNode;
 
+	// now, go through all the neighboring grid nodes and add the values to the PDF field
+	for (UINT j = 0; j < num_neighbors_per_particle; j++) {
 
+		for (uint16_t d = 0; d < DIM; d++) {
+			UINT temp_idx = floorf(positive_rem(j, pow(num_neighbors_per_dim, d + 1)) / pow(num_neighbors_per_dim, d));
+			temp_gridNode.dim[d] += temp_idx * Mesh.Discr_length();
+		}
 
+		if (Mesh.Contains_particle(temp_gridNode))
+		{
+			T dist = temp_gridNode.Distance(particle) / search_radius;
+			INT idx = Mesh.Get_binIdx(temp_gridNode);
 
-
-
-
-	/*// I want to compute the index of the lowest neighboring grid<DIM, T> node (imagine the lowest corner of a box) and build its nearest neighbors
-	INT lowest_idx	= Underlying_Mesh.Get_binIdx(particle, -roundf(DISC_RADIUS));
-	INT highest_idx = Underlying_Mesh.Get_binIdx(particle,  roundf(DISC_RADIUS));
-
-	// Now I create a grid with the extremal points given by the previous indeces
-	grid<DIM, T> Search_grid(Underlying_Mesh.Get_node(lowest_idx), Underlying_Mesh.Get_node(highest_idx), (T) Underlying_Mesh.Discr_length());
-	
-	// Now, I visit all the nodes from the Search grid and I see whether they're overwriting a problem-grid node
-	for (UINT k = 0; k < Search_grid.Total_Nodes(); k++) {
-
-		gridPoint<DIM, T> visit_node = Search_grid.Get_node(k);
-
-		if (Mesh.Contains_particle(visit_node)) {
-
-			T dist = particle.Distance(visit_node) / search_radius;
-
-			if (dist <= 1) {
-				INT idx = Mesh.Get_binIdx(visit_node, 0);
+			if (dist <= 1 && idx > -1 && idx <= Mesh.Total_Nodes()) {
 
 				dist = RBF(search_radius, dist) * weighted_lambda;
 				atomicAdd(&PDF[idx], dist);
-
 			}
-
 		}
-
 	}*/
 }
 
+
 template<uint16_t DIM, class T>
-__global__ 
-void RESTART_GRID_FIND_GN(gridPoint<DIM, T>*	Particle_Positions,
+__global__ void RESTART_GRID_FIND_GN(gridPoint<DIM, T>*	Particle_Positions,
 							float*				PDF,
 							float*				lambdas,
 							const Impulse_Param_vec* Impulse_weights,
@@ -601,43 +564,50 @@ void RESTART_GRID_FIND_GN(gridPoint<DIM, T>*	Particle_Positions,
 
 	T weighted_lambda = lambdas[i + Current_sample * Adapt_Pts] * Impulse_weights[Current_sample].Joint_PDF;				// the specific sample weight
 
-	// I want to compute the index of the lowest neighboring grid<DIM, T> node (imagine the lowest corner of a box) and build its nearest neighbors
-	INT lowest_idx = Underlying_Mesh.Get_binIdx(particle, -roundf(DISC_RADIUS));
-	INT highest_idx = Underlying_Mesh.Get_binIdx(particle, roundf(DISC_RADIUS));
 
-	// Now I create a grid with the extremal points given by the previous indeces
-	grid<DIM, T> Search_grid(Underlying_Mesh.Get_node(lowest_idx), Underlying_Mesh.Get_node(highest_idx));
-	Search_grid.Nodes_per_Dim = 2 * roundf(DISC_RADIUS) + 1;
 
-	// Now, I visit all the nodes from the Search grid and I see whether they're overwriting a problem-grid node
-	for (UINT k = 0; k < Search_grid.Total_Nodes(); k++) {
+	INT lowest_idx = 0;
+	gridPoint<DIM, T> fixed_gridNode = Mesh.Boundary_inf;
 
-		gridPoint<DIM, T> visit_node = Search_grid.Get_node(k);
+	for (uint16_t d = 0; d < DIM; d++) {
+		INT temp_idx = roundf((T)(particle.dim[d] - Mesh.Boundary_inf.dim[d]) / Mesh.Discr_length()) - roundf(DISC_RADIUS);
+		lowest_idx += temp_idx * pow(Mesh.Nodes_per_Dim, d);
 
-		if (Mesh.Contains_particle(visit_node)) {
+		fixed_gridNode.dim[d] += temp_idx * Mesh.Discr_length();
+	}
 
-			T dist = particle.Distance(visit_node) / search_radius;
+	INT num_neighbors_per_dim = 2 * roundf(DISC_RADIUS) + 1, num_neighbors_per_particle = powf(num_neighbors_per_dim, DIM);
+	gridPoint<DIM, T> temp_gridNode = fixed_gridNode;
 
-			if (dist <= 1) {
-				INT idx = Mesh.Get_binIdx(dist, 0);
+	// now, go through all the neighboring grid nodes and add the values to the PDF field
+	for (UINT j = 0; j < num_neighbors_per_particle; j++) {
+		INT idx = lowest_idx;
 
-				dist = RBF(search_radius, dist) * weighted_lambda;
-				atomicAdd(&PDF[idx], dist);
+		for (uint16_t d = 0; d < DIM; d++) {
+			UINT temp_idx = floorf(positive_rem(j, pow(num_neighbors_per_dim, d + 1)) / pow(num_neighbors_per_dim, d));
+			idx += temp_idx * pow(Mesh.Nodes_per_Dim, d);
 
-			}
-
+			temp_gridNode.dim[d] += temp_idx * Mesh.Discr_length();
 		}
 
+		if (idx >= 0 && idx < Mesh.Total_Nodes())
+		{
+			T dist = temp_gridNode.Distance(particle) / search_radius;
+			if (dist <= 1) {
+				dist = RBF(search_radius, dist) * weighted_lambda;
+				atomicAdd(&PDF[idx], dist);
+			}
+		}
 	}
 }
 
-template<class T>
+
 /// @brief This function makes sure that the PDF does not have any negative values! (Having this enforced by the interpolation would've been wonderful)
 /// @param PDF 
 /// @param Grid_Nodes 
 /// @return 
-__global__ 
-void CORRECTION(T* PDF, const INT Grid_Nodes){
+template<class T>
+__global__ void CORRECTION(T* PDF, const INT Grid_Nodes){
 	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
 
 	if (i < Grid_Nodes){

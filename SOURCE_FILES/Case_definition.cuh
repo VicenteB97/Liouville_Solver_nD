@@ -31,7 +31,7 @@
 #define TYPE float     // only supported values are 'float' and 'double'
 
 // AMR tolerance, Conjugate Gradient tolerance and number of discretization size for the radius of the RBFs
-#define TOLERANCE_AMR       0.75
+#define TOLERANCE_AMR       1               // HERE, WE SHOULD CHANGE THIS SO THAT THE AMR IS ADAPTIVE...
 #define TOLERANCE_ConjGrad  powf(10,-6)     // RECOMMENDED: This appears to give good results...no need to change it
 #define DISC_RADIUS         3.49
 
@@ -47,7 +47,7 @@ static const bool   IC_TRUNC[DIMENSIONS] = { true, true, true };
 static const TYPE   IC_InfTVAL[DIMENSIONS] = { 0.5,0,0 };
 static const TYPE   IC_SupTVAL[DIMENSIONS] = { 1,0.3,0.25 };
 static const TYPE	IC_MEAN[DIMENSIONS] = { 0.75, 0.15, 0.1 };
-static const TYPE	IC_STD[DIMENSIONS] = { sqrtf(0.0001), sqrtf(0.0001), sqrtf(0.0001) };
+static const TYPE	IC_STD[DIMENSIONS] = { sqrtf(0.0002), sqrtf(0.0002), sqrtf(0.0002) };
 
 // Vector field definition
     // explanation: p0 = \Delta (birth rate), p1 = \mu (death rate), p2 = \beta (S to I transmission), p3 = \gamma (I to R transmission)

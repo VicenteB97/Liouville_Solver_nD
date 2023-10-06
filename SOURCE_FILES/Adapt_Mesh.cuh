@@ -113,13 +113,13 @@ int16_t ADAPT_MESH_REFINEMENT_nD(const thrust::host_vector<T>&	H_PDF,
 	Supp_BBox.Nodes_per_Dim = floor( (Supp_BBox.Boundary_sup.dim[0] - Supp_BBox.Boundary_inf.dim[0]) / Problem_Domain.Discr_length() );
 
 	if (fmod(log2(Supp_BBox.Nodes_per_Dim), 1) != 0) {
-		Supp_BBox.Nodes_per_Dim = pow(2, ceil(log2(Supp_BBox.Nodes_per_Dim)));
+		Supp_BBox.Nodes_per_Dim = pow(2, 1 + floor(log2(Supp_BBox.Nodes_per_Dim)));
 
 		if (Supp_BBox.Nodes_per_Dim == Problem_Domain.Nodes_per_Dim) {
 			Supp_BBox = Problem_Domain;
 		}
 		else{
-			Supp_BBox.Boundary_inf = Base_Mesh.Get_node(Base_Mesh.Get_binIdx(Supp_BBox.Boundary_inf, 0));
+			Supp_BBox.Boundary_inf = Base_Mesh.Get_node(Base_Mesh.Get_binIdx(Supp_BBox.Boundary_inf));
 			for (uint16_t d = 0; d < DIM; d++) {
 				Supp_BBox.Boundary_sup.dim[d] = Supp_BBox.Boundary_inf.dim[d] + (Supp_BBox.Nodes_per_Dim - 1) * Problem_Domain.Discr_length();
 			}

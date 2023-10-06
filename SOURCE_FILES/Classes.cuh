@@ -191,7 +191,7 @@ public:
 
 		Boundary_inf = gridPoint<DIM, T>(DOMAIN_INF);
 		Boundary_sup = gridPoint<DIM, T>(DOMAIN_SUP);
-		Nodes_per_Dim = ceil((Boundary_sup.dim[0] - Boundary_inf.dim[0]) / Discretization_length);
+		Nodes_per_Dim = 1 + floor((Boundary_sup.dim[0] - Boundary_inf.dim[0]) / Discretization_length);
 	}
 
 	__host__ __device__	grid<DIM, T>(const gridPoint<DIM, T>& Bnd_inf, const gridPoint<DIM, T>& Bnd_sup) {
@@ -212,7 +212,7 @@ public:
 
 		Boundary_inf = Bnd_inf;
 		Boundary_sup = Bnd_sup;
-		Nodes_per_Dim = ceil((Boundary_sup.dim[0] - Boundary_inf.dim[0]) / Discretization_length);
+		Nodes_per_Dim = 1 + floor((Boundary_sup.dim[0] - Boundary_inf.dim[0]) / Discretization_length);
 	}
 
 // Methods/functions
@@ -238,15 +238,15 @@ public:
 		return (TYPE)(this->Edge_size() / (Nodes_per_Dim - 1));
 	}
 
-	// Given an index, this function returns the corresponding node
+	// Given an index, this function returns the corresponding node at the grid
 	__host__ __device__	inline gridPoint<DIM, T> Get_node(const INT& globalIdx) const {
 
-		gridPoint<DIM, T> out;
+		gridPoint<DIM, T> out = Boundary_inf;
 
 		for (uint16_t d = 0; d < DIM; d++) {
 			INT j = floor( positive_rem(globalIdx, pow(Nodes_per_Dim, d + 1)) / pow(Nodes_per_Dim, d) );	// This line gives the index at each dimension
 
-			out.dim[d] = j * this->Discr_length() + Boundary_inf.dim[d];									// This line gives the grid<DIM, TYPE> node per se
+			out.dim[d] += j * this->Discr_length();															// This line gives the grid node per se
 		}
 		return out;
 	}
@@ -258,6 +258,18 @@ public:
 		}
 		return true;
 	}
+
+	// Returns the bin (or ID of the closest node) where Particle belongs to, adding bin_offset.
+	__host__ __device__ inline INT Get_binIdx(const gridPoint<DIM, T>& Particle) const {
+		INT bin_idx = 0;
+
+		for (uint16_t d = 0; d < DIM; d++) {
+			INT temp_idx = roundf( (Particle.dim[d] - Boundary_inf.dim[d]) / this->Discr_length() );
+
+			bin_idx += temp_idx * powf(Nodes_per_Dim, d);
+		}
+		return bin_idx;
+	};
 	
 	// Returns the bin (or ID of the closest node) where Particle belongs to, adding bin_offset.
 	__host__ __device__ inline INT Get_binIdx(const gridPoint<DIM, T>& Particle, const INT& bin_offset) const {
@@ -273,7 +285,7 @@ public:
 
 	// Compute the global index at your mesh, given the global index in "other" mesh.
 	__host__ __device__	inline INT Indx_here(const INT& indx_at_other, const grid<DIM, T>& other) const {
-		return this->Get_binIdx(other.Get_node(indx_at_other),0);
+		return this->Get_binIdx(other.Get_node(indx_at_other));
 	}
 
 	/// @brief This function expands a fixed grid "Other" by a length of  "expansion_length" in each direction/dimension
@@ -285,7 +297,7 @@ public:
 			Boundary_sup.dim[d] = Other.Boundary_sup.dim[d] + Other.Discr_length() * ceilf( expansion_length / Other.Discr_length());
 		}
 
-		Nodes_per_Dim = ceil((Boundary_sup.dim[0] - Boundary_inf.dim[0]) / Other.Discr_length());
+		Nodes_per_Dim = 1 + round((Boundary_sup.dim[0] - Boundary_inf.dim[0]) / Other.Discr_length());
 	}
 
 	/// @brief This function makes you domain a square (same Lebesgue-length in every direction)

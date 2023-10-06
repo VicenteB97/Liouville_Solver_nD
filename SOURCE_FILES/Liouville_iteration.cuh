@@ -99,7 +99,7 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 	// Now we make a slightly larger domain for the computations:
 	grid<DIMENSIONS, TYPE> Base_Mesh;
 
-	const TYPE expand_length = 0.5 * Problem_Domain.Edge_size();		// 10% of the domain length
+	const TYPE expand_length = 0.3 * Problem_Domain.Edge_size();		// 30% of the domain length
 	Base_Mesh.Expand_From(Problem_Domain, expand_length);				// From the initial Problem domain, we create an expanded version (with the same discretization!)
 
 	// --------------------------------------------------------------------------------------------
