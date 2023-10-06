@@ -343,10 +343,6 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 					Supp_BBox.Boundary_sup = Base_Mesh.Get_node(Base_Mesh.Get_binIdx(Supp_BBox.Boundary_sup,  roundf(DISC_RADIUS)));
 
 
-					// THIS IS FOR DEBUGGING!!!!!
-					//Supp_BBox = Problem_Domain;
-					////////////////////////////
-
 				end_3 = std::chrono::high_resolution_clock::now();
 				duration_3 = end_3 - start_3;
 

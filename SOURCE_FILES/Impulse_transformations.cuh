@@ -40,7 +40,6 @@ __global__ void TRANSFORM_PARTICLES(gridPoint<DIMENSIONS, TYPE>*					Particle_Po
 		for (uint16_t d = 0; d < DIMENSIONS; d++){			
 			Particle_Positions[i].dim[d] += aux.sample_vec[d];		// we only have to add to the second variable!
 		}
-
 	}
 }
 
@@ -146,8 +145,7 @@ int16_t IMPULSE_TRANSFORM_PDF(const std::vector<gridPoint<DIMENSIONS, TYPE>>&	Ad
 														MaxNeighborNum,
 														Adapt_Points,
 														Total_Particles,
-														search_radius,
-														Underlying_Mesh);
+														search_radius);
 		gpuError_Check(cudaDeviceSynchronize());
 	}
 	else {
@@ -158,8 +156,7 @@ int16_t IMPULSE_TRANSFORM_PDF(const std::vector<gridPoint<DIMENSIONS, TYPE>>&	Ad
 										GPU_Num_Neighbors,
 										Adapt_Points,
 										MaxNeighborNum,
-										search_radius,
-										Underlying_Mesh);
+										search_radius);
 
 		if (err == -1) { return -1; }
 	}
@@ -167,7 +164,7 @@ int16_t IMPULSE_TRANSFORM_PDF(const std::vector<gridPoint<DIMENSIONS, TYPE>>&	Ad
 	// Before going to the next step, define the bounding box of the advected particles!
 	thrust::device_vector<T> projection(Block_Particles);
 	for (uint16_t d = 0; d < DIMENSIONS; d++) {
-		findProjection<DIM, T> << <Blocks, Threads >> > (rpc(GPU_Part_Position, 0), rpc(projection, 0), Block_Particles, d);
+		findProjection<DIM, T> << <Blocks, Threads >> > (rpc(Particle_Positions, 0), rpc(projection, 0), Block_Particles, d);
 
 		T temp_1 = *(thrust::min_element(thrust::device, projection.begin(), projection.end()));
 		T temp_2 = *(thrust::max_element(thrust::device, projection.begin(), projection.end()));

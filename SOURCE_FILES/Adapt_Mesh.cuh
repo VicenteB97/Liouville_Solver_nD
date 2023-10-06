@@ -34,18 +34,25 @@ __global__ void D__Wavelet_Transform__F(T* 					PDF,
 	const uint64_t globalID = blockDim.x * blockIdx.x + threadIdx.x;
 
 	if(globalID >= BoundingBox.Total_Nodes() / powf(rescaling,DIM)) { return; }
+	
+	// Get the cube approximation vertex
+	gridPoint<DIM, T> cube_app_vrtx = BoundingBox.Boundary_inf;
+	INT main_idx_at_BBox = 0;
 
-	// This way we can obtain the global index of the cube vertex from the cube vertex's relative position
-	INT main_node_idx = 0;
+	for (uint16_t d = 0; d < DIM; d++) {
+		INT temp_idx = floor(positive_rem(globalID, pow(BoundingBox.Nodes_per_Dim / rescaling, d + 1)) / pow(BoundingBox.Nodes_per_Dim / rescaling, d)) * rescaling;
+		main_idx_at_BBox += temp_idx * pow(BoundingBox.Nodes_per_Dim, d);
 
-	// This part gives the global index (IN THE BOUNDING BOX) of the approximation node
-	for (uint16_t j = 0; j < DIM; j++) {
-		main_node_idx += floor(positive_rem(globalID, pow(BoundingBox.Nodes_per_Dim / rescaling, j + 1)) / pow(BoundingBox.Nodes_per_Dim / rescaling, j)) * pow(BoundingBox.Nodes_per_Dim, j) * rescaling;
+		cube_app_vrtx.dim[d] += temp_idx * BoundingBox.Discr_length();
 	}
 
-	if (!Problem_Domain.Contains_particle(BoundingBox.Get_node(main_node_idx))) { return; }
+	if (!Problem_Domain.Contains_particle(cube_app_vrtx)) { return; }
 
-	INT main_idx_at_Base = Problem_Domain.Indx_here(main_node_idx, BoundingBox);
+	// You could even get the index at the base mesh and then use it for checking the wavelet transform coefficients
+	INT main_idx_at_Base = 0;
+	for (uint16_t d = 0; d < DIM; d++) {
+		main_idx_at_Base += roundf((cube_app_vrtx.dim[d] - Problem_Domain.Boundary_inf.dim[d]) / Problem_Domain.Discr_length()) * pow(Problem_Domain.Nodes_per_Dim, d);
+	}
 
 	// find the dyadic cube indeces and do the wavelet transform at the same time
 	for(uint16_t d = 0; d < DIM; d++){
@@ -53,42 +60,46 @@ __global__ void D__Wavelet_Transform__F(T* 					PDF,
 
 			if( floor(positive_rem(k, pow(2, d + 1)) / pow(2, d))  == 0 ){ // this part decides whether it is an approximation node
 
-				INT approx_coef_idx = main_idx_at_Base;
+				gridPoint<DIM, T> approx_node = cube_app_vrtx;
+				INT approx_idx = main_idx_at_Base;
 
 				for (uint16_t j = 0; j < DIM; j++){
-					approx_coef_idx += floor(positive_rem(k, pow(2, j + 1)) / pow(2, j)) * pow(Problem_Domain.Nodes_per_Dim, j) * rescaling/2;
+					approx_idx += floor(positive_rem(k, pow(2, j + 1)) / pow(2, j)) * pow(Problem_Domain.Nodes_per_Dim, j) * rescaling/2;
 				}
 
-				INT detail_coef_idx = approx_coef_idx + pow(Problem_Domain.Nodes_per_Dim, d) * rescaling / 2;
+				INT detail_idx = approx_idx + pow(Problem_Domain.Nodes_per_Dim, d) * rescaling / 2;
 
 				// Transform the indeces to the base mesh
-				if (detail_coef_idx > -1 && detail_coef_idx < Problem_Domain.Total_Nodes()) {
+				if (detail_idx > -1 && detail_idx < Problem_Domain.Total_Nodes()) {
 
-					_1D_WVLET<T>(PDF[approx_coef_idx], PDF[detail_coef_idx]);
+					_1D_WVLET<T>(PDF[approx_idx], PDF[detail_idx]);
 				}
 			}
 		}
 	}
 
 	// Now, we will recheck all the wavelet coefficients and compare with the threshold
-
 	for(UINT k = 1; k < powf(2,DIM); k++){
 
 		// This will allow us to enter into the auxiliary variables set for the wavelet transform
-		INT temp_idx = main_node_idx;
+		INT temp_idx = main_idx_at_BBox, indx_at_Problem_Domain = main_idx_at_Base;
+		gridPoint<DIM, T> temp_GN = cube_app_vrtx;
 		
 		for (uint16_t j = 0; j < DIM; j++){
+			INT temp = floor(positive_rem(k, pow(2, j + 1)) / pow(2, j)) * rescaling / 2;
+			
+			temp_GN.dim[j]			+= temp * Problem_Domain.Discr_length();
 
-			temp_idx += floor(positive_rem(k, pow(2, j + 1)) / pow(2, j)) * pow(BoundingBox.Nodes_per_Dim, j) * rescaling / 2;
+			temp_idx				+= temp * pow(BoundingBox.Nodes_per_Dim, j);
+			indx_at_Problem_Domain	+= temp * pow(Problem_Domain.Nodes_per_Dim, j);
 		}
 
 		// Global index at the bounding box grid 
-		if (Problem_Domain.Contains_particle(BoundingBox.Get_node(temp_idx))) {
+		if (Problem_Domain.Contains_particle(temp_GN)) {
 
-			INT temp_2 = Problem_Domain.Indx_here(temp_idx, BoundingBox);
-			Activate_node[temp_idx].node = temp_2;
+			Activate_node[temp_idx].node = indx_at_Problem_Domain;
 
-			if (abs(PDF[temp_2]) >= TOLERANCE_AMR) {
+			if (abs(PDF[indx_at_Problem_Domain]) >= TOLERANCE_AMR) {
 				Activate_node[temp_idx].AMR_selected = 1;
 			}
 		}
