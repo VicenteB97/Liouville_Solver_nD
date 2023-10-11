@@ -458,32 +458,32 @@ __global__ void RESTART_GRID_FIND_GN(gridPoint<DIM, T>* Particle_Positions,
 									const UINT	 		offset,
 									const grid<DIM, T> 	Mesh,
 									const grid<DIM, T>	Underlying_Mesh) {
-
+	
 	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
 
 	if (i >= Adapt_Pts * Block_samples) { return; }
 
-	UINT		Current_sample	= offset + floorf(i / Adapt_Pts);
-	Param_vec	aux				= _Gather_Param_Vec(Current_sample, Parameter_Mesh, n_Samples);
+	UINT		Current_sample = offset + floorf(i / Adapt_Pts);
+	Param_vec	aux = Gather_Param_Vec(Current_sample, Parameter_Mesh, n_Samples);
 
 	T weighted_lambda = lambdas[i] * aux.Joint_PDF;
 
-	gridPoint<DIM, T>	particle = Particle_Positions[i];
+	gridPoint<DIM, T>	particle(Particle_Positions[i]);
 
 	// Find the point in the lowest corner of the search box!
-	gridPoint<DIM, T> Lowest_node;
+	gridPoint<DIM, T> Lowest_node(Mesh.Boundary_inf);
 
 	for (uint16_t d = 0; d < DIM; d++) {
 		INT temp_idx = roundf((particle.dim[d] - Mesh.Boundary_inf.dim[d]) / Mesh.Discr_length()) - roundf(DISC_RADIUS);
-		Lowest_node.dim[d] = temp_idx * Mesh.Discr_length();
+		Lowest_node.dim[d] += temp_idx * Mesh.Discr_length();
 	}
 
 	INT Neighbors_per_dim = 2 * roundf(DISC_RADIUS) + 1;
-	
+
 	// Go through all the nodes where rewriting will be possible
 	for (uint16_t k = 0; k < pow(Neighbors_per_dim, DIM); k++) {
 
-		gridPoint<DIM, T> visit_node = Lowest_node;
+		gridPoint<DIM, T> visit_node(Lowest_node);
 
 		// Get the node at that point
 		for (uint16_t d = 0; d < DIM; d++) {
@@ -512,7 +512,6 @@ __global__ void RESTART_GRID_FIND_GN(gridPoint<DIM, T>* Particle_Positions,
 
 		}
 	}
-
 }
 
 
@@ -534,14 +533,14 @@ __global__ void RESTART_GRID_FIND_GN(gridPoint<DIM, T>*	Particle_Positions,
 
 	T weighted_lambda = lambdas[i + Current_sample * Adapt_Pts] * Impulse_weights[Current_sample].Joint_PDF;				// the specific sample weight
 
-	gridPoint<DIM, T>	particle = Particle_Positions[i + Current_sample * Adapt_Pts];
+	gridPoint<DIM, T>	particle(Particle_Positions[i + Current_sample * Adapt_Pts]);
 
 	// Find the point in the lowest corner of the search box!
-	gridPoint<DIM, T> Lowest_node;
+	gridPoint<DIM, T> Lowest_node(Mesh.Boundary_inf);
 
 	for (uint16_t d = 0; d < DIM; d++) {
 		INT temp_idx = roundf((particle.dim[d] - Mesh.Boundary_inf.dim[d]) / Mesh.Discr_length()) - roundf(DISC_RADIUS);
-		Lowest_node.dim[d] = temp_idx * Mesh.Discr_length();
+		Lowest_node.dim[d] += temp_idx * Mesh.Discr_length();
 	}
 
 	INT Neighbors_per_dim = 2 * roundf(DISC_RADIUS) + 1;
@@ -549,7 +548,7 @@ __global__ void RESTART_GRID_FIND_GN(gridPoint<DIM, T>*	Particle_Positions,
 	// Go through all the nodes where rewriting will be possible
 	for (uint16_t k = 0; k < pow(Neighbors_per_dim, DIM); k++) {
 
-		gridPoint<DIM, T> visit_node = Lowest_node;
+		gridPoint<DIM, T> visit_node(Lowest_node);
 
 		// Get the node at that point
 		for (uint16_t d = 0; d < DIM; d++) {

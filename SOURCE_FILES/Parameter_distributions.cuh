@@ -56,6 +56,8 @@ int16_t PDF_INITIAL_CONDITION(const grid<DIM, T>& Mesh, thrust::host_vector<T>& 
 		}
 	}
 
+	std::cout << "Filling initial density...\n";
+
 #pragma omp parallel for
 	for (INT k = 0; k < Mesh.Total_Nodes(); k++) {
 		T val = 1;

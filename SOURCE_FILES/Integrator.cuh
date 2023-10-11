@@ -37,7 +37,7 @@ __global__ void ODE_INTEGRATE(gridPoint<DIM, T>* Particles,
 		// AUXILIARY DATA TO RUN THE ITERATIONS
 		// So, the total amount of advections are going to be: (no. particles x no. of samples)
 		const UINT  i_sample = floorf((float)i / Adapt_Points);
-		const Param_vec parameter = _Gather_Param_Vec(i_sample, parameters, n_Samples);
+		const Param_vec parameter = Gather_Param_Vec(i_sample, parameters, n_Samples);
 
 		gridPoint<DIM, T> k0, k1, k2, k3, k_final, aux;
 		T	  Int1, Int2, Int3;

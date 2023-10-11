@@ -28,79 +28,84 @@ __global__ void D__Wavelet_Transform__F(T* 					PDF,
 										AMR_node_select* 	Activate_node,
 										const grid<DIM, T> 	BoundingBox,
 										const grid<DIM, T> 	Problem_Domain,
-										const grid<DIM, T> 	Base_Mesh,
 										const T				rescaling){
 
 	const uint64_t globalID = blockDim.x * blockIdx.x + threadIdx.x;
 
-	if(globalID >= BoundingBox.Total_Nodes() / powf(rescaling,DIM)) { return; }
-	
-	// Get the cube approximation vertex
-	gridPoint<DIM, T> cube_app_vrtx = BoundingBox.Boundary_inf;
-	INT main_idx_at_BBox = 0;
+	// Range guard for out-of-bounds nodes
+	if (globalID >= BoundingBox.Total_Nodes() / powf(rescaling, DIM)) { return; }
 
+	// Global index of the main approximation vertex at the bounding box
+	UINT cube_app_IDX = 0;
+
+	// Compute the index and the node per se
 	for (uint16_t d = 0; d < DIM; d++) {
 		INT temp_idx = floor(positive_rem(globalID, pow(BoundingBox.Nodes_per_Dim / rescaling, d + 1)) / pow(BoundingBox.Nodes_per_Dim / rescaling, d)) * rescaling;
-		main_idx_at_BBox += temp_idx * pow(BoundingBox.Nodes_per_Dim, d);
 
-		cube_app_vrtx.dim[d] += temp_idx * BoundingBox.Discr_length();
+		cube_app_IDX += temp_idx * powf(BoundingBox.Nodes_per_Dim, d);
 	}
 
-	if (!Problem_Domain.Contains_particle(cube_app_vrtx)) { return; }
-
-	// You could even get the index at the base mesh and then use it for checking the wavelet transform coefficients
-	INT main_idx_at_Base = 0;
+	// 1 set of wavelets per dimension (1D: horizontal; 2D: Horizontal + Vertical; 3D: Horz + Vert + Deep; ...)
 	for (uint16_t d = 0; d < DIM; d++) {
-		main_idx_at_Base += roundf((cube_app_vrtx.dim[d] - Problem_Domain.Boundary_inf.dim[d]) / Problem_Domain.Discr_length()) * pow(Problem_Domain.Nodes_per_Dim, d);
-	}
 
-	// find the dyadic cube indeces and do the wavelet transform at the same time
-	for(uint16_t d = 0; d < DIM; d++){
-		for(UINT k = 0; k < powf(2,DIM);k++){
+		// Go through all the vertices that are defined by the main cube approximation vertex
+		for (UINT k = 0; k < powf(2, DIM); k++) {
 
-			if( floor(positive_rem(k, pow(2, d + 1)) / pow(2, d))  == 0 ){ // this part decides whether it is an approximation node
+			// If we are at the current approximation vertex:
+			if (floor(positive_rem(k, pow(2, d + 1)) / pow(2, d)) == 0) {
 
-				gridPoint<DIM, T> approx_node = cube_app_vrtx;
-				INT approx_idx = main_idx_at_Base;
+				// Copmute approximation node
+				UINT app_IDX_at_BBox = cube_app_IDX;
 
-				for (uint16_t j = 0; j < DIM; j++){
-					approx_idx += floor(positive_rem(k, pow(2, j + 1)) / pow(2, j)) * pow(Problem_Domain.Nodes_per_Dim, j) * rescaling/2;
+				for (uint16_t j = 0; j < DIM; j++) {
+					INT temp = floorf(positive_rem(k, powf(2, j + 1)) / powf(2, j)) * rescaling / 2;	// j-th component index
+
+					app_IDX_at_BBox += temp * powf(BoundingBox.Nodes_per_Dim, j);
 				}
 
-				INT detail_idx = approx_idx + pow(Problem_Domain.Nodes_per_Dim, d) * rescaling / 2;
+				// Compute corresponding detail node
+				UINT det_IDX_at_BBox = app_IDX_at_BBox + powf(BoundingBox.Nodes_per_Dim, d) * rescaling / 2;
 
-				// Transform the indeces to the base mesh
-				if (detail_idx > -1 && detail_idx < Problem_Domain.Total_Nodes()) {
+				gridPoint<DIM, T> app_node(BoundingBox.Get_node(app_IDX_at_BBox));
+				gridPoint<DIM, T> det_node(BoundingBox.Get_node(det_IDX_at_BBox));
 
-					_1D_WVLET<T>(PDF[approx_idx], PDF[detail_idx]);
+				// Check which ones are in the problem domain!
+				if (Problem_Domain.Contains_particle(app_node) && Problem_Domain.Contains_particle(det_node)) {
+
+					// Calculate the indeces for the problem domain
+					UINT app_node_at_PD = Problem_Domain.Get_binIdx(app_node);
+					UINT det_node_at_PD = Problem_Domain.Get_binIdx(det_node);
+
+					_1D_WVLET<T>(PDF[app_node_at_PD], PDF[det_node_at_PD]);
 				}
 			}
 		}
 	}
 
-	// Now, we will recheck all the wavelet coefficients and compare with the threshold
-	for(UINT k = 1; k < powf(2,DIM); k++){
+	// Now we have to go see what happens with the outputs
+	Activate_node[cube_app_IDX].node = 0;
 
-		// This will allow us to enter into the auxiliary variables set for the wavelet transform
-		INT temp_idx = main_idx_at_BBox, indx_at_Problem_Domain = main_idx_at_Base;
-		gridPoint<DIM, T> temp_GN = cube_app_vrtx;
-		
-		for (uint16_t j = 0; j < DIM; j++){
-			INT temp = floor(positive_rem(k, pow(2, j + 1)) / pow(2, j)) * rescaling / 2;
-			
-			temp_GN.dim[j]			+= temp * Problem_Domain.Discr_length();
+	for (UINT k = 1; k < powf(2, DIM); k++) {
 
-			temp_idx				+= temp * pow(BoundingBox.Nodes_per_Dim, j);
-			indx_at_Problem_Domain	+= temp * pow(Problem_Domain.Nodes_per_Dim, j);
+		UINT temp_IDX_at_BBox = cube_app_IDX;
+
+		// Get the indeces at the bounding box:
+		for (uint16_t d = 0; d < DIM; d++) {
+			INT temp = floorf(positive_rem(k, powf(2, d + 1)) / powf(2, d)) * rescaling / 2;	// j-th component index
+
+			temp_IDX_at_BBox += temp * powf(BoundingBox.Nodes_per_Dim, d);
 		}
 
-		// Global index at the bounding box grid 
-		if (Problem_Domain.Contains_particle(temp_GN)) {
+		gridPoint<DIM, T> temp_node(BoundingBox.Get_node(temp_IDX_at_BBox));
 
-			Activate_node[temp_idx].node = indx_at_Problem_Domain;
+		if (Problem_Domain.Contains_particle(temp_node)) {
 
-			if (abs(PDF[indx_at_Problem_Domain]) >= TOLERANCE_AMR) {
-				Activate_node[temp_idx].AMR_selected = 1;
+			UINT temp = Problem_Domain.Get_binIdx(temp_node);
+
+			Activate_node[temp_IDX_at_BBox].node = temp;
+
+			if (abs(PDF[temp]) >= TOLERANCE_AMR) {
+				Activate_node[temp_IDX_at_BBox].AMR_selected = 1;
 			}
 		}
 	}
@@ -114,38 +119,41 @@ int16_t ADAPT_MESH_REFINEMENT_nD(const thrust::host_vector<T>&	H_PDF,
 								const grid<DIM, T>&				Problem_Domain,
 								const grid<DIM, T>&				Base_Mesh,
 								grid<DIM, T>&					Supp_BBox) {
-	
-	thrust::host_vector<AMR_node_select> 	H__Node_selection(Supp_BBox.Total_Nodes(), {0,0});
-	thrust::device_vector<AMR_node_select>	D__Node_selection = H__Node_selection;
+
 
 	UINT rescaling = 2;
 
 	Supp_BBox.Squarify();	// Make it square
-	Supp_BBox.Nodes_per_Dim = floor( (Supp_BBox.Boundary_sup.dim[0] - Supp_BBox.Boundary_inf.dim[0]) / Problem_Domain.Discr_length() );
+	Supp_BBox.Nodes_per_Dim = (Supp_BBox.Boundary_sup.dim[0] - Supp_BBox.Boundary_inf.dim[0]) / Problem_Domain.Discr_length() + 1;
 
 	if (fmod(log2(Supp_BBox.Nodes_per_Dim), 1) != 0) {
-		Supp_BBox.Nodes_per_Dim = pow(2, roundf(log2(Supp_BBox.Nodes_per_Dim)));
+		Supp_BBox.Nodes_per_Dim = pow(2, ceilf(log2(Supp_BBox.Nodes_per_Dim)));
 
 		if (Supp_BBox.Nodes_per_Dim == Problem_Domain.Nodes_per_Dim) {
 			Supp_BBox = Problem_Domain;
 		}
 		else{
-			Supp_BBox.Boundary_inf = Base_Mesh.Get_node(Base_Mesh.Get_binIdx(Supp_BBox.Boundary_inf));
 			for (uint16_t d = 0; d < DIM; d++) {
 				Supp_BBox.Boundary_sup.dim[d] = Supp_BBox.Boundary_inf.dim[d] + (Supp_BBox.Nodes_per_Dim - 1) * Problem_Domain.Discr_length();
 			}
 		}
 	}
 
+	// FIX PROBLEM WHEN THIS HAPPENS! EVERYTHING WORKS FINE IN 2D...3D IS GIVING PROBLEMS
+	// Supp_BBox = Problem_Domain;
+
+	thrust::host_vector<AMR_node_select> 	H__Node_selection(Supp_BBox.Total_Nodes(), { 0,0 });
+	thrust::device_vector<AMR_node_select>	D__Node_selection = H__Node_selection;
+
 	for (uint16_t k = 0; k < log2(Supp_BBox.Nodes_per_Dim); k++) {
 
 		uint16_t Threads = fmin(THREADS_P_BLK, Supp_BBox.Total_Nodes()/pow(rescaling,DIM) );
 		UINT	 Blocks	 = floor((Supp_BBox.Total_Nodes()/pow(rescaling, DIM) - 1) / Threads) + 1;
 
-		D__Wavelet_Transform__F<DIM, T> <<<Blocks, Threads>>> (rpc(D__PDF,0), rpc(D__Node_selection,0), Supp_BBox, Problem_Domain, Base_Mesh, rescaling);
+		D__Wavelet_Transform__F<DIM, T> <<<Blocks, Threads>>> (rpc(D__PDF,0), rpc(D__Node_selection,0), Supp_BBox, Problem_Domain, rescaling);
 		gpuError_Check(cudaDeviceSynchronize());
 
-		rescaling *= 2;	// our grid<DIM, T> will now have half the number of points
+		rescaling *= 2;	// our grid will now have half the number of points
 	}
 
 	thrust::sort(thrust::device, D__Node_selection.begin(), D__Node_selection.end());

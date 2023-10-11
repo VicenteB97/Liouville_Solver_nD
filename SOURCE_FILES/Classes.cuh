@@ -150,7 +150,7 @@ public:
 			dist += (dim[d] - other.dim[d]) * (dim[d] - other.dim[d]);
 		}
 		return sqrtf(dist);
-	};
+	}
 
 	
 	__host__ __device__ 
@@ -163,7 +163,7 @@ public:
 		}
 
 		return out;
-	};
+	}
 };
 
 template<uint16_t DIM, class T>
@@ -212,7 +212,7 @@ public:
 
 		Boundary_inf = Bnd_inf;
 		Boundary_sup = Bnd_sup;
-		Nodes_per_Dim = roundf((Boundary_sup.dim[0] - Boundary_inf.dim[0]) / Discretization_length);
+		Nodes_per_Dim = (Boundary_sup.dim[0] - Boundary_inf.dim[0]) / Discretization_length + 1;
 	}
 
 // Methods/functions
@@ -260,11 +260,11 @@ public:
 	}
 
 	// Returns the bin (or ID of the closest node) where Particle belongs to, adding bin_offset.
-	__host__ __device__ inline INT Get_binIdx(const gridPoint<DIM, T>& Particle) const {
-		INT bin_idx = 0;
+	__host__ __device__ inline UINT Get_binIdx(const gridPoint<DIM, T>& Particle) const {
+		UINT bin_idx = 0;
 
 		for (uint16_t d = 0; d < DIM; d++) {
-			INT temp_idx = roundf( (Particle.dim[d] - Boundary_inf.dim[d]) / this->Discr_length() );
+			INT temp_idx = roundf((Particle.dim[d] - Boundary_inf.dim[d]) / this->Discr_length());
 
 			bin_idx += temp_idx * powf(Nodes_per_Dim, d);
 		}
@@ -272,8 +272,8 @@ public:
 	};
 	
 	// Returns the bin (or ID of the closest node) where Particle belongs to, adding bin_offset.
-	__host__ __device__ inline INT Get_binIdx(const gridPoint<DIM, T>& Particle, const INT& bin_offset) const {
-		INT bin_idx = 0;
+	__host__ __device__ inline UINT Get_binIdx(const gridPoint<DIM, T>& Particle, const INT& bin_offset) const {
+		UINT bin_idx = 0;
  
 		for (uint16_t d = 0; d < DIM; d++) {
 			INT temp_idx = roundf((Particle.dim[d] - Boundary_inf.dim[d]) / this->Discr_length()) + bin_offset;
@@ -284,7 +284,7 @@ public:
 	};
 
 	// Compute the global index at your mesh, given the global index in "other" mesh.
-	__host__ __device__	inline INT Indx_here(const INT& indx_at_other, const grid<DIM, T>& other) const {
+	__host__ inline UINT Indx_here(const UINT& indx_at_other, const grid<DIM, T>& other) const {
 		return this->Get_binIdx(other.Get_node(indx_at_other));
 	}
 
@@ -390,7 +390,7 @@ public:
 // ------------------------------------------------------------------------ //
 // ------------------------------------------------------------------------ //
 
-__host__ __device__ inline Param_vec _Gather_Param_Vec(const UINT index, const Param_pair* Parameter_Array, const INT* n_Samples){
+__host__ __device__ inline Param_vec Gather_Param_Vec(const UINT index, const Param_pair* Parameter_Array, const INT* n_Samples){
 
 	Param_vec Output;
 

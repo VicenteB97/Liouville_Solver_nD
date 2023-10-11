@@ -84,7 +84,7 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 	// auxiliary variable that will be used for ensemble mean computation
 	T Sum_Rand_Params = 0;
 	for (UINT i = 0; i < Random_Samples; i++) {
-		Param_vec aux_PM = _Gather_Param_Vec(i, Parameter_Mesh, n_Samples);
+		Param_vec aux_PM = Gather_Param_Vec(i, Parameter_Mesh, n_Samples);
 		Sum_Rand_Params += aux_PM.Joint_PDF;
 	}
 
@@ -136,7 +136,7 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 
 	auto start_2 = std::chrono::high_resolution_clock::now();
 
-		float	t0 = time_vector[j].time, tF = time_vector[j + 1].time;
+		double	t0 = time_vector[j].time, tF = time_vector[j + 1].time;
 
 		std::cout << "+---------------------------------------------------------------------+\n";
 		// 1.- Initial step Adaptive Problem_Domain Refinement. First store the initial PDF with AMR performed
@@ -148,11 +148,6 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 
 	auto end_3 = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<float> duration_3 = end_3 - start_3;
-
-		// Support bounding box reinitialization
-		Supp_BBox.Boundary_inf = Problem_Domain.Boundary_sup;	// Reinitialize the inf. boundary node
-		Supp_BBox.Boundary_sup = Problem_Domain.Boundary_inf;	// Reinitialize the sup. boundary node
-		Supp_BBox.Nodes_per_Dim = Problem_Domain.Nodes_per_Dim;	// Reinitialize the nodes per dimension
 
 		#if OUTPUT_INFO
 		std::cout << "AMR iteration took " << duration_3.count() << " seconds\n";
@@ -335,13 +330,9 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 						T temp_1 = *(thrust::min_element(thrust::device, projection.begin(), projection.end())); // min element from the projection in that direction
 						T temp_2 = *(thrust::max_element(thrust::device, projection.begin(), projection.end()));
 
-						Supp_BBox.Boundary_inf.dim[d] = fmax(Base_Mesh.Boundary_inf.dim[d], fmin(Supp_BBox.Boundary_inf.dim[d],temp_1)); // So that we don't get out of the underlying mesh
-						Supp_BBox.Boundary_sup.dim[d] = fmin(Base_Mesh.Boundary_sup.dim[d], fmax(Supp_BBox.Boundary_sup.dim[d],temp_2)); // So that we don't get out of the underlying mesh
+						Supp_BBox.Boundary_inf.dim[d] = fmax(Problem_Domain.Boundary_inf.dim[d], temp_1 - ceil(DISC_RADIUS) * Problem_Domain.Discr_length());
+						Supp_BBox.Boundary_sup.dim[d] = fmin(Problem_Domain.Boundary_sup.dim[d], temp_2 + ceil(DISC_RADIUS) * Problem_Domain.Discr_length());
 					}
-
-					Supp_BBox.Boundary_inf = Base_Mesh.Get_node(Base_Mesh.Get_binIdx(Supp_BBox.Boundary_inf, -roundf(DISC_RADIUS)));
-					Supp_BBox.Boundary_sup = Base_Mesh.Get_node(Base_Mesh.Get_binIdx(Supp_BBox.Boundary_sup,  roundf(DISC_RADIUS)));
-
 
 				end_3 = std::chrono::high_resolution_clock::now();
 				duration_3 = end_3 - start_3;
@@ -393,9 +384,6 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 				GPU_PDF.resize(Problem_Domain.Total_Nodes(), 0);	// PDF is reset to 0, so that we may use atomic adding at the remeshing step
 				Threads = fminf(THREADS_P_BLK, Block_Particles);
 				Blocks  = floorf((Block_Particles - 1) / Threads) + 1;
-
-				T temp_debug = Base_Mesh.Discr_length();
-				T temp_debug_2 = Problem_Domain.Discr_length();
 
 				start_3 = std::chrono::high_resolution_clock::now();
 				RESTART_GRID_FIND_GN<DIM,T> << < Blocks, Threads >> > (	rpc(GPU_Part_Position, 0),
