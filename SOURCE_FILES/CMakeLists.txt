@@ -12,6 +12,7 @@ project(${PROJCT_NAME} VERSION 3.0.3 LANGUAGES CXX CUDA)
 set(CMAKE_CXX_STANDARD          17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS        ON)
+set(CMAKE_CUDA_ARCHITECTURES    75 80)
 
 find_package(OpenMP)
 
@@ -34,9 +35,9 @@ endif()
 add_executable(${EXECUTABLE_NAME} 00_MAIN.cu)
 
 if(CMAKE_HOST_SYSTEM MATCHES Windows)
-    target_compile_options(${LIB_NAME} PRIVATE $<$<COMPILE_LANGUAGE:CUDA>: -Xcompiler -openmp -lgomp -gencode arch=compute_75,code=sm_75>)
+    target_compile_options(${LIB_NAME} PRIVATE $<$<COMPILE_LANGUAGE:CUDA>: -Xcompiler -openmp -lgomp>)
 elseif(CMAKE_HOST_SYSTEM MATCHES Linux)
-    target_compile_options(${LIB_NAME} PRIVATE $<$<COMPILE_LANGUAGE:CUDA>: -Xcompiler -fopenmp -lgomp -gencode arch=compute_75,code=sm_75>)
+    target_compile_options(${LIB_NAME} PRIVATE $<$<COMPILE_LANGUAGE:CUDA>: -Xcompiler -fopenmp -lgomp>)
 endif()
 
 target_link_libraries(${EXECUTABLE_NAME} PRIVATE ${LIB_NAME} OpenMP::OpenMP_CXX)

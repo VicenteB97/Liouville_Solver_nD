@@ -42,7 +42,7 @@
 
 #define RELATIVE_PATH "../../SIMULATION_OUTPUT/"
 
-#define double double
+#define double float
 
 #define MAX_FILE_SIZE_B (uint64_t)2*1024*1024*1024
 

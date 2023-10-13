@@ -42,7 +42,7 @@
 /// @return 
 template<uint16_t DIM, class T>
 int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
-						std::vector<T>*			store_PDFs,
+						std::vector<float>*			store_PDFs,
 						const Param_pair*		Parameter_Mesh,
 						const grid<DIM, T>&		Problem_Domain,
 						grid<DIM, T>&			Supp_BBox,
