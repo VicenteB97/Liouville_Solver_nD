@@ -42,14 +42,14 @@ __global__ void D__Wavelet_Transform__F(T* 					PDF,
 	for (uint16_t d = 0; d < DIM; d++) {
 		INT temp_idx = floor(positive_rem(globalID, pow(BoundingBox.Nodes_per_Dim / rescaling, d + 1)) / pow(BoundingBox.Nodes_per_Dim / rescaling, d)) * rescaling;
 
-		cube_app_IDX += temp_idx * powf(BoundingBox.Nodes_per_Dim, d);
+		cube_app_IDX += temp_idx * pow(BoundingBox.Nodes_per_Dim, d);
 	}
 
 	// 1 set of wavelets per dimension (1D: horizontal; 2D: Horizontal + Vertical; 3D: Horz + Vert + Deep; ...)
 	for (uint16_t d = 0; d < DIM; d++) {
 
 		// Go through all the vertices that are defined by the main cube approximation vertex
-		for (INT k = 0; k < powf(2, DIM); k++) {
+		for (INT k = 0; k < pow(2, DIM); k++) {
 
 			// If we are at the current approximation vertex:
 			if (floor(positive_rem(k, pow(2, d + 1)) / pow(2, d)) == 0) {
@@ -58,16 +58,16 @@ __global__ void D__Wavelet_Transform__F(T* 					PDF,
 				INT app_IDX_at_BBox = cube_app_IDX;
 
 				for (uint16_t j = 0; j < DIM; j++) {
-					INT temp = floorf(positive_rem(k, powf(2, j + 1)) / powf(2, j)) * rescaling / 2;	// j-th component index
+					INT temp = floorf(positive_rem(k, pow(2, j + 1)) / pow(2, j)) * rescaling / 2;	// j-th component index
 
-					app_IDX_at_BBox += temp * powf(BoundingBox.Nodes_per_Dim, j);
+					app_IDX_at_BBox += temp * pow(BoundingBox.Nodes_per_Dim, j);
 				}
 
 				// Compute corresponding detail node
-				INT det_IDX_at_BBox = app_IDX_at_BBox + powf(BoundingBox.Nodes_per_Dim, d) * rescaling / 2;
+				INT det_IDX_at_BBox = app_IDX_at_BBox + pow(BoundingBox.Nodes_per_Dim, d) * rescaling / 2;
 
-				gridPoint<DIM, T> app_node(BoundingBox.Get_node(app_IDX_at_BBox));
-				gridPoint<DIM, T> det_node(BoundingBox.Get_node(det_IDX_at_BBox));
+				gridPoint<DIM, T> app_node = BoundingBox.Get_node(app_IDX_at_BBox);
+				gridPoint<DIM, T> det_node = BoundingBox.Get_node(det_IDX_at_BBox);
 
 				// Check which ones are in the problem domain!
 				if (Problem_Domain.Contains_particle(app_node) && Problem_Domain.Contains_particle(det_node)) {
@@ -82,25 +82,26 @@ __global__ void D__Wavelet_Transform__F(T* 					PDF,
 		}
 	}
 
+	// STILL THIS PART IS NOT WELL DONE!
+
 	// Now we have to go see what happens with the outputs
 	Activate_node[cube_app_IDX].node = 0;
 
-	for (UINT k = 1; k < powf(2, DIM); k++) {
+	for (UINT k = 1; k < pow(2, DIM); k++) {
 
-		INT temp_IDX_at_BBox = cube_app_IDX;
+		gridPoint<DIM, T> visit_node = BoundingBox.Get_node(cube_app_IDX);
 
 		// Get the indeces at the bounding box:
 		for (uint16_t d = 0; d < DIM; d++) {
-			INT temp = floorf(positive_rem(k, powf(2, d + 1)) / powf(2, d)) * rescaling / 2;	// j-th component index
+			INT temp = floorf(positive_rem(k, pow(2, d + 1)) / pow(2, d)) * rescaling / 2;	// j-th component index
 
-			temp_IDX_at_BBox += temp * powf(BoundingBox.Nodes_per_Dim, d);
+			visit_node.dim[d] += temp * BoundingBox.Discr_length();
 		}
 
-		gridPoint<DIM, T> temp_node(BoundingBox.Get_node(temp_IDX_at_BBox));
-
-		if (Problem_Domain.Contains_particle(temp_node)) {
-
-			INT temp = Problem_Domain.Get_binIdx(temp_node);
+		if (Problem_Domain.Contains_particle(visit_node)) {
+			// These two indeces can be obtained in the previous loop
+			INT temp = Problem_Domain.Get_binIdx(visit_node);
+			INT temp_IDX_at_BBox = BoundingBox.Get_binIdx(visit_node);
 
 			Activate_node[temp_IDX_at_BBox].node = temp;
 
@@ -127,20 +128,20 @@ int16_t ADAPT_MESH_REFINEMENT_nD(const thrust::host_vector<T>&	H_PDF,
 	Supp_BBox.Nodes_per_Dim = (Supp_BBox.Boundary_sup.dim[0] - Supp_BBox.Boundary_inf.dim[0]) / Problem_Domain.Discr_length() + 1;
 
 	if (fmod(log2(Supp_BBox.Nodes_per_Dim), 1) != 0) {
-		Supp_BBox.Nodes_per_Dim = pow(2, ceilf(log2(Supp_BBox.Nodes_per_Dim)));
+		Supp_BBox.Nodes_per_Dim = pow(2, ceil(log2(Supp_BBox.Nodes_per_Dim)));
 
 		if (Supp_BBox.Nodes_per_Dim == Problem_Domain.Nodes_per_Dim) {
 			Supp_BBox = Problem_Domain;
 		}
 		else{
+
+			Supp_BBox.Boundary_inf = Base_Mesh.Get_node(Base_Mesh.Get_binIdx(Supp_BBox.Boundary_inf));	// To make sure it falls into the mesh nodes
+
 			for (uint16_t d = 0; d < DIM; d++) {
 				Supp_BBox.Boundary_sup.dim[d] = Supp_BBox.Boundary_inf.dim[d] + (Supp_BBox.Nodes_per_Dim - 1) * Problem_Domain.Discr_length();
 			}
 		}
 	}
-
-	// FIX PROBLEM WHEN THIS HAPPENS! EVERYTHING WORKS FINE IN 2D...3D IS GIVING PROBLEMS
-	Supp_BBox = Problem_Domain;
 
 	thrust::host_vector<AMR_node_select> 	H__Node_selection(Supp_BBox.Total_Nodes(), { 0,0 });
 	thrust::device_vector<AMR_node_select>	D__Node_selection = H__Node_selection;

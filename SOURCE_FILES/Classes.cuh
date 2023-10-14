@@ -42,7 +42,7 @@
 
 #define RELATIVE_PATH "../../SIMULATION_OUTPUT/"
 
-#define double float
+#define TYPE float
 
 #define MAX_FILE_SIZE_B (uint64_t)2*1024*1024*1024
 
@@ -266,7 +266,7 @@ public:
 		for (uint16_t d = 0; d < DIM; d++) {
 			INT temp_idx = roundf((Particle.dim[d] - Boundary_inf.dim[d]) / this->Discr_length());
 
-			bin_idx += temp_idx * powf(Nodes_per_Dim, d);
+			bin_idx += temp_idx * pow(Nodes_per_Dim, d);
 		}
 		return bin_idx;
 	};
@@ -278,7 +278,7 @@ public:
 		for (uint16_t d = 0; d < DIM; d++) {
 			INT temp_idx = roundf((Particle.dim[d] - Boundary_inf.dim[d]) / this->Discr_length()) + bin_offset;
 
-			bin_idx += temp_idx * powf(Nodes_per_Dim, d);
+			bin_idx += temp_idx * pow(Nodes_per_Dim, d);
 		}
 		return bin_idx;
 	};
