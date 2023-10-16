@@ -128,7 +128,7 @@ __global__ void Neighbor_search(gridPoint<DIM, T>*		Search_Particles,
 		// First: find the global index of the bin to search!
 		INT aux_index = bin_idx;
 		for (uint16_t d = 0; d < DIMENSIONS; d++) {
-			aux_index += floorf(positive_rem(k, powf(2 * Bin_offset + 1, d + 1)) / powf(2 * Bin_offset + 1, d)) * powf(Bounding_Box.Nodes_per_Dim, d);
+			aux_index += floorf(positive_rem(k, pow(2 * Bin_offset + 1, d + 1)) / pow(2 * Bin_offset + 1, d)) * pow(Bounding_Box.Nodes_per_Dim, d);
 		}
 
 		if (aux_index > -1 && aux_index < Bounding_Box.Total_Nodes()) { // If we are selecting nodes inside the domain
@@ -172,6 +172,7 @@ __host__ int16_t _CS_Neighbor_Search(thrust::device_vector<gridPoint<DIM, T>>& S
 							thrust::device_vector<UINT>& Num_Neighbors,
 							const UINT Adapt_Points, 
 							const UINT max_neighbor_num,
+							const grid<DIM, T>& Bounding_Box,
 							const T search_radius) {
 
 	// We need our particles
@@ -182,6 +183,10 @@ __host__ int16_t _CS_Neighbor_Search(thrust::device_vector<gridPoint<DIM, T>>& S
 	thrust::device_vector<gridPoint<DIM, T>> temp_Particles(Adapt_Points);		// this one will store the ordered particles!
 	thrust::device_vector<T>				 temp_values(Adapt_Points,0);		// this one will store the values of the particles in the new order!
 
+	// Create a bounding box covering the same area as the bounding box from the particles, but change the number of nodes per dim!
+	grid<DIM, T> CS_BBox(Bounding_Box);
+	CS_BBox.Nodes_per_Dim = 64;
+
 	// Bin the particles!
 	UINT Threads = fmin(THREADS_P_BLK, Adapt_Points);
 	UINT Blocks  = floor((Adapt_Points - 1) / Threads) + 1;
@@ -189,27 +194,6 @@ __host__ int16_t _CS_Neighbor_Search(thrust::device_vector<gridPoint<DIM, T>>& S
 	for (UINT k = 0; k < Total_Particles / Adapt_Points; k++) { // We've got to repeat this once per random sample...we'll see another way out...
 
 		UINT offset = k * Adapt_Points;
-
-
-		// IN THE GENERAL CASE, WE HAVE TO BUILD THIS THINGO IN THE MAIN LOOP
-
-	// First, we have to determine the bounding box of the particle set
-		grid<DIM, T> CS_BBox; // create the bounding box for the Counting Sort algorithm
-		thrust::device_vector<T> projection(Adapt_Points);
-
-		for (uint16_t d = 0; d < DIMENSIONS; d++) {
-			findProjection<DIM, T> << <Threads, Blocks >> > (rpc(Search_Particles, offset), rpc(projection, 0), Adapt_Points, d);
-			gpuError_Check(cudaDeviceSynchronize());
-
-			CS_BBox.Boundary_inf.dim[d] = *(thrust::min_element(thrust::device, projection.begin(), projection.end()));
-			CS_BBox.Boundary_sup.dim[d] = *(thrust::max_element(thrust::device, projection.begin(), projection.end()));
-		}
-
-		// No need for the projection array
-		projection.clear();
-
-	// We obtain the number of bins/nodes of our bounding box (per dimension). We build it as a square/cube
-		CS_BBox.Nodes_per_Dim = 128;
 
 	// Reinitialize the particle count array
 		thrust::device_vector<INT> Bin_globalCount(CS_BBox.Total_Nodes(), 0);

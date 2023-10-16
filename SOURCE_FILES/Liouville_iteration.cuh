@@ -283,6 +283,19 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 					std::cout << "Runge-Kutta iteration took " << duration_3.count() << " seconds\n";
 				#endif
 
+				// Before going to the next step, define the bounding box of the advected particles!
+					thrust::device_vector<T> projection(Block_Particles,(T)0);
+
+					for (uint16_t d = 0; d < DIM; d++) {
+						findProjection<DIM, T> << <Blocks, Threads >> > (rpc(GPU_Part_Position, 0), rpc(projection, 0), Block_Particles, d);
+
+						T temp_1 = *(thrust::min_element(thrust::device, projection.begin(), projection.end())); // min element from the projection in that direction
+						T temp_2 = *(thrust::max_element(thrust::device, projection.begin(), projection.end()));
+
+						Supp_BBox.Boundary_inf.dim[d] = fmax(Problem_Domain.Boundary_inf.dim[d], temp_1 - ceil(DISC_RADIUS) * Problem_Domain.Discr_length());
+						Supp_BBox.Boundary_sup.dim[d] = fmin(Problem_Domain.Boundary_sup.dim[d], temp_2 + ceil(DISC_RADIUS) * Problem_Domain.Discr_length());
+					}
+
 				// ----------------------------------------------------------------------------------- //
 				// -------------------------- INTERPOLATION ------------------------------------------ //
 				// ----------------------------------------------------------------------------------- //
@@ -316,23 +329,11 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 																GPU_Num_Neighbors,
 																Adapt_Points,
 																MaxNeighborNum,
+																Supp_BBox,
 																search_radius);
 
 					if (error_check == -1) { break; }
 				}
-
-				// Before going to the next step, define the bounding box of the advected particles!
-					thrust::device_vector<T> projection(Block_Particles,(T)0);
-
-					for (uint16_t d = 0; d < DIM; d++) {
-						findProjection<DIM, T> << <Blocks, Threads >> > (rpc(GPU_Part_Position, 0), rpc(projection, 0), Block_Particles, d);
-
-						T temp_1 = *(thrust::min_element(thrust::device, projection.begin(), projection.end())); // min element from the projection in that direction
-						T temp_2 = *(thrust::max_element(thrust::device, projection.begin(), projection.end()));
-
-						Supp_BBox.Boundary_inf.dim[d] = fmax(Problem_Domain.Boundary_inf.dim[d], temp_1 - ceil(DISC_RADIUS) * Problem_Domain.Discr_length());
-						Supp_BBox.Boundary_sup.dim[d] = fmin(Problem_Domain.Boundary_sup.dim[d], temp_2 + ceil(DISC_RADIUS) * Problem_Domain.Discr_length());
-					}
 
 				end_3 = std::chrono::high_resolution_clock::now();
 				duration_3 = end_3 - start_3;

@@ -74,7 +74,7 @@ inline UINT positive_rem(const INT a, const INT b) {
 }
 
 #define M_PI 3.14159265358979323846
-#define ptSEARCH_THRESHOLD 20000 // The min. number of particles per sample where we use the counting sort search
+#define ptSEARCH_THRESHOLD 15000 // The min. number of particles per sample where we use the counting sort search
 
 //-------------------------------------------------------------------------//
 //-------------------------- CLASSES USED ---------------------------------//
@@ -180,6 +180,10 @@ public:
 	}
 
 	// Parametric constructors:
+	
+	/// @brief Create a grid knowing the nodes per dimension
+	/// @param Nodes_per_dim 
+	/// @return 
 	__host__ __device__	grid<DIM, T>(const INT& Nodes_per_dim) {
 
 		Nodes_per_Dim = Nodes_per_dim;
@@ -187,6 +191,9 @@ public:
 		Boundary_sup  = gridPoint<DIM, T>(DOMAIN_SUP);
 	}
 
+	/// @brief Create a grid knowing the discretization length
+	/// @param Discretization_length 
+	/// @return 
 	__host__ __device__	grid<DIM, T>(const T& Discretization_length) {
 
 		Boundary_inf = gridPoint<DIM, T>(DOMAIN_INF);
@@ -194,6 +201,10 @@ public:
 		Nodes_per_Dim = roundf((Boundary_sup.dim[0] - Boundary_inf.dim[0]) / Discretization_length);
 	}
 
+	/// @brief Create a grid specifying the extremal nodes. 2 nodes per dimension by default
+	/// @param Bnd_inf 
+	/// @param Bnd_sup 
+	/// @return 
 	__host__ __device__	grid<DIM, T>(const gridPoint<DIM, T>& Bnd_inf, const gridPoint<DIM, T>& Bnd_sup) {
 
 		Nodes_per_Dim = 2;
@@ -201,6 +212,11 @@ public:
 		Boundary_sup = Bnd_sup;
 	}
 
+	/// @brief Create a grid specifying all the parameters
+	/// @param Bnd_inf 
+	/// @param Bnd_sup 
+	/// @param Nodes_per_dim 
+	/// @return 
 	__host__ __device__	grid<DIM, T>(const gridPoint<DIM, T>& Bnd_inf, const gridPoint<DIM, T>& Bnd_sup, const INT& Nodes_per_dim){
 
 		Nodes_per_Dim	= Nodes_per_dim;
@@ -208,6 +224,11 @@ public:
 		Boundary_sup	= Bnd_sup;
 	}
 
+	/// @brief Create a grid specifying all the parameters (discr. length instead of the nodes per dimension)
+	/// @param Bnd_inf 
+	/// @param Bnd_sup 
+	/// @param Discretization_length 
+	/// @return 
 	__host__ __device__	grid<DIM, T>(const gridPoint<DIM, T>& Bnd_inf, const gridPoint<DIM, T>& Bnd_sup, const T& Discretization_length) {
 
 		Boundary_inf = Bnd_inf;
@@ -216,29 +237,32 @@ public:
 	}
 
 // Methods/functions
-	// This function gives the total amount of Mesh nodes
+	
+	/// @brief Compute the total number of nodes
 	__host__ __device__	inline UINT Total_Nodes() const {
 		return pow(Nodes_per_Dim, DIM);
 	}
 
-	// This function gives the length of each edge of our cubical mesh
+	/// @brief Gives the edge length (side length of a cube)
 	__host__ __device__	inline T Edge_size() const {
 		return (Boundary_sup.dim[0] - Boundary_inf.dim[0]);
 	}
 
-	// This function returns the center point of the mesh
+	/// @brief Gives the center node of the grid
 	__host__ __device__	inline gridPoint<DIM, T> Center() const {
 		return (Boundary_sup + Boundary_inf).Mult_by_Scalar(0.5);
 	}
 
-	// This function gives the mesh discretization length
+	/// @brief Gives the discretization length (distance between two consecutive nodes in the same dimension) 
 	__host__ __device__	inline T Discr_length() const {
 		if (Nodes_per_Dim == 1) { return (T)0; }
 
 		return (T)(this->Edge_size() / (Nodes_per_Dim - 1));
 	}
 
-	// Given an index, this function returns the corresponding node at the grid
+	/// @brief Gives the node (point in space) given the global index in the grid
+	/// @param globalIdx Global index in the current grid
+	/// @return point in space
 	__host__ __device__	inline gridPoint<DIM, T> Get_node(const INT& globalIdx) const {
 
 		gridPoint<DIM, T> out(Boundary_inf);
@@ -251,7 +275,9 @@ public:
 		return out;
 	}
 
-	// Checks whether Particle belongs to the INTERIOR+BOUNDARY of the grid/mesh
+	/// @brief This method decides whether Particle is inside the grid or not
+	/// @param Particle 
+	/// @return bool. True if particle is inside grid, false otherwise
 	__host__ __device__	inline bool Contains_particle(const gridPoint<DIM, T>& Particle) const {
 		for (uint16_t d = 0; d < DIM; d++) {
 			if (Particle.dim[d] < Boundary_inf.dim[d] || Particle.dim[d] > Boundary_sup.dim[d]) { return false; }
