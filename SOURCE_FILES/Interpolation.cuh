@@ -161,11 +161,11 @@ template<uint16_t DIM, class T> __global__ void Neighbor_search(gridPoint<DIM, T
 // We find the lowest corner in the neighboring bins (Hence, the Bin_offset variable)
 	UINT bin_idx = Bounding_Box.Get_binIdx(fixed_GP, -Bin_offset);
 
-	for (UINT k = 0; k < pow(2 * Bin_offset + 1, DIMENSIONS); k++) { // That's the total number of bins to visit
+	for (UINT k = 0; k < pow(2 * Bin_offset + 1, DIM); k++) { // That's the total number of bins to visit
 
 		// First: find the global index of the bin to search!
 		INT aux_index = bin_idx;
-		for (uint16_t d = 0; d < DIMENSIONS; d++) {
+		for (uint16_t d = 0; d < DIM; d++) {
 			aux_index += floorf(positive_rem(k, (UINT)pow(2 * Bin_offset + 1, d + 1)) / (UINT)pow(2 * Bin_offset + 1, d)) * (UINT)pow(Bounding_Box.Nodes_per_Dim, d);
 		}
 
