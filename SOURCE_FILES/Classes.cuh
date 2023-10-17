@@ -74,7 +74,7 @@ inline UINT positive_rem(const INT a, const INT b) {
 }
 
 #define M_PI 3.14159265358979323846
-#define ptSEARCH_THRESHOLD 30000 // The min. number of particles per sample where we use the counting sort search
+#define ptSEARCH_THRESHOLD 50000 // The min. number of particles per sample where we use the counting sort search (not worth it yet)
 
 //-------------------------------------------------------------------------//
 //-------------------------- CLASSES USED ---------------------------------//

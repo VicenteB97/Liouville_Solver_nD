@@ -14,7 +14,7 @@ else
 %     f_Disc=sort(f_Disc,'descend');
     
 %     tol=0.01;
-    tol=0.05;
+    tol=0.005;
 
     % We are given the points as vectors, we are going to try and compute the
     % condidence region as a level set
