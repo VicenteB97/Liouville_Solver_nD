@@ -32,15 +32,23 @@
 // AMR tolerance, Conjugate Gradient tolerance and number of discretization size for the radius of the RBFs
 #define TOLERANCE_AMR       0.0005
 #define TOLERANCE_ConjGrad  powf(10,-6)
-#define DISC_RADIUS         3.45
+#define DISC_RADIUS         4.45
 
 // State variables information
 #define DIMENSIONS  2
 #define DOMAIN_INF	{-6, -6}
 #define DOMAIN_SUP	{6, 6}
 
+#define Time_0 0
+
+static const char   IC_NAMES[DIMENSIONS] = { 'N','N' };
+static const bool   IC_TRUNC[DIMENSIONS] = { false, false };
+static const TYPE   IC_InfTVAL[DIMENSIONS] = { -6, -6 };
+static const TYPE   IC_SupTVAL[DIMENSIONS] = { 6, 6 };
 static const TYPE	IC_MEAN[DIMENSIONS] = { 1.75f, 0.00f };
 static const TYPE	IC_STD[DIMENSIONS] = { sqrtf(0.025f),sqrtf(0.025f) };
+
+
 
 // Vector field definition
 // explanation: 

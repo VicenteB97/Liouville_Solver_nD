@@ -74,7 +74,7 @@ for k=1:timesteps
     % DO WE WANT AMR GRAPH?
     if Show_AMR
         % SHOW AMR IN EACH CASE
-        [MeshId,val,GridPt,f_Disc] = AMR(F_Output(:,:,k),log2(Pts_Per_Dimension),0,X,Y,1e-5);
+        [MeshId,val,GridPt,f_Disc] = AMR(F_Output(:,:,k),log2(Pts_Per_Dimension),0,X,Y,1e-4);
 
         % Function with the confidence region curve
         subplot(1,2,1)

@@ -153,6 +153,8 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 		std::cout << "AMR iteration took " << duration_3.count() << " seconds\n";
 		#endif
 
+		GPU_PDF.clear();
+
 		// 1.1.- COMPUTE THE TRANSFORMATION OF THE PDF (IF THERE IS ONE)
 		if (time_vector[j].impulse) {
 
@@ -162,15 +164,15 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 
 			start_3 = std::chrono::high_resolution_clock::now();
 
-			error_check = IMPULSE_TRANSFORM_PDF(AdaptGrid,
-												H_PDF,
-												GPU_PDF,
-												AdaptPDF,
-												time_vector[j],
-												jump,
-												Problem_Domain,
-												Base_Mesh,
-												Supp_BBox);
+			error_check = IMPULSE_TRANSFORM_PDF<DIM, T>(AdaptGrid,
+														H_PDF,
+														GPU_PDF,
+														AdaptPDF,
+														time_vector[j],
+														jump,
+														Problem_Domain,
+														Base_Mesh,
+														Supp_BBox);
 
 			end_3 = std::chrono::high_resolution_clock::now();
 			duration_3 = end_3 - start_3;
@@ -207,9 +209,7 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 		// 1.2.- COMPUTE THE SMOOTH EVOLUTION VIA LIOUVILLE GIBBS/CONTINUITY EQUATION
 		else {
 			std::cout << "Simulation time: " << t0 << " to " << tF << "\n";
-
-			GPU_PDF.clear();
-
+			
 			// Number of particles to advect
 			Adapt_Points = AdaptGrid.size();
 

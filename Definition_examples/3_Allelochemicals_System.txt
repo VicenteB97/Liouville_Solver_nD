@@ -34,13 +34,20 @@
 #define TOLERANCE_ConjGrad  powf(10,-7)
 #define DISC_RADIUS         3.75
 
+#define Time_0 0
+
 // State variables information
 #define DIMENSIONS  2
 #define DOMAIN_INF  {0, 0}
 #define DOMAIN_SUP {3.5, 3.5}
 
-inline const TYPE	IC_MEAN[DIMENSIONS] = {2.2793, 0.0};
-inline const TYPE	IC_STD [DIMENSIONS] = {sqrtf(0.0130f),sqrtf(0.00001f)};
+static const char   IC_NAMES[DIMENSIONS] = { 'N','N' };
+static const bool   IC_TRUNC[DIMENSIONS] = { false, false };
+static const TYPE   IC_InfTVAL[DIMENSIONS] = { 0, 0 };
+static const TYPE   IC_SupTVAL[DIMENSIONS] = { 3.5, 3.5 };
+static const TYPE	IC_MEAN[DIMENSIONS] = {2.2793, 0.0};
+static const TYPE	IC_STD [DIMENSIONS] = {sqrtf(0.0130f),sqrtf(0.00001f)};
+
 
 // Vector field definition
 // explanation: p0 = k1, p1 = k2, p3 = g0
@@ -76,12 +83,12 @@ inline TYPE 		_DIST_STD	 [PARAM_DIMENSIONS]	= {sqrtf(0.00092928f), sqrtf(0.0011f
 
 
 // This variable controls the size of the '.csv' files where the simulations are saved
-#define MAX_FILE_SIZE_B 1024*1024*1024
+// #define MAX_FILE_SIZE_B 1024*1024*1024
 
 // Choosing whether showing full or simplified timing information
-#define OUTPUT_INFO true
+// #define OUTPUT_INFO true
 
-#define TYPE float
+// #define TYPE float
 
 // AMR tolerance, Conjugate Gradient tolerance and number of discretization size for the radius of the RBFs
 // #define TOLERANCE_AMR       0.00035
