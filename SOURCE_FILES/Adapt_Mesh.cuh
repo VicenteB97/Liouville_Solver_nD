@@ -14,21 +14,33 @@
 #include "Classes.cuh"
 
 // ---------------------- FUNCTIONS FOR General Dimension AMR ---------------------- //
-template<class T>
-__host__ __device__ 
-inline void _1D_WVLET(T& s1, T& s2){
+
+/// @brief (DEVICE FUNCTION) Compute a 1D Haar wavelet transform
+/// @tparam T
+/// @param s1 
+/// @param s2 
+/// @return 
+template<class T> __device__ inline void _1D_WVLET(T& s1, T& s2){
 
 	T aux = 0.5*(s1 + s2);
 	s2 	= s1 - s2;
 	s1 	= aux;
 }
 
-template<uint16_t DIM, class T>
-__global__ void D__Wavelet_Transform__F(T* 					PDF,
-										AMR_node_select* 	Activate_node,
-										const grid<DIM, T> 	BoundingBox,
-										const grid<DIM, T> 	Problem_Domain,
-										const T				rescaling){
+/// @brief (GLOBAL FUNCTION) Compute 1 level of the multidimensional wavelet transform in the GPU
+/// @tparam DIM
+/// @tparam T
+/// @param PDF Our "signal". The multidimensional signal we want to compress
+/// @param Activate_node An array with the nodes and the indication whether the node is chosen or not
+/// @param BoundingBox The "smallest" grid where the support of the PDF is contained
+/// @param Problem_Domain Problem domain
+/// @param rescaling Rescaling value that indicates the level of the wavelet transform
+/// @return 
+template<uint16_t DIM, class T> __global__ void D__Wavelet_Transform__F(T* 					PDF,
+																		AMR_node_select* 	Activate_node,
+																		const grid<DIM, T> 	BoundingBox,
+																		const grid<DIM, T> 	Problem_Domain,
+																		const T				rescaling){
 
 	const uint64_t globalID = blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -112,14 +124,24 @@ __global__ void D__Wavelet_Transform__F(T* 					PDF,
 	}
 }
 
-template<uint16_t DIM, class T>
-int16_t ADAPT_MESH_REFINEMENT_nD(const thrust::host_vector<T>&	H_PDF, 
-								thrust::device_vector<T>&		D__PDF, 
-								std::vector<T>&					AdaptPDF, 
-								std::vector<gridPoint<DIM, T>>& AdaptGrid,
-								const grid<DIM, T>&				Problem_Domain,
-								const grid<DIM, T>&				Base_Mesh,
-								grid<DIM, T>&					Supp_BBox) {
+/// @brief (HOST FUNCTION)
+/// @tparam T 
+/// @tparam DIM 
+/// @param H_PDF 
+/// @param D__PDF 
+/// @param AdaptPDF 
+/// @param AdaptGrid 
+/// @param Problem_Domain 
+/// @param Base_Mesh 
+/// @param Supp_BBox 
+/// @return Error code (0 = good, -1 = something went wrong)
+template<uint16_t DIM, class T> int16_t ADAPT_MESH_REFINEMENT_nD(const thrust::host_vector<T>&	H_PDF, 
+																thrust::device_vector<T>&		D__PDF, 
+																std::vector<T>&					AdaptPDF, 
+																std::vector<gridPoint<DIM, T>>& AdaptGrid,
+																const grid<DIM, T>&				Problem_Domain,
+																const grid<DIM, T>&				Base_Mesh,
+																grid<DIM, T>&					Supp_BBox) {
 
 
 	UINT rescaling = 2;
