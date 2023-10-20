@@ -42,7 +42,7 @@
 /// @return 
 template<uint16_t DIM, class T>
 int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
-						std::vector<float>*			store_PDFs,
+						std::vector<float>*		store_PDFs,
 						const Param_pair*		Parameter_Mesh,
 						const grid<DIM, T>&		Problem_Domain,
 						grid<DIM, T>&			Supp_BBox,
@@ -63,6 +63,8 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 	std::vector<T>					AdaptPDF;			// PDF value at the particle positions (corresponding values from AMR)
 	std::vector<gridPoint<DIM, T>>	Full_AdaptGrid;		// Final adapted grid<DIM, T> (adapted grid<DIM, T> x number of samples)
 	std::vector<T>					Full_AdaptPDF;		// Final adapted PDF (adapted grid<DIM, T> x number of samples)
+
+	Logger SimLog(time_vector.size());					// Simulation logger
 
 	INT Random_Samples = 1;
 	INT aux_Samples = 0;
@@ -88,7 +90,7 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 		Sum_Rand_Params += aux_PM.Joint_PDF;
 	}
 
-	const UINT MAX_MEMORY_USABLE = 0.9 * prop->totalGlobalMem;		// max memory to be used (in bytes)
+	const UINT MAX_MEMORY_USABLE = 0.9 * prop->totalGlobalMem;		// max memory to be used (in bytes). 90% just in case
 
 	// ------------------ DEFINITION OF THE INTERPOLATION VARIABLES AND ARRAYS ------------------ //
 	UINT Adapt_Points, MaxNeighborNum;
@@ -292,8 +294,10 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 						T temp_1 = *(thrust::min_element(thrust::device, projection.begin(), projection.end())); // min element from the projection in that direction
 						T temp_2 = *(thrust::max_element(thrust::device, projection.begin(), projection.end()));
 
-						Supp_BBox.Boundary_inf.dim[d] = fmax(Problem_Domain.Boundary_inf.dim[d], temp_1 - ceil(DISC_RADIUS) * Problem_Domain.Discr_length());
-						Supp_BBox.Boundary_sup.dim[d] = fmin(Problem_Domain.Boundary_sup.dim[d], temp_2 + ceil(DISC_RADIUS) * Problem_Domain.Discr_length());
+
+						// Eliminate the need for it to be in the Problem domain
+						Supp_BBox.Boundary_inf.dim[d] = temp_1 - ceil(DISC_RADIUS) * Problem_Domain.Discr_length();
+						Supp_BBox.Boundary_sup.dim[d] = temp_2 + ceil(DISC_RADIUS) * Problem_Domain.Discr_length();
 					}
 
 				// ----------------------------------------------------------------------------------- //

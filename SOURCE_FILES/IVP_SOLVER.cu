@@ -233,7 +233,7 @@ auto end = std::chrono::high_resolution_clock::now();
 				std::string temp_str = std::to_string((UINT)k);
 
 			// SIMULATION INFORMATION FILE
-				std::string relavtive_pth = RELATIVE_PATH;
+				std::string relavtive_pth = SIM_OUTPUT_relPATH;
 				relavtive_pth.append("Simulation_info_");
 				relavtive_pth.append(temp_str);
 				relavtive_pth.append(".csv");
@@ -274,7 +274,7 @@ auto end = std::chrono::high_resolution_clock::now();
 				file1.close();
 
 			// SIMULATION OUTPUT
-				relavtive_pth = RELATIVE_PATH;
+				relavtive_pth = SIM_OUTPUT_relPATH;
 				relavtive_pth.append("Mean_PDFs_");
 				relavtive_pth.append(temp_str);
 				relavtive_pth.append(".bin");
