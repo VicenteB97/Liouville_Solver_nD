@@ -1,0 +1,11 @@
+%% Read both solutions (previously read from the simulation outputs)
+
+%% Compare the ?-norm of the solutions
+
+% Compare with different random samples
+
+% Compare with different timestep
+
+% Compare with several different RBF support radius
+
+%% Generate graphics in PDF

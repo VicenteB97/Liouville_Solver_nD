@@ -9,6 +9,9 @@ Show_AMR = true;
 Show_Confidence_Region = true;
 Show_Animation = false;
 Save_Animation = false; % STILL NOT WORKING...
+Save_infoFile = true;
+
+Sim_infoFile_name = "SIR.mat";
 
 Name_var1 = 'S';
 Name_var2 = 'I';
@@ -19,7 +22,7 @@ conf_lvl = 0.95;
 
 %% CHANGE FOR YOUR CURRENT COMPUTER
 
-Info=readcell  ('../SIMULATION_OUTPUT/Simulation_Info_2.csv');
+Info=readcell  ('../SIMULATION_OUTPUT/Simulation_Info_3.csv');
 
 Total_Pts           = Info{1,1};
 Pts_Per_Dimension   = Info{1,2};
@@ -34,10 +37,10 @@ h_Z =(Info{1,8}-Info{1,7})/(Pts_Per_Dimension-1);
 Z   =Info{1,7}:h_X:Info{1,8};
 
 % F_Output=zeros(Pts_Per_Dimension, Pts_Per_Dimension, Pts_Per_Dimension, timesteps);
-timesteps = length(Info);
+timesteps = 5;%length(Info);
 
 %%
-fileID = fopen('../SIMULATION_OUTPUT/Mean_PDFs_2.bin');
+fileID = fopen('../SIMULATION_OUTPUT/Mean_PDFs_3.bin');
 Data=fread(fileID,[Pts_Per_Dimension^3,timesteps],'float');
 fclose(fileID);
 
@@ -45,6 +48,10 @@ fclose(fileID);
 [x,y,z] = meshgrid(X,Y,Z);
 
 F_Output = reshape(Data,[Pts_Per_Dimension Pts_Per_Dimension Pts_Per_Dimension timesteps]);
+
+if Save_infoFile
+    save(Sim_infoFile_name)
+end
 
 %%
 skip = 4;
