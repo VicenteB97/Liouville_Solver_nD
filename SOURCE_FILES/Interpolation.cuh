@@ -387,7 +387,7 @@ __global__ void MATRIX_VECTOR_MULTIPLICATION(T* X, const T* x0, const INT* Matri
 
 
 template<class T>
-__host__ int16_t CONJUGATE_GRADIENT_SOLVE(	thrust::device_vector<T>&		GPU_lambdas,
+__host__ INT CONJUGATE_GRADIENT_SOLVE(	thrust::device_vector<T>&		GPU_lambdas,
 									thrust::device_vector<INT>& GPU_Index_array,
 									thrust::device_vector<T>&		GPU_Mat_entries,
 									thrust::device_vector<UINT>& GPU_Num_Neighbors,
@@ -401,8 +401,6 @@ __host__ int16_t CONJUGATE_GRADIENT_SOLVE(	thrust::device_vector<T>&		GPU_lambda
 	// Determine threads and blocks for the simulation
 	const UINT Threads = (UINT)fminf(THREADS_P_BLK, Total_Particles);
 	const UINT Blocks  = (UINT)floorf((Total_Particles - 1) / Threads) + 1;
-
-	int16_t output = 0;
 
 	// ------------------ AUXILIARIES FOR THE INTEPROLATION PROC. ------------------------------- //
 	thrust::device_vector<T>	GPU_R	(Total_Particles);		// residual vector
@@ -461,12 +459,7 @@ __host__ int16_t CONJUGATE_GRADIENT_SOLVE(	thrust::device_vector<T>&		GPU_lambda
 		r_norm = sqrt(r_norm);
 
 		if ((T) r_norm / Total_Particles < in_tolerance) {
-			#if OUTPUT_INFO == 1
-				std::cout << "Convergence. Iteration count: " << k << "\n";
-			#endif
-
 			flag = false;
-			output = 0;
 			break;
 		}
 		else if (k > max_steps) {
@@ -474,7 +467,7 @@ __host__ int16_t CONJUGATE_GRADIENT_SOLVE(	thrust::device_vector<T>&		GPU_lambda
 			std::cout << "+-------------------------------------------------------------------+\n";
 
 			std::cin.get();
-			output = -1;
+			k = -1;
 			flag = false;
 			break;
 		}
@@ -486,7 +479,7 @@ __host__ int16_t CONJUGATE_GRADIENT_SOLVE(	thrust::device_vector<T>&		GPU_lambda
 			k++;
 		}
 	}
-	return output;
+	return k;
 }
 
 

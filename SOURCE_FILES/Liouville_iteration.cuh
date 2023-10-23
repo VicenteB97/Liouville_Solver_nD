@@ -35,7 +35,7 @@
 /// @param Problem_Domain 
 /// @param H_PDF 
 /// @param PtsPerDim 
-/// @param Problem_Domain.Total_Nodes() 
+/// @param Problem_Domain
 /// @param time_vector 
 /// @param deltaT 
 /// @param ReinitSteps 
@@ -64,7 +64,7 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 	std::vector<gridPoint<DIM, T>>	Full_AdaptGrid;		// Final adapted grid<DIM, T> (adapted grid<DIM, T> x number of samples)
 	std::vector<T>					Full_AdaptPDF;		// Final adapted PDF (adapted grid<DIM, T> x number of samples)
 
-	Logger SimLog(time_vector.size());					// Simulation logger
+	Logger SimLog(time_vector.size() - 1);					// Simulation logger
 
 	INT Random_Samples = 1;
 	INT aux_Samples = 0;
@@ -90,7 +90,7 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 		Sum_Rand_Params += aux_PM.Joint_PDF;
 	}
 
-	const UINT MAX_MEMORY_USABLE = 0.9 * prop->totalGlobalMem;		// max memory to be used (in bytes). 90% just in case
+	const UINT MAX_MEMORY_USABLE = 0.95 * prop->totalGlobalMem;		// max memory to be used (in bytes). 90% just in case
 
 	// ------------------ DEFINITION OF THE INTERPOLATION VARIABLES AND ARRAYS ------------------ //
 	UINT Adapt_Points, MaxNeighborNum;
@@ -134,26 +134,23 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 
 
 // IN THIS LINE WE COMMENCE WITH THE ACTUAL ITERATIONS OF THE LIOUVILLE EQUATION
-	while (j < time_vector.size() - 1 && error_check == 0) {
-
-	auto start_2 = std::chrono::high_resolution_clock::now();
+	while (j < time_vector.size() - 1 && error_check != -1) {
 
 		double	t0 = time_vector[j].time, tF = time_vector[j + 1].time;
 
 		std::cout << "+---------------------------------------------------------------------+\n";
 		// 1.- Initial step Adaptive Problem_Domain Refinement. First store the initial PDF with AMR performed
 
-	auto start_3 = std::chrono::high_resolution_clock::now();
+	auto startTimeSeconds = std::chrono::high_resolution_clock::now();
 
 		error_check = ADAPT_MESH_REFINEMENT_nD<DIM, T>(*H_PDF, GPU_PDF, AdaptPDF, AdaptGrid, Problem_Domain, Base_Mesh, Supp_BBox);
 		if (error_check == -1) { break; }
 
-	auto end_3 = std::chrono::high_resolution_clock::now();
-	std::chrono::duration<float> duration_3 = end_3 - start_3;
+	auto endTimeSeconds = std::chrono::high_resolution_clock::now();
+	std::chrono::duration<float> duration_3 = endTimeSeconds - startTimeSeconds;
 
-		#if OUTPUT_INFO
-		std::cout << "AMR iteration took " << duration_3.count() << " seconds\n";
-		#endif
+		// Enter the information into the log information
+		SimLog.subFrame_time[5*j] = duration_3.count();
 
 		GPU_PDF.clear();
 
@@ -164,7 +161,7 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 
 			std::cout << "RVT transformation at time: " << t0 << "\n";
 
-			start_3 = std::chrono::high_resolution_clock::now();
+			startTimeSeconds = std::chrono::high_resolution_clock::now();
 
 			error_check = IMPULSE_TRANSFORM_PDF<DIM, T>(AdaptGrid,
 														H_PDF,
@@ -176,12 +173,12 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 														Base_Mesh,
 														Supp_BBox);
 
-			end_3 = std::chrono::high_resolution_clock::now();
-			duration_3 = end_3 - start_3;
+			endTimeSeconds = std::chrono::high_resolution_clock::now();
+			duration_3 = endTimeSeconds - startTimeSeconds;
 
-#if OUTPUT_INFO
-			std::cout << "Delta Impulse took " << duration_3.count() << " seconds\n";
-#endif
+			
+			// Enter the information into the log information
+			SimLog.subFrame_time[5*j + 1] = duration_3.count();
 
 			assert(error_check == 0);
 
@@ -216,7 +213,7 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 			Adapt_Points = AdaptGrid.size();
 
 			// Maximum neighbors to search. Diameter number of points powered to the dimension
-			MaxNeighborNum = fmin(pow(2 * round(DISC_RADIUS) + 1, DIM), Adapt_Points);
+			MaxNeighborNum = round(0.8 * fmin(pow(2 * round(DISC_RADIUS) + 1, DIM), Adapt_Points));
 
 			// Max. memory requirements for next Liouville step
 			const UINT mem_requested_per_sample = (UINT)Adapt_Points * (sizeof(T) * (6 + MaxNeighborNum) + sizeof(gridPoint<DIM, T>) + sizeof(INT) * (MaxNeighborNum + 1));
@@ -261,7 +258,7 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 				// ------------------------------------------------------------------------------------ //
 				// -------------------------- POINT ADVECTION ----------------------------------------- //
 				// ------------------------------------------------------------------------------------ //
-				start_3 = std::chrono::high_resolution_clock::now();
+				startTimeSeconds = std::chrono::high_resolution_clock::now();
 				ODE_INTEGRATE<DIM, T><< <Blocks, Threads >> > (	rpc(GPU_Part_Position, 0),
 																rpc(GPU_AdaptPDF, 0),
 																rpc(GPU_Parameter_Mesh, Sample_idx_offset_init),
@@ -276,14 +273,11 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 																Problem_Domain);
 				gpuError_Check(cudaDeviceSynchronize()); // Here, the entire Problem_Domain points (those that were selected) and PDF points (same) have been updated.
 
-				end_3 = std::chrono::high_resolution_clock::now();
-				duration_3 = end_3 - start_3;
+				endTimeSeconds = std::chrono::high_resolution_clock::now();
+				duration_3 = endTimeSeconds - startTimeSeconds;
 
-				// Using RK4 for time integration of characteristic curves
-				#if OUTPUT_INFO
-					duration_3 = end_3 - start_3;
-					std::cout << "Runge-Kutta iteration took " << duration_3.count() << " seconds\n";
-				#endif
+				// Enter the information into the log information
+				SimLog.subFrame_time[5*j + 1] = duration_3.count();
 
 				// Before going to the next step, define the bounding box of the advected particles!
 					thrust::device_vector<T> projection(Block_Particles,(T)0);
@@ -310,7 +304,7 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 					thrust::device_vector<UINT>	GPU_Num_Neighbors(Block_Particles, 0);
 				// -------------------------------------------------------------------------- //
 				// 1.- Build Matix in GPU (indexes, dists and neighbors) Using Exahustive search...
-				start_3 = std::chrono::high_resolution_clock::now();
+				startTimeSeconds = std::chrono::high_resolution_clock::now();
 
 				// Dynamical choice of either exhaustive or counting sort-based point search
 				if (Adapt_Points < ptSEARCH_THRESHOLD) {
@@ -339,19 +333,18 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 					if (error_check == -1) { break; }
 				}
 
-				end_3 = std::chrono::high_resolution_clock::now();
-				duration_3 = end_3 - start_3;
-
-				#if OUTPUT_INFO
-					std::cout << "Point serach + BBox setup took " << duration_3.count() << " seconds\n";
-				#endif
+				endTimeSeconds = std::chrono::high_resolution_clock::now();
+				duration_3 = endTimeSeconds - startTimeSeconds;
+				
+				// Enter the information into the log information
+				SimLog.subFrame_time[5*j + 2] = duration_3.count();
 
 
 				// 2.- Iterative solution (Conjugate Gradient) to obtain coefficients of the RBFs
 				thrust::device_vector<T>	GPU_lambdas(Block_Particles);	// solution vector (RBF weights)
 				thrust::fill(GPU_lambdas.begin(), GPU_lambdas.end(), 0.0f);	// this will serve as the initial condition
 
-				start_3 = std::chrono::high_resolution_clock::now();
+				startTimeSeconds = std::chrono::high_resolution_clock::now();
 				error_check = CONJUGATE_GRADIENT_SOLVE<T>(GPU_lambdas,
 															GPU_Index_array,
 															GPU_Mat_entries,
@@ -362,12 +355,12 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 															max_steps,
 															in_tolerance);
 				if (error_check == -1) { std::cout << "Convergence failure.\n"; break; }
-				end_3 = std::chrono::high_resolution_clock::now();
-				duration_3 = end_3 - start_3;
+				endTimeSeconds = std::chrono::high_resolution_clock::now();
+				duration_3 = endTimeSeconds - startTimeSeconds;
 				
-				#if OUTPUT_INFO
-					std::cout << "Conjugate Gradient took " << duration_3.count() << " seconds\n";
-				#endif
+				// Enter the information into the log information
+				SimLog.subFrame_time[5*j + 3] = duration_3.count();
+				SimLog.ConvergenceIterations[j] = error_check;
 
 				// Clear them, to save memory
 				GPU_Index_array.clear();
@@ -390,7 +383,7 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 				Threads = fminf(THREADS_P_BLK, Block_Particles);
 				Blocks  = floorf((Block_Particles - 1) / Threads) + 1;
 
-				start_3 = std::chrono::high_resolution_clock::now();
+				startTimeSeconds = std::chrono::high_resolution_clock::now();
 				RESTART_GRID_FIND_GN<DIM,T> << < Blocks, Threads >> > (	rpc(GPU_Part_Position, 0),
 																		rpc(GPU_PDF, 0),
 																		rpc(GPU_lambdas, 0),
@@ -403,11 +396,12 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 																		Problem_Domain,
 																		Base_Mesh);
 				gpuError_Check(cudaDeviceSynchronize());
-				end_3 = std::chrono::high_resolution_clock::now();
-				duration_3 = end_3 - start_3;
-#if OUTPUT_INFO
-				std::cout << "Remeshing took " << duration_3.count() << " seconds\n";
-#endif
+				endTimeSeconds = std::chrono::high_resolution_clock::now();
+				duration_3 = endTimeSeconds - startTimeSeconds;
+
+				
+				// Enter the information into the log information
+				SimLog.subFrame_time[5 * j + 4] = duration_3.count();
 			}
 
 			AdaptGrid.clear();
@@ -423,18 +417,20 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 			thrust::transform(GPU_PDF.begin(), GPU_PDF.end(), GPU_PDF.begin(), 1.0f / Sum_Rand_Params * _1); // we use the thrust::placeholders here (@ the last input argument)
 
 			*H_PDF = GPU_PDF; // Send back to CPU
-			j++;
 
-			auto end_2 = std::chrono::high_resolution_clock::now();
+			SimLog.writeToCLI(OUTPUT_INFO, j);
 
-			std::chrono::duration<float> duration_2 = end_2 - start_2;
-			std::cout << "Total Liouville iteration took " << duration_2.count() << " seconds\n";
 			std::cout << "+---------------------------------------------------------------------+\n";
+
+			j++;
 
 			// Store info in cumulative variable
 			thrust::copy(H_PDF->begin(), H_PDF->end(), &(*store_PDFs)[j * Problem_Domain.Total_Nodes()]);
 		}
 	}
+
+	SimLog.writeToFile();
+
 	return error_check;
 }
 #endif
