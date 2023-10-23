@@ -18,7 +18,7 @@
 
 //--------------------------------------------------------------------------------------------- //
 int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
-	std::cout << "You are simulating the " << CASE <<". Simulation timing information is (1 = on, 0 = off): " << OUTPUT_INFO << ".\n\n";
+	std::cout << "You are simulating the " << CASE <<". Log level is (0 = off, 1 = only frame time, 2 = all steps time): " << OUTPUT_INFO << ".\n\n";
 	std::cout << "You must choose: \n - FINEST MESH LEVEL \n - FINAL time \n - TIMESTEP";
 	std::cout << "\n - Reinitialization Steps \n - SAMPLES PER PARAMETER \n";
 	std::cout << "(REMINDER) You can type \"-1\" to  exit the program while typing this information.\n\n";
