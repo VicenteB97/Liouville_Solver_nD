@@ -16,6 +16,7 @@ Name_var2 = 'A_E';
 %% CHANGE FOR YOUR CURRENT COMPUTER
 
 Info=readcell('../SIMULATION_OUTPUT/Simulation_Info_0.csv');
+Log=readcell('../SIMULATION_OUTPUT/LogFile.csv');
 
 Points_X = [0,1,2,3,4,5,6,7];
 Points_Y = [0.018,0.941,0.868,0.787,0.759,0.39,0.4,0.246];
