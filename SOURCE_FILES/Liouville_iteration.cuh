@@ -64,7 +64,7 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 	std::vector<gridPoint<DIM, T>>	Full_AdaptGrid;		// Final adapted grid<DIM, T> (adapted grid<DIM, T> x number of samples)
 	std::vector<T>					Full_AdaptPDF;		// Final adapted PDF (adapted grid<DIM, T> x number of samples)
 
-	Logger SimLog(time_vector.size() - 1);					// Simulation logger
+	Logger SimLog(time_vector.size() - 1);				// Simulation logger
 
 	INT Random_Samples = 1;
 	INT aux_Samples = 0;
@@ -74,14 +74,15 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 		aux_Samples += n_Samples[i];
 	}
 
-	std::cout << "Total number of random samples: " << Random_Samples << ".\n";
+	// GPU arrays
+	thrust::device_vector<INT>		GPU_nSamples(n_Samples, n_Samples + PARAM_DIMENSIONS);	// Small vector containing the number of samples per parameter
+	thrust::device_vector<T>		GPU_PDF = *H_PDF;										// PDF values at fixed Grid Nodes (for the GPU)
+
+		std::cout << "Total number of random samples: " << Random_Samples << ".\n";
 
 	thrust::device_vector<gridPoint<DIM, T>>	GPU_Part_Position;														// Particle positions (for the GPU)
 	thrust::device_vector<T>					GPU_AdaptPDF;															// PDF value at Particle positions (for the GPU)
 	thrust::device_vector<Param_pair>			GPU_Parameter_Mesh(Parameter_Mesh, Parameter_Mesh + aux_Samples);		// Parameter Problem_Domain array (for the GPU)
-
-	thrust::device_vector<INT>		GPU_nSamples(n_Samples, n_Samples + PARAM_DIMENSIONS);
-	thrust::device_vector<T>		GPU_PDF = *H_PDF;														// PDF values at fixed Grid Nodes (for the GPU)
 
 	// auxiliary variable that will be used for ensemble mean computation
 	T Sum_Rand_Params = 0;
@@ -95,13 +96,14 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 	// ------------------ DEFINITION OF THE INTERPOLATION VARIABLES AND ARRAYS ------------------ //
 	UINT Adapt_Points, MaxNeighborNum;
 
-	const UINT	max_steps = 1000;		 				// max steps at the Conjugate Gradient (CG) algorithm
-	const T 	in_tolerance  = TOLERANCE_ConjGrad, search_radius = DISC_RADIUS * Problem_Domain.Discr_length(); 		// CG stop tolerance and max radius to search ([3,6] appears to be optimal)
+	const UINT	max_steps 	  = 1000;		 								// max steps at the Conjugate Gradient (CG) algorithm
+	const T 	in_tolerance  = TOLERANCE_ConjGrad, 
+				search_radius = DISC_RADIUS * Problem_Domain.Discr_length();// CG stop tolerance and max radius to search ([3,6] appears to be optimal)
 
 	// Now we make a slightly larger domain for the computations:
 	grid<DIMENSIONS, TYPE> Base_Mesh;
 
-	const UINT expansion_nodes = 40;									// 30% of the domain length
+	const UINT expansion_nodes = 40;									// 40 nodes expansion by each side
 	Base_Mesh.Expand_From(Problem_Domain, expansion_nodes);				// From the initial Problem domain, we create an expanded version (with the same discretization!)
 
 	// --------------------------------------------------------------------------------------------
@@ -157,7 +159,7 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 		// 1.1.- COMPUTE THE TRANSFORMATION OF THE PDF (IF THERE IS ONE)
 		if (time_vector[j].impulse) {
 
-	#if(IMPULSE_TYPE == 1)	// THIS IS FOR DELTA-T IMPULSE!
+		#if(IMPULSE_TYPE == 1)	// THIS IS FOR DELTA-T IMPULSE!
 
 			std::cout << "RVT transformation at time: " << t0 << "\n";
 
@@ -191,7 +193,7 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 			// Store info in cumulative variable
 			thrust::copy(H_PDF->begin(), H_PDF->end(), &(*store_PDFs)[j * Problem_Domain.Total_Nodes()]);
 
-#elif(IMPULSE_TYPE == 2)	// THIS IS FOR HEAVISIDE-T IMPULSE!
+		#elif(IMPULSE_TYPE == 2)	// THIS IS FOR HEAVISIDE-T IMPULSE!
 			mode++;
 			std::cout << "Now the vector field is in mode: " << mode % 2 << ".\n";
 
@@ -199,11 +201,12 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 			AdaptPDF.clear();
 
 			j++;
-#elif(IMPULSE_TYPE != 0)
+
+		#elif(IMPULSE_TYPE != 0)
 			std::cout << "Error in 'Dynamics.cuh'. You are choosing an unavailable option. Go back to 'Case_definition.cuh' and re-check options for IMPULSE_TYPE.\n";
 			error_check = -1;
 			break;
-#endif
+		#endif
 		}
 		// 1.2.- COMPUTE THE SMOOTH EVOLUTION VIA LIOUVILLE GIBBS/CONTINUITY EQUATION
 		else {
