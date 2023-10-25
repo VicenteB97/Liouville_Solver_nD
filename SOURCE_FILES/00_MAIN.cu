@@ -45,9 +45,7 @@ int16_t SetGPU(int16_t& ChosenOne, const uint32_t& border_length){
 	ChosenOne = 0;
 
 	// If we have more than one, we choose the one with most memory
-	if(deviceCount > 1){
-		
-		std::string temp = "|	Found " ;
+	std::string temp = "|	Found " ;
 		temp.append(std::to_string(deviceCount));
 		temp.append(" GPUs.");
 		Intro_square_filler(temp, border_length, 1, 0);
@@ -63,7 +61,7 @@ int16_t SetGPU(int16_t& ChosenOne, const uint32_t& border_length){
 			cudaGetDeviceProperties(&properties, device);
 			uint64_t temp_mem = properties.totalGlobalMem;
 
-			temp =  "|		- GPU number ";
+			temp =  "|		- GPU ";
 			temp.append(std::to_string(device));
 			temp.append(" is: ");
 			temp.append(properties.name);
@@ -78,7 +76,6 @@ int16_t SetGPU(int16_t& ChosenOne, const uint32_t& border_length){
 				ChosenOne = device;
 			}
 		}
-	}
 	return 0;
 }
 
@@ -104,7 +101,7 @@ int main() {
 	cudaDeviceProp prop;
 	cudaGetDeviceProperties(&prop, chosen_GPU);
 
-	temp = "|	Starting simulation using device: "; temp.append(prop.name); temp.append(". Properties:");
+	temp = "|	Starting simulation using GPU "; temp.append(std::to_string(chosen_GPU)); temp.append(". Properties:");
 	Intro_square_filler(temp, border_length, 1, 0);
 	std::cout << temp;
 
