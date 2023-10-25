@@ -50,8 +50,8 @@ int16_t SetGPU(int16_t& ChosenOne, const uint32_t& border_length){
 		std::string temp = "|	Found " ;
 		temp.append(std::to_string(deviceCount));
 		temp.append(" GPUs.");
-		std::cout << temp;
 		Intro_square_filler(temp, border_length, 1, 0);
+		std::cout << temp;
     	
 		cudaDeviceProp properties;
 		cudaGetDeviceProperties(&properties, ChosenOne);
@@ -70,8 +70,8 @@ int16_t SetGPU(int16_t& ChosenOne, const uint32_t& border_length){
 			temp.append(" with ");
 			temp.append(std::to_string(temp_mem/1024/1024/1024));
 			temp.append(" GB of global memory.");
-			std::cout << temp;
 			Intro_square_filler(temp, border_length, 2, 1);
+			std::cout << temp;
 
 			if (max_memory < temp_mem) {
 				max_memory = temp_mem;
