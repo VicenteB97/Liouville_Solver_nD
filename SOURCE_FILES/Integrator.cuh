@@ -19,6 +19,7 @@ using namespace thrust::placeholders; // this is useful for the multiplication o
 template<uint16_t DIM, class T>
 __global__ void ODE_INTEGRATE(gridPoint<DIM, T>* Particles,
 							T* PDF,
+							const T* 			 lambdas,
 							const Param_pair* parameters,
 							const INT* n_Samples,
 							float				t0,
@@ -36,14 +37,15 @@ __global__ void ODE_INTEGRATE(gridPoint<DIM, T>* Particles,
 
 		// AUXILIARY DATA TO RUN THE ITERATIONS
 		// So, the total amount of advections are going to be: (no. particles x no. of samples)
-		const UINT  i_sample = floorf((float)i / Adapt_Points);
+		const UINT  i_sample = floor((double)i / Adapt_Points);
+		const UINT  i_particle = positive_rem(i, Adapt_Points);
 		const Param_vec parameter = Gather_Param_Vec(i_sample, parameters, n_Samples);
 
 		gridPoint<DIM, T> k0, k1, k2, k3, k_final, aux;
 		T	  Int1, Int2, Int3;
 
-		gridPoint<DIM, T> x0 = Particles[i]; 	// register storing the initial particle loc.
-		T Int_PDF = PDF[i];		// register storing the initial particle value
+		gridPoint<DIM, T> x0 = Particles[i]; 		// register storing the initial particle loc.
+		T Int_PDF 			 = lambdas[i_particle];	// register storing the initial particle value
 
 		while (t0 < tF - deltaT / 2) {
 			// Particle flow

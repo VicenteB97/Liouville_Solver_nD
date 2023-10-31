@@ -76,12 +76,13 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 
 	// GPU arrays
 	thrust::device_vector<INT>		GPU_nSamples(n_Samples, n_Samples + PARAM_DIMENSIONS);	// Small vector containing the number of samples per parameter
-	thrust::device_vector<T>		GPU_PDF = *H_PDF;										// PDF values at fixed Grid Nodes (for the GPU)
+	std::cout << "Total number of random samples: " << Random_Samples << ".\n";
 
-		std::cout << "Total number of random samples: " << Random_Samples << ".\n";
+	thrust::device_vector<T>					GPU_PDF = *H_PDF;														// PDF values at fixed Grid Nodes (for the GPU)
 
 	thrust::device_vector<gridPoint<DIM, T>>	GPU_Part_Position;														// Particle positions (for the GPU)
 	thrust::device_vector<T>					GPU_AdaptPDF;															// PDF value at Particle positions (for the GPU)
+
 	thrust::device_vector<Param_pair>			GPU_Parameter_Mesh(Parameter_Mesh, Parameter_Mesh + aux_Samples);		// Parameter Problem_Domain array (for the GPU)
 
 	// auxiliary variable that will be used for ensemble mean computation
@@ -91,7 +92,7 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 		Sum_Rand_Params += aux_PM.Joint_PDF;
 	}
 
-	const UINT MAX_MEMORY_USABLE = 0.95 * prop->totalGlobalMem;		// max memory to be used (in bytes). 90% just in case
+	const UINT MAX_MEMORY_USABLE = 0.95 * prop->totalGlobalMem;		// max memory to be used (in bytes). 95% just in case
 
 	// ------------------ DEFINITION OF THE INTERPOLATION VARIABLES AND ARRAYS ------------------ //
 	UINT Adapt_Points, MaxNeighborNum;
@@ -153,8 +154,109 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 
 		// Enter the information into the log information
 		SimLog.subFrame_time[5*j] = duration_3.count();
+		
+		// Number of particles to advect
+		Adapt_Points = AdaptGrid.size();
 
 		GPU_PDF.clear();
+
+		// Send adapted values and points to the GPU
+		GPU_AdaptPDF.resize(Adapt_Points);
+		GPU_Part_Position.resize(Adapt_Points);
+
+		GPU_AdaptPDF 		= AdaptPDF;
+		GPU_Part_Position 	= AdaptGrid;
+
+		// Here, we're going to interpolate!!
+				// ----------------------------------------------------------------------------------- //
+				// -------------------------- INTERPOLATION ------------------------------------------ //
+				// ----------------------------------------------------------------------------------- //
+				
+				// Determine threads and blocks for the simulation
+				uint16_t	Threads = fmin(THREADS_P_BLK, Adapt_Points);
+				UINT		Blocks	= floor((Adapt_Points - 1) / Threads) + 1;
+
+				// Maximum neighbors to search. Diameter number of points powered to the dimension
+				MaxNeighborNum = round(0.8 * fmin(pow(2 * round(DISC_RADIUS) + 1, DIM), Adapt_Points));
+
+				// ------------------ RESIZING OF THE INTERPOLATION MATRIX ------------------ //
+					thrust::device_vector<INT>	GPU_Index_array(MaxNeighborNum * Adapt_Points, -1);
+					thrust::device_vector<T>	GPU_Mat_entries(MaxNeighborNum * Adapt_Points, 0);
+					thrust::device_vector<UINT>	GPU_Num_Neighbors(Adapt_Points, 0);
+				// -------------------------------------------------------------------------- //
+				// 1.- Build Matix in GPU (indexes, dists and neighbors) Using Exahustive search...
+				startTimeSeconds = std::chrono::high_resolution_clock::now();
+
+				// Dynamical choice of either exhaustive or counting sort-based point search
+				if (Adapt_Points < ptSEARCH_THRESHOLD) {
+					Exh_PP_Search<DIM,T> << <Blocks, Threads >> > (	rpc(GPU_Part_Position, 0),
+																	rpc(GPU_Part_Position, 0),
+																	rpc(GPU_Index_array, 0),
+																	rpc(GPU_Mat_entries, 0),
+																	rpc(GPU_Num_Neighbors, 0),
+																	MaxNeighborNum,
+																	Adapt_Points,
+																	Adapt_Points,
+																	search_radius);
+					gpuError_Check(cudaDeviceSynchronize());
+				}
+				else {
+					error_check = _CS_Neighbor_Search<DIM, T>(	GPU_Part_Position,
+																GPU_AdaptPDF,
+																GPU_Index_array,
+																GPU_Mat_entries,
+																GPU_Num_Neighbors,
+																Adapt_Points,
+																MaxNeighborNum,
+																Supp_BBox,
+																search_radius);
+
+					if (error_check == -1) { break; }
+				}
+
+				endTimeSeconds = std::chrono::high_resolution_clock::now();
+				duration_3 = endTimeSeconds - startTimeSeconds;
+				
+				// Enter the information into the log information
+				SimLog.subFrame_time[5*j + 2] = duration_3.count();
+
+
+				// 2.- Iterative solution (Conjugate Gradient) to obtain coefficients of the RBFs
+				thrust::device_vector<T>	GPU_lambdas(Adapt_Points);		// solution vector (RBF weights)
+				thrust::fill(GPU_lambdas.begin(), GPU_lambdas.end(), 0.0f);	// this will serve as the initial condition
+
+				startTimeSeconds = std::chrono::high_resolution_clock::now();
+				error_check = CONJUGATE_GRADIENT_SOLVE<T>(GPU_lambdas,
+															GPU_Index_array,
+															GPU_Mat_entries,
+															GPU_Num_Neighbors,
+															GPU_AdaptPDF,
+															Adapt_Points,
+															MaxNeighborNum,
+															max_steps,
+															in_tolerance);
+				if (error_check == -1) { std::cout << "Convergence failure.\n"; break; }
+				endTimeSeconds = std::chrono::high_resolution_clock::now();
+				duration_3 = endTimeSeconds - startTimeSeconds;
+				
+				// Enter the information into the log information
+				SimLog.subFrame_time[5*j + 3] = duration_3.count();
+				SimLog.ConvergenceIterations[j] = error_check;
+
+				// Clear them, to save memory
+				GPU_Index_array.clear();
+				GPU_Mat_entries.clear();
+				GPU_Num_Neighbors.clear();
+
+				// ----------------------------------------------------------------------------------- //
+				// THIS PART ONLY GRABS THE LAST "OPTIMAL" LAMBDA AND COMPUTES ITS "PROJECTION" INTO THE SUBSPACE
+				
+				if (DIM < 3) {
+					T temp = thrust::reduce(thrust::device, GPU_lambdas.begin(), GPU_lambdas.end());
+					thrust::transform(GPU_lambdas.begin(), GPU_lambdas.end(), GPU_lambdas.begin(), 1.0f / temp * _1);
+				}
+				// ----------------------------------------------------------------------------------- //
+
 
 		// 1.1.- COMPUTE THE TRANSFORMATION OF THE PDF (IF THERE IS ONE)
 		if (time_vector[j].impulse) {
@@ -211,15 +313,9 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 		// 1.2.- COMPUTE THE SMOOTH EVOLUTION VIA LIOUVILLE GIBBS/CONTINUITY EQUATION
 		else {
 			std::cout << "Simulation time: " << t0 << " to " << tF << "\n";
-			
-			// Number of particles to advect
-			Adapt_Points = AdaptGrid.size();
-
-			// Maximum neighbors to search. Diameter number of points powered to the dimension
-			MaxNeighborNum = round(0.8 * fmin(pow(2 * round(DISC_RADIUS) + 1, DIM), Adapt_Points));
 
 			// Max. memory requirements for next Liouville step
-			const UINT mem_requested_per_sample = (UINT)Adapt_Points * (sizeof(T) * (6 + MaxNeighborNum) + sizeof(gridPoint<DIM, T>) + sizeof(INT) * (MaxNeighborNum + 1));
+			const UINT mem_requested_per_sample = (UINT)Adapt_Points * (sizeof(T) * 2 + sizeof(gridPoint<DIM, T>));
 
 			// Set number of random samples to work with, and number of blocks to use
 			UINT Random_Samples_Blk_size = (UINT)fmin((UINT)Random_Samples, MAX_MEMORY_USABLE / mem_requested_per_sample);
@@ -235,18 +331,21 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 
 				UINT Block_Particles = Random_Samples_Blk_size * Adapt_Points;
 
-				Full_AdaptGrid.resize(Block_Particles);
-				Full_AdaptPDF.resize(Block_Particles);
-
 				// 1.2.- Append the optimal particles once per sample!
+				Full_AdaptGrid.resize(Block_Particles);
+				Full_AdaptPDF .resize(Block_Particles);
+
 				for (UINT k = 0; k < Random_Samples_Blk_size; k++) {
 					std::copy(AdaptGrid.begin(), AdaptGrid.end(), &Full_AdaptGrid[k * Adapt_Points]);
 					std::copy(AdaptPDF.begin(), AdaptPDF.end(), &Full_AdaptPDF[k * Adapt_Points]);
 				}
 
 				// Upload information to the GPU
-				GPU_AdaptPDF = Full_AdaptPDF;
-				GPU_Part_Position = Full_AdaptGrid;
+				GPU_AdaptPDF.resize(Random_Samples_Blk_size);
+				GPU_Part_Position.resize(Random_Samples_Blk_size);
+
+				GPU_AdaptPDF 		= Full_AdaptPDF;
+				GPU_Part_Position 	= Full_AdaptGrid;
 
 				// Clear CPU info about the AMR procedure: no longer needed
 				Full_AdaptGrid.clear();
@@ -255,8 +354,8 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 				std::cout << "Size of relevant PDF points (per sample): " << Adapt_Points << "\n";	// this allows to check if the info is passed to the GPU correctly
 
 				// Determine threads and blocks for the simulation
-				uint16_t	Threads = fmin(THREADS_P_BLK, Block_Particles);
-				UINT		Blocks	= floor((Block_Particles - 1) / Threads) + 1;
+				Threads = fmin(THREADS_P_BLK, Block_Particles);
+				Blocks	= floor((Block_Particles - 1) / Threads) + 1;
 
 				// ------------------------------------------------------------------------------------ //
 				// -------------------------- POINT ADVECTION ----------------------------------------- //
@@ -264,6 +363,7 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 				startTimeSeconds = std::chrono::high_resolution_clock::now();
 				ODE_INTEGRATE<DIM, T><< <Blocks, Threads >> > (	rpc(GPU_Part_Position, 0),
 																rpc(GPU_AdaptPDF, 0),
+																rpc(GPU_lambdas, 0),
 																rpc(GPU_Parameter_Mesh, Sample_idx_offset_init),
 																rpc(GPU_nSamples, 0),
 																t0,
@@ -297,88 +397,6 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 						Supp_BBox.Boundary_sup.dim[d] = temp_2 + ceil(DISC_RADIUS) * Problem_Domain.Discr_length();
 					}
 
-				// ----------------------------------------------------------------------------------- //
-				// -------------------------- INTERPOLATION ------------------------------------------ //
-				// ----------------------------------------------------------------------------------- //
-
-				// ------------------ RESIZING OF THE INTERPOLATION MATRIX ------------------ //
-					thrust::device_vector<INT>	GPU_Index_array(MaxNeighborNum* Block_Particles, -1);
-					thrust::device_vector<T>	GPU_Mat_entries(MaxNeighborNum* Block_Particles, 0);
-					thrust::device_vector<UINT>	GPU_Num_Neighbors(Block_Particles, 0);
-				// -------------------------------------------------------------------------- //
-				// 1.- Build Matix in GPU (indexes, dists and neighbors) Using Exahustive search...
-				startTimeSeconds = std::chrono::high_resolution_clock::now();
-
-				// Dynamical choice of either exhaustive or counting sort-based point search
-				if (Adapt_Points < ptSEARCH_THRESHOLD) {
-					Exh_PP_Search<DIM,T> << <Blocks, Threads >> > (	rpc(GPU_Part_Position, 0),
-																	rpc(GPU_Part_Position, 0),
-																	rpc(GPU_Index_array, 0),
-																	rpc(GPU_Mat_entries, 0),
-																	rpc(GPU_Num_Neighbors, 0),
-																	MaxNeighborNum,
-																	Adapt_Points,
-																	Block_Particles,
-																	search_radius);
-					gpuError_Check(cudaDeviceSynchronize());
-				}
-				else {
-					error_check = _CS_Neighbor_Search<DIM, T>(	GPU_Part_Position,
-																GPU_AdaptPDF,
-																GPU_Index_array,
-																GPU_Mat_entries,
-																GPU_Num_Neighbors,
-																Adapt_Points,
-																MaxNeighborNum,
-																Supp_BBox,
-																search_radius);
-
-					if (error_check == -1) { break; }
-				}
-
-				endTimeSeconds = std::chrono::high_resolution_clock::now();
-				duration_3 = endTimeSeconds - startTimeSeconds;
-				
-				// Enter the information into the log information
-				SimLog.subFrame_time[5*j + 2] = duration_3.count();
-
-
-				// 2.- Iterative solution (Conjugate Gradient) to obtain coefficients of the RBFs
-				thrust::device_vector<T>	GPU_lambdas(Block_Particles);	// solution vector (RBF weights)
-				thrust::fill(GPU_lambdas.begin(), GPU_lambdas.end(), 0.0f);	// this will serve as the initial condition
-
-				startTimeSeconds = std::chrono::high_resolution_clock::now();
-				error_check = CONJUGATE_GRADIENT_SOLVE<T>(GPU_lambdas,
-															GPU_Index_array,
-															GPU_Mat_entries,
-															GPU_Num_Neighbors,
-															GPU_AdaptPDF,
-															Block_Particles,
-															MaxNeighborNum,
-															max_steps,
-															in_tolerance);
-				if (error_check == -1) { std::cout << "Convergence failure.\n"; break; }
-				endTimeSeconds = std::chrono::high_resolution_clock::now();
-				duration_3 = endTimeSeconds - startTimeSeconds;
-				
-				// Enter the information into the log information
-				SimLog.subFrame_time[5*j + 3] = duration_3.count();
-				SimLog.ConvergenceIterations[j] = error_check;
-
-				// Clear them, to save memory
-				GPU_Index_array.clear();
-				GPU_Mat_entries.clear();
-				GPU_Num_Neighbors.clear();
-
-				// ----------------------------------------------------------------------------------- //
-				// THIS PART ONLY GRABS THE LAST "OPTIMAL" LAMBDA AND COMPUTES ITS "PROJECTION" INTO THE SUBSPACE
-				
-				if (DIM < 3) {
-					T temp = thrust::reduce(thrust::device, GPU_lambdas.begin(), GPU_lambdas.end());
-					thrust::transform(GPU_lambdas.begin(), GPU_lambdas.end(), GPU_lambdas.begin(), Random_Samples_Blk_size / temp * _1);
-				}
-				// ----------------------------------------------------------------------------------- //
-
 			// 3.- Multiplication of matrix-lambdas to obtain updated grid<DIM, T> nodes
 				// I'M GOING TO FIND THE NEAREST GRID NODES TO EACH PARTICLE
 
@@ -389,7 +407,7 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 				startTimeSeconds = std::chrono::high_resolution_clock::now();
 				RESTART_GRID_FIND_GN<DIM,T> << < Blocks, Threads >> > (	rpc(GPU_Part_Position, 0),
 																		rpc(GPU_PDF, 0),
-																		rpc(GPU_lambdas, 0),
+																		rpc(GPU_AdaptPDF, 0),
 																		rpc(GPU_Parameter_Mesh, 0),
 																		rpc(GPU_nSamples, 0),
 																		search_radius,
