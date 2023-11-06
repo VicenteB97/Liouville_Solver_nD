@@ -248,14 +248,14 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 				GPU_Mat_entries.clear();
 				GPU_Num_Neighbors.clear();
 
-				// ----------------------------------------------------------------------------------- //
-				// THIS PART ONLY GRABS THE LAST "OPTIMAL" LAMBDA AND COMPUTES ITS "PROJECTION" INTO THE SUBSPACE
+				// // ----------------------------------------------------------------------------------- //
+				// // THIS PART ONLY GRABS THE LAST "OPTIMAL" LAMBDA AND COMPUTES ITS "PROJECTION" INTO THE SUBSPACE
 				
-				if (DIM < 3) {
-					T temp = thrust::reduce(thrust::device, GPU_lambdas.begin(), GPU_lambdas.end());
-					thrust::transform(GPU_lambdas.begin(), GPU_lambdas.end(), GPU_lambdas.begin(), 1.0f / temp * _1);
-				}
-				// ----------------------------------------------------------------------------------- //
+				// if (DIM < 3) {
+				// 	T temp = thrust::reduce(thrust::device, GPU_lambdas.begin(), GPU_lambdas.end());
+				// 	thrust::transform(GPU_lambdas.begin(), GPU_lambdas.end(), GPU_lambdas.begin(), 1.0f / temp * _1);
+				// }
+				// // ----------------------------------------------------------------------------------- //
 
 
 		// 1.1.- COMPUTE THE TRANSFORMATION OF THE PDF (IF THERE IS ONE)
@@ -396,6 +396,16 @@ int16_t PDF_ITERATIONS(	cudaDeviceProp*			prop,
 						Supp_BBox.Boundary_inf.dim[d] = temp_1 - ceil(DISC_RADIUS) * Problem_Domain.Discr_length();
 						Supp_BBox.Boundary_sup.dim[d] = temp_2 + ceil(DISC_RADIUS) * Problem_Domain.Discr_length();
 					}
+
+			
+			// ----------------------------------------------------------------------------------- //
+			// THIS PART ONLY GRABS THE LAST "OPTIMAL" LAMBDA AND COMPUTES ITS "PROJECTION" INTO THE SUBSPACE
+			
+			if (DIM < 3) {
+				T temp = thrust::reduce(thrust::device, GPU_AdaptPDF.begin(), GPU_AdaptPDF.end());
+				thrust::transform(GPU_AdaptPDF.begin(), GPU_AdaptPDF.end(), GPU_AdaptPDF.begin(), Random_Samples_Blk_size / temp * _1);
+			}
+			// ----------------------------------------------------------------------------------- //
 
 			// 3.- Multiplication of matrix-lambdas to obtain updated grid<DIM, T> nodes
 				// I'M GOING TO FIND THE NEAREST GRID NODES TO EACH PARTICLE

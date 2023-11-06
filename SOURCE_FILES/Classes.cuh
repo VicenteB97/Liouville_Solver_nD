@@ -45,7 +45,7 @@
 
 #define TYPE float
 
-#define MAX_FILE_SIZE_B (uint64_t) 2*1024*1024*1024
+#define MAX_FILE_SIZE_B (uint64_t) 12*1024*1024*1024
 
 #if DIMENSIONS < 4
 	#define INT int32_t
