@@ -25,13 +25,13 @@
 #define CASE "VanDerPol System"
 
 // Choosing whether showing full or simplified timing information
-#define OUTPUT_INFO true
+#define OUTPUT_INFO 1
 
 #define TYPE float
 
 // AMR tolerance, Conjugate Gradient tolerance and number of discretization size for the radius of the RBFs
 #define TOLERANCE_AMR       0.0001
-#define TOLERANCE_ConjGrad  powf(10,-6)
+#define TOLERANCE_ConjGrad  powf(10,-7)
 #define DISC_RADIUS         3.25
 
 // State variables information

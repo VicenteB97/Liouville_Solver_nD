@@ -38,7 +38,7 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 	// ----------------------------------------------------------------------------------------------- //
 	// ----------------------------------------------------------------------------------------------- //
 
-	// This variable represents the problem domain, which is NOT goinf to be the one used for computations
+	// This variable represents the problem domain, which is NOT going to be the one used for computations
 	grid<DIMENSIONS, TYPE> Problem_Domain((INT) pow(2, LvlFine));
 
 // -------------------------------------------------------------------------------------------------------------- //
