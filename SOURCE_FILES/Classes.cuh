@@ -504,6 +504,7 @@ public:
 	char Name;					// Distribution name. Currently supported distributions: Delta, Normal, Beta, Gamma and Uniform
 	bool Truncated;				// Truncated? TRUE or FALSE
 	TYPE trunc_interval[2];		// Truncation interval (give min and max of the interval)
+	INT  num_Samples;
 
 	// Default constructor
 	Distributions() {

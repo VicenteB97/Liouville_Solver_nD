@@ -237,24 +237,24 @@ int16_t PARAMETER_VEC_BUILD(const int n_Samples, Param_pair* PP, const Distribut
 /// @param Parameter_Mesh: Parameter Mesh 
 /// @param Dist_Parameters: Parameters' (hyper)parameters
 /// @param Dist_Names: Distributions that will be assigned (N = Normal, U = Uniform, etc.)
-int16_t RANDOMIZE(const INT* 			n_samples, 
-				Param_pair* 			Parameter_Mesh, 
+int16_t RANDOMIZE(Param_pair* 			Parameter_Mesh, 
 				const Distributions		*Dist_Parameters) {
 
 	UINT aux = 0;
-
-	 
+	
 	for (UINT d = 0; d < PARAM_DIMENSIONS; d++){
-		// call the parameter pair vec. function
-		Param_pair* PP = new Param_pair[n_samples[d]];
+		INT nSamples = Dist_Parameters[d].num_Samples;
 
-		int16_t err_check = PARAMETER_VEC_BUILD(n_samples[d], PP, Dist_Parameters[d]);
+		// call the parameter pair vec. function
+		Param_pair* PP = new Param_pair[nSamples];
+
+		int16_t err_check = PARAMETER_VEC_BUILD(nSamples, PP, Dist_Parameters[d]);
 		if (err_check == -1){ return -1; }
 
-		std::copy_n(&PP[0], n_samples[d], &Parameter_Mesh[aux]);
+		std::copy_n(&PP[0], nSamples, &Parameter_Mesh[aux]);
 
 		delete[] PP;
-		aux += n_samples[d];
+		aux += nSamples;
 	}
 
 	return 0;

@@ -34,12 +34,13 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 		std::cout << "Exiting simulation\n";
 		return -1;
 	}
-	// ----------------------------------------------------------------------------------------------- //
-	// ----------------------------------------------------------------------------------------------- //
-	// ----------------------------------------------------------------------------------------------- //
-
+	
 	// This variable represents the problem domain, which is NOT going to be the one used for computations
 	grid<DIMENSIONS, TYPE> Problem_Domain((INT) pow(2, LvlFine));
+
+	// ----------------------------------------------------------------------------------------------- //
+	// ----------------------------------------------------------------------------------------------- //
+	// ----------------------------------------------------------------------------------------------- //
 
 // -------------------------------------------------------------------------------------------------------------- //
 // -------------------------------------------------------------------------------------------------------------- //
@@ -69,40 +70,7 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 // --------------------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------
 // 1.- PARAMETERS biuld up
-		INT n_samples[PARAM_DIMENSIONS];	// number of samples per parameter
-		
-	// ----------------------------------------------------------------------------------------------- //
-	// ---------------------------------- OBTAIN INFO FROM TERMINAL ---------------------------------- //
-	// ----------------------------------------------------------------------------------------------- //
-		for (UINT k = 0; k < PARAM_DIMENSIONS; k++) {
-			bool get_answer = true;
-
-			while (get_answer) {
-				std::cout << "How many samples for parameter " << k + 1 << " ? ";
-				std::cin >> n_samples[k];
-
-				if (n_samples[k] == -1) {
-					std::cout << "Exiting simulation.\n"; return -1;
-				}
-				else if (n_samples[k] == 0) {
-					std::cout << "At least 1 sample must be selected. ";
-				}
-				else {
-					get_answer = false;
-				} 
-			}
-		}
-	// ----------------------------------------------------------------------------------------------- //
-	// ----------------------------------------------------------------------------------------------- //
-	// ----------------------------------------------------------------------------------------------- //
-		UINT PM_length = 1;															// Total number of parameter samples we use
-		for (UINT i = 0; i < PARAM_DIMENSIONS; i++){
-			PM_length += n_samples[i];
-		}
-
-		Param_pair*		Parameter_Mesh 	= new Param_pair[PM_length];				// Full parameter array
 		Distributions 	Param_dist[PARAM_DIMENSIONS];		// Array for storing the model parameters' distribution information
-
 
 		for (UINT p = 0; p < PARAM_DIMENSIONS; p++){
 			Param_dist[p].Name  			= _DIST_NAMES[p];		// N, G or U distributions
@@ -111,6 +79,26 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 			Param_dist[p].trunc_interval[1] = _DIST_SupTVAL[p]; 	// max. of trunc. interval (if chosen large enough, automatically bounds to 6 std. deviations)
 			Param_dist[p].params[0] 		= _DIST_MEAN[p];		// mean
 			Param_dist[p].params[1] 		= _DIST_STD[p];			// std
+
+			// Read samples from terminal
+			bool get_answer = true;
+			INT temp = 1;
+
+			while (get_answer) {
+				std::cout << "How many samples for parameter " << p + 1 << " ? ";
+				std::cin >> temp;
+
+				if (temp == -1) {
+					std::cout << "Exiting simulation.\n"; return -1;
+				}
+				else if (temp == 0) {
+					std::cout << "At least 1 sample must be selected. ";
+				}
+				else {
+					get_answer = false;
+				} 
+			}
+			Param_dist[p].num_Samples = temp;
 		}
 
 		Distributions IC_dist_params[DIMENSIONS];
@@ -122,21 +110,8 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 			IC_dist_params[d].trunc_interval[1] = IC_SupTVAL[d];
 			IC_dist_params[d].params[0] = IC_MEAN[d];
 			IC_dist_params[d].params[1] = IC_STD[d];
+			IC_dist_params[d].num_Samples = -1;		// This value is just for information. Samples are not chosen here
 		}
-
-		// This one will be defined by the support bounding box of the data. Now we need to get the number of points needed! And, we have to "squarify" it
-		grid<DIMENSIONS, TYPE> Supp_BBox(IC_InfTVAL, IC_SupTVAL);
-		Supp_BBox.Squarify();
-		Supp_BBox.Nodes_per_Dim = roundf((IC_SupTVAL[0] - IC_InfTVAL[0]) / Problem_Domain.Discr_length());
-
-		thrust::host_vector<TYPE> H_PDF(Problem_Domain.Total_Nodes(), 0);	 			// PDF values at the fixed, high-res grid<DIMENSIONS, TYPE> (CPU)
-
-// CALL JOINT PDF BUILDING FUNCTIONS: (PARAMETERS AND INITIAL CONDITION)
-	error_check = RANDOMIZE(n_samples, Parameter_Mesh, Param_dist);
-	if (error_check == -1){return -1;}
-
-	error_check = PDF_INITIAL_CONDITION(Problem_Domain, H_PDF, IC_dist_params); 	// initialize the grid<DIMENSIONS, TYPE> and the PDF at the grid<DIMENSIONS, TYPE> nodes (change so as to change the parameters as well)
-	if (error_check == -1){return -1;}
 
 // --------------------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------
@@ -149,7 +124,10 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 
 auto start = std::chrono::high_resolution_clock::now();
 	
-	error_check = PDF_ITERATIONS<DIMENSIONS, TYPE>(prop, &store_PDFs, Parameter_Mesh, Problem_Domain, Supp_BBox, &H_PDF, n_samples, time_vector, deltaT, ReinitSteps);
+	// error_check = PDF_ITERATIONS<DIMENSIONS, TYPE>(prop, &store_PDFs, Parameter_Mesh, Problem_Domain, Supp_BBox, &H_PDF, n_samples, time_vector, deltaT, ReinitSteps);
+	// if (error_check == -1){	std::cout << "An error has occured. Exiting simulation.\n"; return error_check;}
+
+	error_check = PDF_ITERATIONS<DIMENSIONS, PARAM_DIMENSIONS, TYPE>(prop, &store_PDFs, Problem_Domain, *(&Param_dist), *(&IC_dist_params), time_vector, deltaT, ReinitSteps);
 	if (error_check == -1){	std::cout << "An error has occured. Exiting simulation.\n"; return error_check;}
 
 auto end = std::chrono::high_resolution_clock::now();
@@ -246,7 +224,7 @@ auto end = std::chrono::high_resolution_clock::now();
 					file1 << Problem_Domain.Boundary_inf.dim[d] << "," << Problem_Domain.Boundary_sup.dim[d] << ",";
 				}
 				for (uint16_t d = 0; d < PARAM_DIMENSIONS; d++) {
-					file1 << n_samples[d] << ",";
+					file1 << Param_dist[d].num_Samples << ",";
 				}
 				file1 << duration.count() << "\n";
 
@@ -291,7 +269,6 @@ auto end = std::chrono::high_resolution_clock::now();
 		saving_active = false;
 	}
 
-	delete[] Parameter_Mesh;
 	gpuError_Check(cudaDeviceReset());
 
 	return error_check;
