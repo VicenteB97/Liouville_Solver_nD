@@ -517,6 +517,8 @@ public:
 
 		trunc_interval[0] = 0;
 		trunc_interval[1] = 0;
+
+		num_Samples = 1;
 	}
 };
 
