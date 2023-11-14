@@ -35,20 +35,18 @@
 #define DISC_RADIUS         3.25
 
 // State variables information
-#define DIMENSIONS  2
+#define PHASE_SPACE_DIMENSIONS  2
 #define DOMAIN_INF {-5.5, -5.5}
 #define DOMAIN_SUP {5.5 , 5.5}
 
 #define Time_0 0
 
-
-
-static const char   IC_NAMES[DIMENSIONS] = { 'N','N' };
-static const bool   IC_TRUNC[DIMENSIONS] = { true, true };
-static const TYPE   IC_InfTVAL[DIMENSIONS] = { -2, 0.5 };
-static const TYPE   IC_SupTVAL[DIMENSIONS] = { 2, 4.5 };
-static const TYPE	IC_MEAN[DIMENSIONS] = { 0, 2.5 };
-static const TYPE	IC_STD[DIMENSIONS] = { sqrtf(0.015f),sqrtf(0.015f) };
+static const char   IC_NAMES[PHASE_SPACE_DIMENSIONS] = { 'N','N' };
+static const bool   IC_isTRUNC[PHASE_SPACE_DIMENSIONS] = { true, true };
+static const TYPE   IC_InfTVAL[PHASE_SPACE_DIMENSIONS] = { -2, 0.5 };
+static const TYPE   IC_SupTVAL[PHASE_SPACE_DIMENSIONS] = { 2, 4.5 };
+static const TYPE	IC_MEAN[PHASE_SPACE_DIMENSIONS] = { 0, 2.5 };
+static const TYPE	IC_STD[PHASE_SPACE_DIMENSIONS] = { sqrtf(0.015f),sqrtf(0.015f) };
 
 // Vector field definition
 // explanation: 
@@ -61,13 +59,13 @@ static const TYPE	IC_STD[DIMENSIONS] = { sqrtf(0.015f),sqrtf(0.015f) };
 #define DIVERGENCE D_1 + D_2
 
 // Parameter information
-#define PARAM_DIMENSIONS 1
-static const char   _DIST_NAMES[PARAM_DIMENSIONS] = { 'U' };
-static const bool   _DIST_TRUNC[PARAM_DIMENSIONS] = { true };
-static const TYPE  _DIST_InfTVAL[PARAM_DIMENSIONS] = { 1.5 };
-static const TYPE  _DIST_SupTVAL[PARAM_DIMENSIONS] = { 3.5 };
-static TYPE 		_DIST_MEAN[PARAM_DIMENSIONS] = { 2.5 };
-static TYPE 		_DIST_STD[PARAM_DIMENSIONS] = { sqrtf(0.1) };
+#define PARAM_SPACE_DIMENSIONS 1
+static const char   _DIST_NAMES[PARAM_SPACE_DIMENSIONS] = { 'U' };
+static const bool   _DIST_isTRUNC[PARAM_SPACE_DIMENSIONS] = { true };
+static const TYPE  _DIST_InfTVAL[PARAM_SPACE_DIMENSIONS] = { 1.5 };
+static const TYPE  _DIST_SupTVAL[PARAM_SPACE_DIMENSIONS] = { 3.5 };
+static TYPE 		_DIST_MEAN[PARAM_SPACE_DIMENSIONS] = { 2.5 };
+static TYPE 		_DIST_STD[PARAM_SPACE_DIMENSIONS] = { sqrtf(0.1) };
 
 #define IMPULSE_TYPE 0
 

@@ -14,29 +14,22 @@
 #ifndef __MAT_OPS_CUH__
 #define __MAT_OPS_CUH__
 
-#include "Classes.cuh"
+#include "Constants.cuh"
+#include "Probability.cuh"
+#include "Domain.cuh"
 
 __device__ inline TYPE RBF(const TYPE support_radius, const TYPE x);
 
-/// @brief (GLOBAL FUNCTION) Computes the projection of the particles that have been advected
-/// @tparam DIM
-/// @tparam T
-/// @param particles Array that stores the components of the particles
-/// @param projections Array that stores the projections of the previous components in "dimension" component
-/// @param totalParticles Total number of particles
-/// @param dimension Component where I want to find the dimension
-/// @return 
-template<uint16_t DIM, class T> __global__ void findProjection(const gridPoint<DIM, T>* particles, T* projections, const UINT totalParticles, const UINT dimension) {
-	
-	const uint64_t globalID = blockDim.x * blockIdx.x + threadIdx.x;
 
-	if (globalID >= totalParticles) { return; }
-
-	projections[globalID] = particles[globalID].dim[dimension];
-}
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// @brief 
-/// @tparam DIM
+/// @tparam PHASE_SPACE_DIM
 /// @tparam T
 /// @param Bin_locations 
 /// @param Bin_count 
@@ -45,18 +38,18 @@ template<uint16_t DIM, class T> __global__ void findProjection(const gridPoint<D
 /// @param Bounding_Box 
 /// @param Total_Particles 
 /// @return 
-template<uint16_t DIM, class T> __global__ void Bin_Insertion_Count(UINT*		Bin_locations,
+template<uint16_t PHASE_SPACE_DIM, class T> __global__ void Bin_Insertion_Count(UINT*		Bin_locations,
 																	UINT*		Bin_count,
 																	UINT*		Bin_local_accSum,
-																	const gridPoint<DIM, T>* Search_Particles,
-																	const grid<DIM, T>	Bounding_Box,
+																	const gridPoint<PHASE_SPACE_DIM, T>* Search_Particles,
+																	const grid<PHASE_SPACE_DIM, T>	Bounding_Box,
 																	const UINT	Total_Particles){
 		
 	const uint64_t globalID = blockDim.x * blockIdx.x + threadIdx.x;
 
 	if (globalID >= Total_Particles) { return; }
 
-	gridPoint<DIM, T> temp_GP = Search_Particles[globalID];
+	gridPoint<PHASE_SPACE_DIM, T> temp_GP = Search_Particles[globalID];
 
 	// Find the Bin where it belongs. We use an unsigned int because since we are working with the bounding box,
 	// we're never going to have a point outside. Therefore, there will be a positive index for the bin location.
@@ -70,8 +63,13 @@ template<uint16_t DIM, class T> __global__ void Bin_Insertion_Count(UINT*		Bin_l
 	Bin_local_accSum[globalID] = atomicAdd(&Bin_count[bin_idx], 1);
 }
 
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 /// @brief 
-/// @tparam DIM
+/// @tparam PHASE_SPACE_DIM
 /// @tparam T
 /// @param fixed_Particles 
 /// @param Particles_2sort 
@@ -83,8 +81,8 @@ template<uint16_t DIM, class T> __global__ void Bin_Insertion_Count(UINT*		Bin_l
 /// @param Total_Particles 
 /// @param offset 
 /// @return 
-template<uint16_t DIM, class T> __global__ void Count_sort( const gridPoint<DIM, T>*fixed_Particles,
-															gridPoint<DIM, T>*		Particles_2sort, 
+template<uint16_t PHASE_SPACE_DIM, class T> __global__ void Count_sort( const gridPoint<PHASE_SPACE_DIM, T>*fixed_Particles,
+															gridPoint<PHASE_SPACE_DIM, T>*		Particles_2sort, 
 															const T*				fixed_values, 
 															T*						values_2sort,
 															const UINT*				Bin_count, 
@@ -115,8 +113,13 @@ template<uint16_t DIM, class T> __global__ void Count_sort( const gridPoint<DIM,
 
 }
 
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 /// @brief 
-/// @tparam DIM
+/// @tparam PHASE_SPACE_DIM
 /// @tparam T
 /// @param Search_Particles 
 /// @param Bin_count 
@@ -129,7 +132,7 @@ template<uint16_t DIM, class T> __global__ void Count_sort( const gridPoint<DIM,
 /// @param search_distance 
 /// @param Bounding_Box 
 /// @return 
-template<uint16_t DIM, class T> __global__ void Neighbor_search(gridPoint<DIM, T>*		Search_Particles,
+template<uint16_t PHASE_SPACE_DIM, class T> __global__ void Neighbor_search(gridPoint<PHASE_SPACE_DIM, T>*		Search_Particles,
 																const UINT* Bin_count,
 																INT*		Index_Array,
 																T*				Matrix_Entries,
@@ -138,7 +141,7 @@ template<uint16_t DIM, class T> __global__ void Neighbor_search(gridPoint<DIM, T
 																const UINT	Total_Particles,
 																const UINT	offset,
 																const T			search_distance,			// This tells us how many discretizations we have to move back to find initial bin to search from
-																const grid<DIM, T>		Bounding_Box) {
+																const grid<PHASE_SPACE_DIM, T>		Bounding_Box) {
 
 	const uint64_t globalID = blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -150,7 +153,7 @@ template<uint16_t DIM, class T> __global__ void Neighbor_search(gridPoint<DIM, T
 // But! Since we know the particles assigned in each bin and how many particles there are in each bin, we can visit efficiently!
 	
 // Read the input from the sorted Particle array
-	gridPoint<DIM, T> fixed_GP = Search_Particles[globalID + offset];
+	gridPoint<PHASE_SPACE_DIM, T> fixed_GP = Search_Particles[globalID + offset];
 
 	UINT temp_counter = 0;
 	UINT temp_ID = (globalID + offset) * max_neighbor_num;
@@ -161,11 +164,11 @@ template<uint16_t DIM, class T> __global__ void Neighbor_search(gridPoint<DIM, T
 // We find the lowest corner in the neighboring bins (Hence, the Bin_offset variable)
 	UINT bin_idx = Bounding_Box.Get_binIdx(fixed_GP, -Bin_offset);
 
-	for (UINT k = 0; k < pow(2 * Bin_offset + 1, DIM); k++) { // That's the total number of bins to visit
+	for (UINT k = 0; k < pow(2 * Bin_offset + 1, PHASE_SPACE_DIM); k++) { // That's the total number of bins to visit
 
 		// First: find the global index of the bin to search!
 		INT aux_index = bin_idx;
-		for (uint16_t d = 0; d < DIM; d++) {
+		for (uint16_t d = 0; d < PHASE_SPACE_DIM; d++) {
 			aux_index += floorf(positive_rem(k, (UINT)pow(2 * Bin_offset + 1, d + 1)) / (UINT)pow(2 * Bin_offset + 1, d)) * (UINT)pow(Bounding_Box.Nodes_per_Dim, d);
 		}
 
@@ -183,7 +186,7 @@ template<uint16_t DIM, class T> __global__ void Neighbor_search(gridPoint<DIM, T
 			// Add the points in the current bin
 			for (UINT m = startIdx; m < endIdx; m++) {
 
-				gridPoint<DIM, T>	temp_GP = Search_Particles[m + offset];
+				gridPoint<PHASE_SPACE_DIM, T>	temp_GP = Search_Particles[m + offset];
 				TYPE		dist = fixed_GP.Distance(temp_GP) / search_distance;
 
 				if (dist <= 1 && temp_counter < max_neighbor_num) {
@@ -200,11 +203,16 @@ template<uint16_t DIM, class T> __global__ void Neighbor_search(gridPoint<DIM, T
 	Num_Neighbors[globalID + offset] = temp_counter;
 }
 
-// Counting sort! This operation orders the grid<DIM, T> indeces and it sets the number of nodes inside each bin
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Counting sort! This operation orders the grid<PHASE_SPACE_DIM, T> indeces and it sets the number of nodes inside each bin
 
 /// @brief 
 /// @tparam T 
-/// @tparam DIM 
+/// @tparam PHASE_SPACE_DIM 
 /// @param Search_Particles 
 /// @param PDF_vals 
 /// @param Index_Array 
@@ -215,14 +223,14 @@ template<uint16_t DIM, class T> __global__ void Neighbor_search(gridPoint<DIM, T
 /// @param Bounding_Box 
 /// @param search_radius 
 /// @return 
-template<uint16_t DIM, class T> __host__ int16_t _CS_Neighbor_Search(thrust::device_vector<gridPoint<DIM, T>>& Search_Particles,
+template<uint16_t PHASE_SPACE_DIM, class T> __host__ int16_t _CS_Neighbor_Search(thrust::device_vector<gridPoint<PHASE_SPACE_DIM, T>>& Search_Particles,
 																	thrust::device_vector<T> &PDF_vals,
 																	thrust::device_vector<INT>& Index_Array,
 																	thrust::device_vector<T>& Matrix_Entries,
 																	thrust::device_vector<UINT>& Num_Neighbors,
 																	const UINT Adapt_Points, 
 																	const UINT max_neighbor_num,
-																	const grid<DIM, T>& Bounding_Box,
+																	const grid<PHASE_SPACE_DIM, T>& Bounding_Box,
 																	const T search_radius) {
 
 	// We need our particles
@@ -230,11 +238,11 @@ template<uint16_t DIM, class T> __host__ int16_t _CS_Neighbor_Search(thrust::dev
 
 	thrust::device_vector<UINT> Bin_locations(Adapt_Points,0);
 
-	thrust::device_vector<gridPoint<DIM, T>> temp_Particles(Adapt_Points);		// this one will store the ordered particles!
+	thrust::device_vector<gridPoint<PHASE_SPACE_DIM, T>> temp_Particles(Adapt_Points);		// this one will store the ordered particles!
 	thrust::device_vector<T>				 temp_values(Adapt_Points,0);		// this one will store the values of the particles in the new order!
 
 	// Create a bounding box covering the same area as the bounding box from the particles, but change the number of nodes per dim!
-	grid<DIM, T> CS_BBox(Bounding_Box);
+	grid<PHASE_SPACE_DIM, T> CS_BBox(Bounding_Box);
 	CS_BBox.Nodes_per_Dim = 64;
 
 	// Bin the particles!
@@ -250,7 +258,7 @@ template<uint16_t DIM, class T> __host__ int16_t _CS_Neighbor_Search(thrust::dev
 		thrust::device_vector<UINT> Bin_localCount(Adapt_Points, 0);
 
 	// Insert and count the particles inside each bin
-		Bin_Insertion_Count<DIM, T> << <Threads, Blocks >> > (rpc(Bin_locations, 0), 
+		Bin_Insertion_Count<PHASE_SPACE_DIM, T> << <Threads, Blocks >> > (rpc(Bin_locations, 0), 
 															rpc(Bin_globalCount, 0),
 															rpc(Bin_localCount, 0),
 															rpc(Search_Particles, offset), 
@@ -262,7 +270,7 @@ template<uint16_t DIM, class T> __host__ int16_t _CS_Neighbor_Search(thrust::dev
 		thrust::exclusive_scan(thrust::device, Bin_globalCount.begin(), Bin_globalCount.end(), Bin_globalCount.begin());
 
 	// Counting sort...we want to sort Search_Particles!
-		Count_sort<DIM,T> << <Threads, Blocks >> > (rpc(Search_Particles, 0), 
+		Count_sort<PHASE_SPACE_DIM,T> << <Threads, Blocks >> > (rpc(Search_Particles, 0), 
 												rpc(temp_Particles, 0), 
 												rpc(PDF_vals,0),
 												rpc(temp_values,0),
@@ -278,7 +286,7 @@ template<uint16_t DIM, class T> __host__ int16_t _CS_Neighbor_Search(thrust::dev
 		thrust::copy(temp_values.begin(), temp_values.end(), &PDF_vals[offset]);
 
 	// Find particle neighbors using all the previous information
-		Neighbor_search<DIM,T> << <Threads, Blocks >> >(rpc(Search_Particles, 0),
+		Neighbor_search<PHASE_SPACE_DIM,T> << <Threads, Blocks >> >(rpc(Search_Particles, 0),
 													rpc(Bin_globalCount, 0),
 													rpc(Index_Array, 0),
 													rpc(Matrix_Entries, 0),
@@ -293,8 +301,18 @@ template<uint16_t DIM, class T> __host__ int16_t _CS_Neighbor_Search(thrust::dev
 	return 0;
 }
 
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
 /// @brief 
-/// @tparam DIM
+/// @tparam PHASE_SPACE_DIM
 /// @tparam T
 /// @param Search_Particles 
 /// @param Fixed_Particles 
@@ -306,8 +324,8 @@ template<uint16_t DIM, class T> __host__ int16_t _CS_Neighbor_Search(thrust::dev
 /// @param Total_Particles 
 /// @param search_radius 
 /// @return 
-template<uint16_t DIM, class T> __global__ void Exh_PP_Search(const gridPoint<DIM, T>* Search_Particles,
-															const gridPoint<DIM, T>* Fixed_Particles,
+template<uint16_t PHASE_SPACE_DIM, class T> __global__ void Exh_PP_Search(const gridPoint<PHASE_SPACE_DIM, T>* Search_Particles,
+															const gridPoint<PHASE_SPACE_DIM, T>* Fixed_Particles,
 															INT* Index_Array,
 															T* Matrix_Entries,
 															UINT* Num_Neighbors,
@@ -320,7 +338,7 @@ template<uint16_t DIM, class T> __global__ void Exh_PP_Search(const gridPoint<DI
 
 	if (i >= Total_Particles) { return; }
 
-	gridPoint<DIM, T>		FP_aux	= Fixed_Particles[i];									// Tells me what parameter sample I'm at
+	gridPoint<PHASE_SPACE_DIM, T>		FP_aux	= Fixed_Particles[i];									// Tells me what parameter sample I'm at
 	const INT	k			= i * max_neighbor_num;
 
 	Index_Array[k]	= i;
@@ -332,7 +350,7 @@ template<uint16_t DIM, class T> __global__ void Exh_PP_Search(const gridPoint<DI
 
 	for (UINT j = i_aux * Adapt_Points; j < (i_aux + 1) * Adapt_Points; j++) {		// neighborhood where I'm searching
 
-		gridPoint<DIM, T> Temp_Particle = Search_Particles[j];
+		gridPoint<PHASE_SPACE_DIM, T> Temp_Particle = Search_Particles[j];
 
 		dist = Temp_Particle.Distance(FP_aux) / search_radius;	// normalized distance between particles
 
@@ -345,9 +363,13 @@ template<uint16_t DIM, class T> __global__ void Exh_PP_Search(const gridPoint<DI
 	Num_Neighbors[i] = aux;
 }
 
-//---------------------------------------------------------------------------------------------------------------------//
-//---------------------------------------------------------------------------------------------------------------------//
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template<class T>
 __global__ void UPDATE_VEC(T* x, const T* x0, const T scalar, const T* v, const INT Max_Length) {
@@ -359,13 +381,15 @@ __global__ void UPDATE_VEC(T* x, const T* x0, const T scalar, const T* v, const 
 }
 
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template<class T>
 __global__ void MATRIX_VECTOR_MULTIPLICATION(T* X, const T* x0, const INT* Matrix_idxs, const T* Matrix_entries, const INT total_length, const UINT* Interaction_Lengths, const INT Max_Neighbors) {
 
 	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;	// For each i, which represents the matrix row, we read the index positions and multiply against the particle weights
 
-	if (i >= total_length) { return; }						// total length = adapt_points * total_samples
+	if (i >= total_length) { return; }						// total length = adapt_points * totalSampleCount
 
 // 1.- Compute A*X0										
 	// 1.1.- Determine where my particles are!!
@@ -385,6 +409,9 @@ __global__ void MATRIX_VECTOR_MULTIPLICATION(T* X, const T* x0, const INT* Matri
 	X[i] = a;								// particle weights
 }
 
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template<class T>
 __host__ INT CONJUGATE_GRADIENT_SOLVE(	thrust::device_vector<T>&		GPU_lambdas,
@@ -483,9 +510,15 @@ __host__ INT CONJUGATE_GRADIENT_SOLVE(	thrust::device_vector<T>&		GPU_lambdas,
 }
 
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-template<uint16_t DIM, class T>
-__global__ void RESTART_GRID_FIND_GN(gridPoint<DIM, T>* Particle_Positions,
+template<uint16_t PHASE_SPACE_DIM, uint16_t PARAM_SPACE_DIM, class T>
+__global__ void RESTART_GRID_FIND_GN(gridPoint<PHASE_SPACE_DIM, T>* Particle_Positions,
 									T* PDF,
 									T* lambdas,
 									const Param_pair* Parameter_Mesh,
@@ -494,32 +527,32 @@ __global__ void RESTART_GRID_FIND_GN(gridPoint<DIM, T>* Particle_Positions,
 									const UINT	 		Adapt_Pts,
 									const UINT	 		Block_samples,
 									const UINT	 		offset,
-									const grid<DIM, T> 	Mesh,
-									const grid<DIM, T>	Underlying_Mesh) {
+									const grid<PHASE_SPACE_DIM, T> 	Mesh,
+									const grid<PHASE_SPACE_DIM, T>	Expanded_Domain) {
 	
 	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
 
 	if (i >= Adapt_Pts * Block_samples) { return; }
 
 	UINT		Current_sample = offset + floorf(i / Adapt_Pts);
-	Param_vec	aux = Gather_Param_Vec(Current_sample, Parameter_Mesh, n_Samples);
+	Param_vec<PARAM_SPACE_DIM, T>	aux = Gather_Param_Vec<PARAM_SPACE_DIM, T>(Current_sample, Parameter_Mesh, n_Samples);
 
 	T weighted_lambda = lambdas[i] * aux.Joint_PDF;
 
-	gridPoint<DIM, T>	particle = Particle_Positions[i];
+	gridPoint<PHASE_SPACE_DIM, T>	particle = Particle_Positions[i];
 
 	// Find the point in the lowest corner of the search box!
-	gridPoint<DIM, T> Lowest_node = Underlying_Mesh.Get_node(Underlying_Mesh.Get_binIdx(particle, -lround(DISC_RADIUS)));
+	gridPoint<PHASE_SPACE_DIM, T> Lowest_node = Expanded_Domain.Get_node(Expanded_Domain.Get_binIdx(particle, -lround(DISC_RADIUS)));
 
 	const INT Neighbors_per_dim = 2 * lround(DISC_RADIUS) + 1;
 
 	// Go through all the nodes where rewriting will be possible
-	for (uint16_t k = 0; k < pow(Neighbors_per_dim, DIM); k++) {
+	for (uint16_t k = 0; k < pow(Neighbors_per_dim, PHASE_SPACE_DIM); k++) {
 
-		gridPoint<DIM, T> visit_node = Lowest_node;
+		gridPoint<PHASE_SPACE_DIM, T> visit_node = Lowest_node;
 
 		// Get the node at that point
-		for (uint16_t d = 0; d < DIM; d++) {
+		for (uint16_t d = 0; d < PHASE_SPACE_DIM; d++) {
 			INT temp_idx = floor(positive_rem(k, pow(Neighbors_per_dim, d + 1)) / pow(Neighbors_per_dim, d));
 			visit_node.dim[d] += temp_idx * Mesh.Discr_length();
 		}
@@ -544,18 +577,21 @@ __global__ void RESTART_GRID_FIND_GN(gridPoint<DIM, T>* Particle_Positions,
 	}
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-template<uint16_t DIM, class T>
-__global__ void RESTART_GRID_FIND_GN(gridPoint<DIM, T>*	Particle_Positions,
-							float*				PDF,
-							float*				lambdas,
-							const Impulse_Param_vec* Impulse_weights,
+template<uint16_t PHASE_SPACE_DIM, uint16_t PARAM_SPACE_DIM, class T>
+__global__ void RESTART_GRID_FIND_GN(gridPoint<PHASE_SPACE_DIM, T>*	Particle_Positions,
+							T*				PDF,
+							T*				lambdas,
+							const Param_vec<PARAM_SPACE_DIM, T>* Impulse_weights,
 							const T 			search_radius,
 							const UINT	 		Adapt_Pts,
 							const UINT	 		Current_sample,
-							const grid<DIM, T>	Mesh,
-							const grid<DIM, T>	Underlying_Mesh) {
-	// OUTPUT: New values of the PDF at the fixed grid<DIM, T>
+							const grid<PHASE_SPACE_DIM, T>	Mesh,
+							const grid<PHASE_SPACE_DIM, T>	Expanded_Domain) {
+	// OUTPUT: New values of the PDF at the fixed grid<PHASE_SPACE_DIM, T>
 
 	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -563,20 +599,20 @@ __global__ void RESTART_GRID_FIND_GN(gridPoint<DIM, T>*	Particle_Positions,
 
 	T weighted_lambda = lambdas[i + Current_sample * Adapt_Pts] * Impulse_weights[Current_sample].Joint_PDF;				// the specific sample weight
 
-	gridPoint<DIM, T>	particle(Particle_Positions[i + Current_sample * Adapt_Pts]);
+	gridPoint<PHASE_SPACE_DIM, T>	particle(Particle_Positions[i + Current_sample * Adapt_Pts]);
 
 	// Find the point in the lowest corner of the search box!
-	gridPoint<DIM, T> Lowest_node = Underlying_Mesh.Get_node(Underlying_Mesh.Get_binIdx(particle, -roundf(DISC_RADIUS)));
+	gridPoint<PHASE_SPACE_DIM, T> Lowest_node = Expanded_Domain.Get_node(Expanded_Domain.Get_binIdx(particle, -roundf(DISC_RADIUS)));
 
 	const INT Neighbors_per_dim = 2 * lround(DISC_RADIUS) + 1;
 
 	// Go through all the nodes where rewriting will be possible
-	for (uint16_t k = 0; k < pow(Neighbors_per_dim, DIM); k++) {
+	for (uint16_t k = 0; k < pow(Neighbors_per_dim, PHASE_SPACE_DIM); k++) {
 
-		gridPoint<DIM, T> visit_node = Lowest_node;
+		gridPoint<PHASE_SPACE_DIM, T> visit_node = Lowest_node;
 
 		// Get the node at that point
-		for (uint16_t d = 0; d < DIM; d++) {
+		for (uint16_t d = 0; d < PHASE_SPACE_DIM; d++) {
 			INT temp_idx = floor(positive_rem(k, pow(Neighbors_per_dim, d + 1)) / pow(Neighbors_per_dim, d));
 			visit_node.dim[d] += temp_idx * Mesh.Discr_length();
 		}
@@ -601,6 +637,13 @@ __global__ void RESTART_GRID_FIND_GN(gridPoint<DIM, T>*	Particle_Positions,
 	}
 }
 
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// @brief This function makes sure that the PDF does not have any negative values! (Having this enforced by the interpolation would've been wonderful)
 /// @param PDF 
@@ -616,9 +659,15 @@ __global__ void CORRECTION(T* PDF, const INT Grid_Nodes){
 }
 
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // L1-normalized RBF Function definitions
 
-#if DIMENSIONS == 1	//	You have to change this for the 1D normalized RBF
+#if PHASE_SPACE_DIMENSIONS == 1	//	You have to change this for the 1D normalized RBF
 	#define Mass_RBF 0.333383333333333 // this is the: int_0^1 phi(r)dr 
 	/// @brief Radial Basis Function interpolation kernel
 	/// @param support_radius 
@@ -628,22 +677,22 @@ __global__ void CORRECTION(T* PDF, const INT Grid_Nodes){
 		return (TYPE)powf(fmaxf(0, 1 - x), 4) * (4 * x + 1) / (Mass_RBF *support_radius); // We multiply by this last factor to get the L1-normalized RBF
 	}
 
-#elif DIMENSIONS == 2
+#elif PHASE_SPACE_DIMENSIONS == 2
 	#define Mass_RBF 0.071428571420238 // this is actually the: int_0^1 phi(r)r dr
 	/// @brief Radial Basis Function interpolation kernel
 	/// @param support_radius 
 	/// @param x Is the normalized distance, respect to the discretization
 	/// @return 
 	__device__ inline TYPE RBF(const TYPE support_radius, const TYPE x) {
-		return (TYPE)powf(fmaxf(0, 1 - x), 4.00f) * (4.00f * x + 1.00f) / (Mass_RBF * 2.00f * M_PI * powf(support_radius, (TYPE)DIMENSIONS)); // We multiply by this last factor to get the L1-normalized RBF
+		return (TYPE)powf(fmaxf(0, 1 - x), 4.00f) * (4.00f * x + 1.00f) / (Mass_RBF * 2.00f * M_PI * powf(support_radius, (TYPE)PHASE_SPACE_DIMENSIONS)); // We multiply by this last factor to get the L1-normalized RBF
 	}
 	
-#elif DIMENSIONS == 3	// ADD THE TOTAL MASS FOR EACH 3D RBF FUNCTION
+#elif PHASE_SPACE_DIMENSIONS == 3	// ADD THE TOTAL MASS FOR EACH 3D RBF FUNCTION
 	__device__ inline TYPE RBF(const TYPE support_radius, const TYPE x) {
 		return (TYPE)powf(fmaxf(0, 1 - x), 4.00f) * (4.00f * x + 1.00f); // We multiply by this last factor to get the L1-normalized RBF
 	}
 #else
-	std::cout << "Error in 'Interpolation.cuh'. You are choosing an unavailable option. Go back to 'Case_definition.cuh' and re-check options for DIMENSIONS.\n"
+	std::cout << "Error in 'Interpolation.cuh'. You are choosing an unavailable option. Go back to 'Case_definition.cuh' and re-check options for PHASE_SPACE_DIMENSIONS.\n"
 	return -1;
 #endif
 

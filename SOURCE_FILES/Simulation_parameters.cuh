@@ -1,9 +1,10 @@
 #ifndef __SIMULATION_PARAMETERS_CUH__
 #define __SIMULATION_PARAMETERS_CUH__
 
-#include "Classes.cuh"
+#include "Constants.cuh"
+#include "Sim_data.cuh"
 
-int16_t Simul_Data_Def(std::vector<Time_Impulse_vec>& time_vector, double& deltaT, INT& ReinitSteps) {
+int16_t Simul_Data_Def(std::vector<Time_instants>& time_vector, double& deltaT, INT& ReinitSteps) {
 // MODIFIABLE
 // 1.- Time values for output + impulse vectors
 	double t0 = Time_0, tF;
@@ -63,29 +64,29 @@ int16_t Simul_Data_Def(std::vector<Time_Impulse_vec>& time_vector, double& delta
 	#if (IMPULSE_TYPE != 0)
 	
 		#if (IMPULSE_TYPE == 1)
-			for (short int j = 0; j < DELTA_JUMPS; j++){
-				if(D_JUMP_DIST_TIME[j] < tF){	time_vector.push_back({D_JUMP_DIST_TIME[j], true});	}	// Include time instants where impulses take place
+			for (short int j = 0; j < DiracDelta_impulseCount; j++){
+				if(deltaImpulse_distribution_TIME[j] < tF){	time_vector.push_back({deltaImpulse_distribution_TIME[j], true});	}	// Include time instants where impulses take place
 				else{std::cout << "WARNING: Some impulse time instants are larger than the simulation final time. Simulation will stop at tF.\n";break;}
 			}
 		#elif (IMPULSE_TYPE == 2)
 			short int impulse_count = 0;
 
-			while (impulse_count < SQUARE_JUMPS){
-				if(SQ_JUMP_DIST_TIME[2 * impulse_count] < tF){	
-					time_vector.push_back({ SQ_JUMP_DIST_TIME[2 * impulse_count], true});
-					time_vector.push_back({ SQ_JUMP_DIST_TIME[2 * impulse_count], false});	
+			while (impulse_count < SQUARE_jumpCountS){
+				if(SQ_jumpCount_DIST_TIME[2 * impulse_count] < tF){	
+					time_vector.push_back({ SQ_jumpCount_DIST_TIME[2 * impulse_count], true});
+					time_vector.push_back({ SQ_jumpCount_DIST_TIME[2 * impulse_count], false});	
 				}
 				else{std::cout << "WARNING: Some forcing time instants are larger than the simulation final time. Simulation will stop at tF.\n";break;}
 
-				if(SQ_JUMP_DIST_TIME[2 * impulse_count + 1] < tF){
-					time_vector.push_back({ SQ_JUMP_DIST_TIME[2 * impulse_count + 1], true});
-					time_vector.push_back({ SQ_JUMP_DIST_TIME[2 * impulse_count + 1], false});
+				if(SQ_jumpCount_DIST_TIME[2 * impulse_count + 1] < tF){
+					time_vector.push_back({ SQ_jumpCount_DIST_TIME[2 * impulse_count + 1], true});
+					time_vector.push_back({ SQ_jumpCount_DIST_TIME[2 * impulse_count + 1], false});
 					impulse_count++;
 				}
 				else{std::cout << "WARNING: Some forcing time instants are larger than the simulation final time. Simulation will stop at tF.\n";break;}
 			}		
 		#else
-			std::cout << "Error in 'Simulation_parameters.cuh'. You are choosing an unavailable jump option. Go back to 'Classes.cuh' and re-check options for IMPULSE_TYPE.\n"
+			std::cout << "Error in 'Simulation_parameters.cuh'. You are choosing an unavailable jumpCount option. Go back to 'Classes.cuh' and re-check options for IMPULSE_TYPE.\n"
 		#endif
 
 		std::sort(time_vector.begin(), time_vector.end());					// re-sort the time values of the vector

@@ -26,20 +26,20 @@ NOTE 1: Only independent parameter distributions are considered. You CAN use cor
 
 16.- If no impulses are to be included, set 'IMPULSE_TYPE' to 0.
 17.- If we consider state-independent delta impulses, set 'IMPULSE_TYPE' to 1 and do:
-    17.1.- Number of delta jumps 
-    17.2.- Each jump's components' distribution type (note there are JUMPS * DIMENSION because we have a vector with DIMENSIONS coordinates: first DIMENSIONS entries are the components of 1st jump)
-    17.3.- Each jump's components' truncation logical (note there are JUMPS * DIMENSION because we have a vector with DIMENSIONS coordinates: first DIMENSIONS entries are the components of 1st jump)
-    17.4.- Each jump's components' truncation Inf. value (note there are JUMPS * DIMENSION because we have a vector with DIMENSIONS coordinates: first DIMENSIONS entries are the components of 1st jump)
-    17.5.- Each jump's components' truncation Sup. value (note there are JUMPS * DIMENSION because we have a vector with DIMENSIONS coordinates: first DIMENSIONS entries are the components of 1st jump)
-    17.6.- Each jump's components' truncation mean values (note there are JUMPS * DIMENSION because we have a vector with DIMENSIONS coordinates: first DIMENSIONS entries are the components of 1st jump)
-    17.7.- Each jump's components' truncation std values (note there are JUMPS * DIMENSION because we have a vector with DIMENSIONS coordinates: first DIMENSIONS entries are the components of 1st jump)
-    17.8.- Each jump's components' truncation std samples (note there are JUMPS * DIMENSION because we have a vector with DIMENSIONS coordinates: first DIMENSIONS entries are the components of 1st jump)
-18.- If we consider SQUARE Heaviside jumps, set 'IMPULSE_TYPE' to 2 and do:
-    18.1.- Number of SQUARE jumps
+    17.1.- Number of delta jumpCounts 
+    17.2.- Each jumpCount's components' distribution type (note there are jumpCountS * DIMENSION because we have a vector with PHASE_SPACE_DIMENSIONS coordinates: first PHASE_SPACE_DIMENSIONS entries are the components of 1st jumpCount)
+    17.3.- Each jumpCount's components' truncation logical (note there are jumpCountS * DIMENSION because we have a vector with PHASE_SPACE_DIMENSIONS coordinates: first PHASE_SPACE_DIMENSIONS entries are the components of 1st jumpCount)
+    17.4.- Each jumpCount's components' truncation Inf. value (note there are jumpCountS * DIMENSION because we have a vector with PHASE_SPACE_DIMENSIONS coordinates: first PHASE_SPACE_DIMENSIONS entries are the components of 1st jumpCount)
+    17.5.- Each jumpCount's components' truncation Sup. value (note there are jumpCountS * DIMENSION because we have a vector with PHASE_SPACE_DIMENSIONS coordinates: first PHASE_SPACE_DIMENSIONS entries are the components of 1st jumpCount)
+    17.6.- Each jumpCount's components' truncation mean values (note there are jumpCountS * DIMENSION because we have a vector with PHASE_SPACE_DIMENSIONS coordinates: first PHASE_SPACE_DIMENSIONS entries are the components of 1st jumpCount)
+    17.7.- Each jumpCount's components' truncation std values (note there are jumpCountS * DIMENSION because we have a vector with PHASE_SPACE_DIMENSIONS coordinates: first PHASE_SPACE_DIMENSIONS entries are the components of 1st jumpCount)
+    17.8.- Each jumpCount's components' truncation std samples (note there are jumpCountS * DIMENSION because we have a vector with PHASE_SPACE_DIMENSIONS coordinates: first PHASE_SPACE_DIMENSIONS entries are the components of 1st jumpCount)
+18.- If we consider SQUARE Heaviside jumpCounts, set 'IMPULSE_TYPE' to 2 and do:
+    18.1.- Number of SQUARE jumpCounts
     18.2.- Time values at which each impulse begins/ends ({begin, end, begin, end, ...})
 
 For a complete example: 
     1D RDE: see '1_Linear_Eq.txt'
-    With no jumps: see '4_VanDerPol_System.txt'
-    With delta jumps: see '2_Duffing_System.txt'.
-    With Heaviside jumps: see '3_Allelochemicals_System.txt'.
+    With no jumpCounts: see '4_VanDerPol_System.txt'
+    With delta jumpCounts: see '2_Duffing_System.txt'.
+    With Heaviside jumpCounts: see '3_Allelochemicals_System.txt'.

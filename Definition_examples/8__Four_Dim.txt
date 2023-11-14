@@ -36,12 +36,12 @@
 #define DISC_RADIUS         3.49
 
 // State variables information
-#define DIMENSIONS   4
+#define PHASE_SPACE_DIMENSIONS   4
 #define DOMAIN_INF {-2,-2,-2,-2}
 #define DOMAIN_SUP {2,2,2,2}
 
-static const TYPE	IC_MEAN[DIMENSIONS] = {0, 1.2, 0, 1.2};
-static const TYPE	IC_STD[DIMENSIONS] = { sqrtf(0.00075),sqrtf(0.00075),sqrtf(0.00075),sqrtf(0.00075) };
+static const TYPE	IC_MEAN[PHASE_SPACE_DIMENSIONS] = {0, 1.2, 0, 1.2};
+static const TYPE	IC_STD[PHASE_SPACE_DIMENSIONS] = { sqrtf(0.00075),sqrtf(0.00075),sqrtf(0.00075),sqrtf(0.00075) };
 
 // Vector field definition (see the end of 'Classes.cuh' for the definition)
 // explanation:
@@ -61,13 +61,13 @@ static const TYPE	IC_STD[DIMENSIONS] = { sqrtf(0.00075),sqrtf(0.00075),sqrtf(0.0
 #define DIVERGENCE      DIVERGENCE_1 + DIVERGENCE_2 + DIVERGENCE_3 + DIVERGENCE_4
 
 // Parameter information
-#define PARAM_DIMENSIONS 4
-static const char   _DIST_NAMES[PARAM_DIMENSIONS] = { 'B','B','G','G' };
-static const bool   _DIST_TRUNC[PARAM_DIMENSIONS] = { false, false, true, true };
-static const TYPE   _DIST_InfTVAL[PARAM_DIMENSIONS] = { 0,0,0,0 };
-static const TYPE   _DIST_SupTVAL[PARAM_DIMENSIONS] = { 1,1,1,1 };
-static TYPE 		_DIST_MEAN[PARAM_DIMENSIONS] = { 0.2,0.35,0.1,0.2 };
-static TYPE 		_DIST_STD[PARAM_DIMENSIONS] = { sqrtf(0.005),sqrtf(0.005),sqrtf(0.002),sqrtf(0.002) };
+#define PARAM_SPACE_DIMENSIONS 4
+static const char   _DIST_NAMES[PARAM_SPACE_DIMENSIONS] = { 'B','B','G','G' };
+static const bool   _DIST_isTRUNC[PARAM_SPACE_DIMENSIONS] = { false, false, true, true };
+static const TYPE   _DIST_InfTVAL[PARAM_SPACE_DIMENSIONS] = { 0,0,0,0 };
+static const TYPE   _DIST_SupTVAL[PARAM_SPACE_DIMENSIONS] = { 1,1,1,1 };
+static TYPE 		_DIST_MEAN[PARAM_SPACE_DIMENSIONS] = { 0.2,0.35,0.1,0.2 };
+static TYPE 		_DIST_STD[PARAM_SPACE_DIMENSIONS] = { sqrtf(0.005),sqrtf(0.005),sqrtf(0.002),sqrtf(0.002) };
 
 // Impulse parameter information (only delta or heaviside)
 #define IMPULSE_TYPE 0
