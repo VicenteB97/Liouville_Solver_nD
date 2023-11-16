@@ -29,7 +29,7 @@
 #include <thrust/extrema.h>             // Compute max. and min. of GPU arrays
 
 // Include the Simulation definition!
-#include "Case_definition.cuh"
+#include "Case_definition.cuh"			// Here, we read the information of the problem to be simulated!
 
 // Simulation and logging default output folder
 #define SIM_OUTPUT_relPATH "../../SIMULATION_OUTPUT/"
@@ -41,7 +41,7 @@
 // Maximum simulation file size
 #define MAX_FILE_SIZE_B (uint64_t) 4*1024*1024*1024
 
-// Check the dimensionality of the simulations to use good data types
+// Check the dimensionality of the simulations to use "optimal" data types
 #if PHASE_SPACE_DIM < 4
 	#define INT int32_t
 	#define UINT uint32_t
@@ -87,5 +87,45 @@ inline UINT positive_rem(const INT a, const INT b) {
 	return (a % b + b) % b;
 }
 
+/// @brief 
+/// @param inputTerminal 
+/// @return 
+inline bool isNumeric(const std::string& inputTerminal){
+
+	// Iterate through every character in the string and check if they're numbers
+	int16_t strLength = inputTerminal.size(), CharPosition = 0;
+	bool isDecimal = false;
+
+	// It's OK if the first term is a minus sign
+	if(inputTerminal[0] == '-'){
+		CharPosition++;
+	}
+	// It's OK if the first term is a dot character
+	else if(inputTerminal[0] == '.'){
+		CharPosition++;
+		isDecimal = true;
+	}
+
+	// Go through all characters in the string
+	while(CharPosition < strLength){
+
+		// Check if the character is a digit
+		if(!std::isdigit(inputTerminal[CharPosition])){
+			
+			// Check if it's the dot character and wether it has already appeared
+			if(inputTerminal[CharPosition] == '.' && !isDecimal){
+				isDecimal = true;
+				CharPosition++;
+			}
+			else{
+				return false;
+			}
+		}
+
+		CharPosition++;
+	}
+	return true;
+
+}
 
 #endif

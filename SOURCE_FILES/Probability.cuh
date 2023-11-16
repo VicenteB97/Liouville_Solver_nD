@@ -22,11 +22,11 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-template<uint16_t PARAM_SPACE_DIM, class T>
+template<uint16_t DIM>
 class Param_vec{
 public:
-	T sample_vec[PARAM_SPACE_DIM];
-	T Joint_PDF;
+	TYPE sample_vec[DIM];
+	TYPE Joint_PDF;
 };
 
 class Param_pair {
@@ -34,17 +34,16 @@ public:
 	TYPE sample, PDF;
 };
 
-template<class T>
 class Distributions{
 public:
-	T 	 params[2];				// mean and variance. The appropriate choice of distribution parameters are given by the method of moments
+	TYPE 	 params[2];				// mean and variance. The appropriate choice of distribution parameters are given by the method of moments
 	char Name;					// Distribution name. Currently supported distributions: Delta, Normal, Beta, Gamma and Uniform
-	bool isTruncated;				// isTruncated? TRUE or FALSE
-	T 	 trunc_interval[2];		// Truncation interval (give min and max of the interval)
+	bool isTruncated;			// isTruncated? TRUE or FALSE
+	TYPE 	 trunc_interval[2];		// Truncation interval (give min and max of the interval)
 	INT  num_Samples;
 
 	// Default constructor
-	Distributions<T>() {
+	Distributions() {
 		params[0] = 0;
 		params[1] = 0;
 
@@ -70,14 +69,13 @@ public:
 /// @param Mesh 
 /// @param PDF_value 
 /// @param IC_dist_parameters 
-template<uint16_t PHASE_SPACE_DIM, class T>
-int16_t PDF_INITIAL_CONDITION(const grid<PHASE_SPACE_DIM, T>& Mesh, thrust::host_vector<T>& PDF_value, const Distributions<T> *IC_dist_parameters) {
+int16_t PDF_INITIAL_CONDITION(const grid& Mesh, thrust::host_vector<TYPE>& PDF_value, const Distributions *IC_dist_parameters) {
 
-	std::vector<T> temp_val(Mesh.Nodes_per_Dim * PHASE_SPACE_DIM);
+	std::vector<TYPE> temp_val(Mesh.Nodes_per_Dim * PHASE_SPACE_DIMENSIONS);
 
-	for (uint16_t d = 0; d < PHASE_SPACE_DIM; d++) {
+	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
 		// Create the arrays for each dimension!
-		T expectation = IC_dist_parameters[d].params[0], std_dev = IC_dist_parameters[d].params[1],
+		TYPE expectation = IC_dist_parameters[d].params[0], std_dev = IC_dist_parameters[d].params[1],
 			x0 = fmax(Mesh.Boundary_inf.dim[d], expectation - 8 * std_dev), 
 			xF = fmin(Mesh.Boundary_sup.dim[d], expectation + 8 * std_dev), 
 			rescale_CDF = 1;
@@ -103,8 +101,8 @@ int16_t PDF_INITIAL_CONDITION(const grid<PHASE_SPACE_DIM, T>& Mesh, thrust::host
 
 #pragma omp parallel for
 	for (INT k = 0; k < Mesh.Total_Nodes(); k++) {
-		T val = 1;
-		for (uint16_t d = 0; d < PHASE_SPACE_DIM; d++) {
+		TYPE val = 1;
+		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
 			INT temp_idx = floor(positive_rem(k, pow(Mesh.Nodes_per_Dim, d + 1)) / pow(Mesh.Nodes_per_Dim, d));
 
 			val *= temp_val[temp_idx + Mesh.Nodes_per_Dim * d];
@@ -125,7 +123,7 @@ int16_t PDF_INITIAL_CONDITION(const grid<PHASE_SPACE_DIM, T>& Mesh, thrust::host
 /// @param n_Samples 
 /// @param PP 
 /// @param Dist_params 
-int16_t PARAMETER_VEC_BUILD(const int n_Samples, Param_pair* PP, const Distributions<TYPE> Dist_params) {
+int16_t PARAMETER_VEC_BUILD(const int n_Samples, Param_pair* PP, const Distributions Dist_params) {
 
 	TYPE expectation = Dist_params.params[0], std_dev = Dist_params.params[1];
 
@@ -275,10 +273,10 @@ int16_t PARAMETER_VEC_BUILD(const int n_Samples, Param_pair* PP, const Distribut
 	return -1;
 }
 
-template<uint16_t PARAM_SPACE_DIM, class T>
-__host__ __device__ inline Param_vec<PARAM_SPACE_DIM, T> Gather_Param_Vec(const UINT index, const Param_pair* Parameter_Array, const INT* n_Samples){
+template<uint16_t DIM>
+__host__ __device__ inline Param_vec<DIM> Gather_Param_Vec(const UINT index, const Param_pair* Parameter_Array, const INT* n_Samples){
 
-	Param_vec<PARAM_SPACE_DIM, T> Output;
+	Param_vec<DIM> Output;
 
 	Output.Joint_PDF = 1;
 
@@ -286,7 +284,7 @@ __host__ __device__ inline Param_vec<PARAM_SPACE_DIM, T> Gather_Param_Vec(const 
 	UINT aux_samples_sum  = 0;
 
 	
-	for (uint16_t d = 0; d < PARAM_SPACE_DIM; d++){
+	for (uint16_t d = 0; d < DIM; d++){
 		UINT aux3 = n_Samples[d];
 		UINT aux = floorf(positive_rem(index, aux3 * aux_samples_mult) / aux_samples_mult );
 
@@ -304,13 +302,13 @@ __host__ __device__ inline Param_vec<PARAM_SPACE_DIM, T> Gather_Param_Vec(const 
 /// @param Parameter_Mesh: Parameter Mesh 
 /// @param Dist_Parameters: Parameters' (hyper)parameters
 /// @param Dist_Names: Distributions that will be assigned (N = Normal, U = Uniform, etc.)
-template<uint16_t PARAM_SPACE_DIMS>
+template<uint16_t DIM>
 int16_t RANDOMIZE(Param_pair* 			Parameter_Mesh, 
-				const Distributions<TYPE>		*Dist_Parameters) {
+				const Distributions		*Dist_Parameters) {
 
 	UINT aux = 0;
 	
-	for (UINT d = 0; d < PARAM_SPACE_DIMS; d++){
+	for (UINT d = 0; d < DIM; d++){
 		INT nSamples = Dist_Parameters[d].num_Samples;
 
 		// call the parameter pair vec. function

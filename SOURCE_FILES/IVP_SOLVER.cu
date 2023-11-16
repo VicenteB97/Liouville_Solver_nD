@@ -24,21 +24,17 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 	std::cout << "(REMINDER) You can type \"-1\" to  exit the program while typing this information.\n\n";
 	// Pre-Simulation Data initialization -------------------------------------------------------------------------------
 
-	ivpSolver::ivpSolver<TYPE> Solver;
+	ivpSolver::ivpSolver Solver;
 
-	Solver.buildDomain();
-	Solver.buildTimeVec();
-	Solver.getDistributions();
+	if(Solver.buildDomain() == -1){return -1;};
+	
+	if(Solver.buildTimeVec() == -1){return -1;};
+
+	if(Solver.getDistributions() == -1){return -1;};
 
 auto start = std::chrono::high_resolution_clock::now();
-	
-	// error_check = PDF_ITERATIONS<PHASE_SPACE_DIMENSIONS, TYPE>(prop, &storePDF_Frames, Parameter_Mesh, Problem_Domain, Supp_BBox, &H_PDF, n_samples, time_vector, deltaT, ReinitSteps);
-	// if (error_check == -1){	std::cout << "An error has occured. Exiting simulation.\n"; return error_check;}
 
-	// int16_t error_check = PDF_ITERATIONS<PHASE_SPACE_DIMENSIONS, PARAM_SPACE_DIMENSIONS, TYPE>(prop, &storePDF_Frames, Problem_Domain, *(&Param_dist), *(&IC_dist_params), time_vector, deltaT, ReinitSteps);
-	// if (error_check == -1){	std::cout << "An error has occured. Exiting simulation.\n"; return error_check;}
-
-	int16_t error_check = Solver.EvolvePDF(prop);
+	if(Solver.EvolvePDF(prop) == -1){return -1;};
 
 auto end = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<float> duration = end - start; // duration
@@ -51,9 +47,8 @@ auto end = std::chrono::high_resolution_clock::now();
 // -------------------------------------------------------------------------------------------- //
 // -------------------------------------------------------------------------------------------- //
 
-	Solver.WriteFramesToFile(duration.count());
-
+	if(Solver.WriteFramesToFile(duration.count())){return -1;};
 	gpuError_Check(cudaDeviceReset());
 
-	return error_check;
+	return 0;
 }

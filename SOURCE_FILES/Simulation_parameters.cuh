@@ -4,65 +4,115 @@
 #include "Constants.cuh"
 #include "Sim_data.cuh"
 
-int16_t Simul_Data_Def(std::vector<Time_instants>& time_vector, double& deltaT, INT& ReinitSteps) {
+int16_t BuildTimeVector(std::vector<Time_instants>& time_vector, double& deltaT, INT& ReinitSteps) {
 // MODIFIABLE
 // 1.- Time values for output + impulse vectors
-	double t0 = Time_0, tF;
+	double t0, tF;
 
+	// Read init. Time from terminal 
 	bool get_answer = true;
 	while (get_answer) {
-		std::cout << "Choose end simulation time: ";
-		std::cin >> tF;
-		if (tF == -1) {
-			return -1;
-		}
-		else if (tF <= t0) {
-			std::cout << "You must choose a STRICTLY positive time value.\n";
-		}
-		else {
-			get_answer = false;
+		std::string terminalInput;
+
+		std::cout << "Choose initial simulation time: ";
+		std::cin >> terminalInput;
+
+		if(!isNumeric(terminalInput)){std::cout << "Error: Non-numeric entries are not allowed. ";}
+		else{
+			t0 = std::stod(terminalInput);
+
+			if (t0 == -1) {return -1;}
+			
+			if (t0 < 0) {
+				std::cout << "You must choose a STRICTLY positive initial time.\n";
+			}
+			else {
+				get_answer = false;
+			}
 		}
 	}
 
-	get_answer = true; 
-	while (get_answer) {
-		std::cout << "Choose time-step: ";
-		std::cin >> deltaT;
-		if (deltaT == -1) {
-			return -1;
-		}
-		else if (deltaT == 0) {
-			std::cout << "You must choose a STRICTLY positive timestep.\n";
-		}
-		else {
-			get_answer = false;
-		}
-	}
-
+	// Read final time from terminal
 	get_answer = true;
 	while (get_answer) {
-		std::cout << "Re-initialization steps? (Ideally 2 or 4): ";
-		std::cin >> ReinitSteps;
-		if (ReinitSteps == -1) {
-			return -1;
-		}
-		else if (ReinitSteps == 0) {
-			std::cout << "You must choose a STRICTLY positive number of steps.\n";
-		}
-		else {
-			get_answer = false;
+
+		std::string terminalInput;
+		std::cout << "Choose end simulation time: ";
+		
+		std::cin >> terminalInput;
+		if(!isNumeric(terminalInput)){std::cout << "Error: Non-numeric entries are not allowed. ";}
+		else{		
+			tF = std::stod(terminalInput);
+
+			if (tF == -1) {return -1;}
+			
+			if (tF <= t0) {
+				std::cout << "Your final time must be STRICTLY larger than the initial time.\n";
+			}
+			else {
+				get_answer = false;
+			}
 		}
 	}
 
+	// Get timestep
+	get_answer = true; 
+	while (get_answer) {
+
+		std::string terminalInput;
+		std::cout << "Choose time-step: ";
+		std::cin >> terminalInput;
+
+		if(!isNumeric(terminalInput)){std::cout << "Error: Non-numeric entries are not allowed. ";}
+		else{
+			deltaT = std::stod(terminalInput);
+			if (deltaT == -1) {
+				return -1;
+			}
+			
+			if (deltaT == 0) {
+				std::cout << "You must choose a STRICTLY positive timestep.\n";
+			}
+			else {
+				get_answer = false;
+			}
+		}
+	}
+
+	// Get reinit steps
+	get_answer = true;
+	while (get_answer) {
+
+		std::string terminalInput;
+		std::cout << "Re-initialization steps?: ";
+		std::cin >> terminalInput;
+
+		if(!isNumeric(terminalInput)){std::cout << "Error: Non-numeric entries are not allowed. ";}
+		else{
+
+			ReinitSteps = std::stoi(terminalInput);
+
+			if (ReinitSteps == -1) {
+				return -1;
+			}
+			
+			if (ReinitSteps == 0) {
+				std::cout << "You must choose a STRICTLY positive number of steps.\n";
+			}
+			else {
+				get_answer = false;
+			}
+		}
+	}
+
+	// Build the vector as such!
 	while (t0 < tF + ReinitSteps * deltaT / 2) {						// THIS WAY, WE MAKE SURE THAT ROUND-OFF ERRORS ARE NOT ALLOWED!!
 		time_vector.push_back({ t0, false});
 		t0 = t0 + ReinitSteps * deltaT;
 	}
 
-// 2.- if there are impulses:
-
+// 2.- if there are impulses: SHOULD RECHEK AND SEE IF IT WORKS!
 	#if (IMPULSE_TYPE != 0)
-	
 		#if (IMPULSE_TYPE == 1)
 			for (short int j = 0; j < DiracDelta_impulseCount; j++){
 				if(deltaImpulse_distribution_TIME[j] < tF){	time_vector.push_back({deltaImpulse_distribution_TIME[j], true});	}	// Include time instants where impulses take place

@@ -16,22 +16,21 @@ using namespace thrust::placeholders; // this is useful for the multiplication o
 /// @param deltaT Time step used in the simulation
 /// @param ReinitSteps Number of steps before needing a re-interpolation
 /// @param Adapt_Points Number of particles as computed by the AMR scheme
-/// @param Random_Samples Number of random parameter samples
+/// @param Random_Samples Number of random paramRealization samples
 /// @return 
-template<uint16_t PHASE_SPACE_DIM, uint16_t PARAM_SPACE_DIM, class T>
-__global__ void ODE_INTEGRATE(gridPoint<PHASE_SPACE_DIM, T>* Particles,
-							T* PDF,
-							const T* 			 lambdas,
+__global__ void ODE_INTEGRATE(gridPoint* Particles,
+							TYPE* PDF,
+							const TYPE* 			 lambdas,
 							const Param_pair* parameters,
 							const INT* n_Samples,
-							float				t0,
-							const float			deltaT,
-							const float			tF,
+							double				t0,
+							const double			deltaT,
+							const double		tF,
 							const INT		Adapt_Points,
 							const INT		Random_Samples,
 							const UINT		mode,
 							const double* extra_param,
-							const grid<PHASE_SPACE_DIM, T> D_Mesh) {
+							const grid D_Mesh) {
 
 	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -41,53 +40,51 @@ __global__ void ODE_INTEGRATE(gridPoint<PHASE_SPACE_DIM, T>* Particles,
 		// So, the total amount of advections are going to be: (no. particles x no. of samples)
 		const UINT  i_sample = floor((double)i / Adapt_Points);
 		const UINT  i_particle = positive_rem(i, Adapt_Points);
-		const Param_vec<PARAM_SPACE_DIM, T>parameter = Gather_Param_Vec<PARAM_SPACE_DIM, T>(i_sample, parameters, n_Samples);
 
-		gridPoint<PHASE_SPACE_DIM, T> k0, k1, k2, k3, k_final, aux;
-		T	  Int1, Int2, Int3;
+		const Param_vec<PARAM_SPACE_DIMENSIONS> paramRealization = Gather_Param_Vec<PARAM_SPACE_DIMENSIONS>(i_sample, parameters, n_Samples);
 
-		gridPoint<PHASE_SPACE_DIM, T> x0 = Particles[i]; 		// register storing the initial particle loc.
-		T Int_PDF 			 = lambdas[i_particle];	// register storing the initial particle value
+		gridPoint k0, k1, k2, k3, k_final, temp, x0 = Particles[i];	// register storing the initial particle loc. ;
+		TYPE	  Int1, Int2, Int3, Int_PDF = lambdas[i_particle];	// register storing the initial particle value;
 
 		while (t0 < tF - deltaT / 2) {
 			// Particle flow
-			k0 = VECTOR_FIELD<PHASE_SPACE_DIM, PARAM_SPACE_DIM, T>(x0, t0, parameter, mode, extra_param);
+			k0 = VECTOR_FIELD(x0, t0, paramRealization, mode, extra_param);
 
-			aux = k0.Mult_by_Scalar(deltaT / 2.0f);
-			k1 = VECTOR_FIELD<PHASE_SPACE_DIM, PARAM_SPACE_DIM, T>(x0 + aux, t0 + deltaT / 2.0f, parameter, mode, extra_param);
+			temp = k0.Mult_by_Scalar(deltaT / 2.0f);
+			k1 = VECTOR_FIELD(x0 + temp, t0 + deltaT / 2.0f, paramRealization, mode, extra_param);
 
-			aux = k1.Mult_by_Scalar(deltaT / 2.0f);
-			k2 = VECTOR_FIELD<PHASE_SPACE_DIM, PARAM_SPACE_DIM, T>(x0 + aux, t0 + deltaT / 2.0f, parameter, mode, extra_param);
+			temp = k1.Mult_by_Scalar(deltaT / 2.0f);
+			k2 = VECTOR_FIELD(x0 + temp, t0 + deltaT / 2.0f, paramRealization, mode, extra_param);
 
-			aux = k2.Mult_by_Scalar(deltaT);
-			k3 = VECTOR_FIELD<PHASE_SPACE_DIM, PARAM_SPACE_DIM, T>(x0 + aux, t0 + deltaT, parameter, mode, extra_param);
+			temp = k2.Mult_by_Scalar(deltaT);
+			k3 = VECTOR_FIELD(x0 + temp, t0 + deltaT, paramRealization, mode, extra_param);
 
 			k1 = k1.Mult_by_Scalar(2.00f);
 			k2 = k2.Mult_by_Scalar(2.00f);
 
-			aux = k0 + k3 + k1 + k2;
-			aux = x0 + aux.Mult_by_Scalar((T)deltaT / 6.00f); // New particle dim
+			temp = k0 + k3 + k1 + k2;
+			temp = x0 + temp.Mult_by_Scalar((TYPE)deltaT / 6.00f); // New particle dim
 
 			// Integration of PDF: The following line corresponds to computing the approximation via a Hermite interpolation (we know initial and final points and their velocities)
-			Int1 = DIVERGENCE_FIELD<PHASE_SPACE_DIM, PARAM_SPACE_DIM, T>(x0, t0, parameter, mode, extra_param);
+			Int1 = DIVERGENCE_FIELD(x0, t0, paramRealization, mode, extra_param);
 
-			k_final = VECTOR_FIELD<PHASE_SPACE_DIM, PARAM_SPACE_DIM, T>(aux, t0 + deltaT, parameter, mode, extra_param);
-			x0 = (x0 + aux).Mult_by_Scalar(0.50f);
+			k_final = VECTOR_FIELD(temp, t0 + deltaT, paramRealization, mode, extra_param);
+			x0 = (x0 + temp).Mult_by_Scalar(0.50f);
 			x0 = x0 + (k0 + k_final).Mult_by_Scalar(0.125f);
-			Int2 = DIVERGENCE_FIELD<PHASE_SPACE_DIM, PARAM_SPACE_DIM, T>(x0, (T)(2.00f * t0 + deltaT) / 2.00f, parameter, mode, extra_param);
+			Int2 = DIVERGENCE_FIELD(x0, (TYPE)(2.00f * t0 + deltaT) / 2.00f, paramRealization, mode, extra_param);
 
-			Int3 = DIVERGENCE_FIELD<PHASE_SPACE_DIM, PARAM_SPACE_DIM, T>(aux, (T)t0 + deltaT, parameter, mode, extra_param);
+			Int3 = DIVERGENCE_FIELD(temp, (TYPE)t0 + deltaT, paramRealization, mode, extra_param);
 
 			Int_PDF *= expf((float) -deltaT / 6.00f * (Int1 + 4.00f * Int2 + Int3)); // New particle value
 
 			// Reinit step
-			x0 = aux;
+			x0 = temp;
 			t0 += deltaT;
 
-			if (!D_Mesh.Contains_particle(aux)) { Int_PDF = 0; break; }	// Condition is equivalent to the homogeneous Neumann condition
+			if (!D_Mesh.Contains_particle(temp)) { Int_PDF = 0; break; }	// This condition is equivalent to the homogeneous Neumann condition
 		}
 
-		Particles[i] = aux;
+		Particles[i] = temp;
 		PDF[i] = Int_PDF;
 	}
 }
