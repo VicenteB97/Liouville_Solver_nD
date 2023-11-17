@@ -35,7 +35,6 @@
 #define TOLERANCE_ConjGrad  powf(10,-6)     // RECOMMENDED: This appears to give good results...no need to change it
 #define DISC_RADIUS         3.25
 
-#define Time_0 0
 
 // State variables information
 #define PHASE_SPACE_DIMENSIONS  3

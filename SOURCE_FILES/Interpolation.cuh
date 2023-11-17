@@ -577,14 +577,14 @@ __global__ void RESTART_GRID_FIND_GN(gridPoint* Particle_Positions,
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 __global__ void RESTART_GRID_FIND_GN(gridPoint*	Particle_Positions,
-							TYPE*				PDF,
-							TYPE*				lambdas,
-							const Param_vec<PHASE_SPACE_DIMENSIONS>* Impulse_weights,
-							const TYPE 			search_radius,
-							const UINT	 		Adapt_Pts,
-							const UINT	 		Current_sample,
-							const grid	Mesh,
-							const grid	Expanded_Domain) {
+									TYPE*		PDF,
+									TYPE*		lambdas,
+									const Param_vec<PHASE_SPACE_DIMENSIONS>* Impulse_weights,
+									const TYPE 	search_radius,
+									const UINT	Adapt_Pts,
+									const UINT	Current_sample,
+									const grid	Mesh,
+									const grid	Expanded_Domain) {
 	// OUTPUT: New values of the PDF at the fixed grid
 
 	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
@@ -669,11 +669,11 @@ __device__ TYPE RBF(const TYPE& SuppRBF, const TYPE& inputNormalized){
 	#elif PHASE_SPACE_DIMENSIONS == 2
 	const double Mass_RBF = 0.071428571420238; // this is actually the: int_0^1 phi(r)r dr
 	return (TYPE)powf(fmaxf(0, 1 - inputNormalized), 4) * (4 * inputNormalized + 1)
-						 / (Mass_RBF * 2.00f * M_PI * powf(SuppRBF, PHASE_SPACE_DIMENSIONS));
+						 / (Mass_RBF * 2 * M_PI * powf(SuppRBF, PHASE_SPACE_DIMENSIONS));
 
 	#elif PHASE_SPACE_DIMENSIONS == 3
 
-	return (TYPE)powf(fmaxf(0, 1 - inputNormalized), 4.00f) * (4.00f * x + 1.00f); // We multiply by this last factor to get the L1-normalized RBF
+	return (TYPE)powf(fmaxf(0, 1 - inputNormalized), 4.00f) * (4.00f * inputNormalized + 1.00f); // We multiply by this last factor to get the L1-normalized RBF
 
 	#else
 	return 0;

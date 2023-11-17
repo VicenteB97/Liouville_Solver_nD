@@ -30,7 +30,7 @@
 
 #define TYPE float     // only supported values are 'float' and 'double'
 
-#define Time_0 0
+
 
 // AMR tolerance, Conjugate Gradient tolerance and number of discretization size for the radius of the RBFs
 #define TOLERANCE_AMR       0.0005

@@ -311,8 +311,8 @@ public:
 
 
 			// Eliminate the need for it to be in the Problem domain
-			Boundary_inf.dim[d] = temp_1 - ceil(DISC_RADIUS) * this->Discr_length();
-			Boundary_sup.dim[d] = temp_2 + ceil(DISC_RADIUS) * this->Discr_length();
+			Boundary_inf.dim[d] = fmax(temp_1 - ceil(DISC_RADIUS) * this->Discr_length(), Boundary_inf.dim[d]);
+			Boundary_sup.dim[d] = fmin(temp_2 + ceil(DISC_RADIUS) * this->Discr_length(), Boundary_sup.dim[d]);
 		}
 		projection.clear();
 	}

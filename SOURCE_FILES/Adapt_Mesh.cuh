@@ -141,12 +141,12 @@ __global__ void D__Wavelet_Transform__F(	TYPE*	PDF,
 /// @param Supp_BBox 
 /// @return Error code (0 = good, -1 = something went wrong)
 int16_t setInitialParticles(const thrust::host_vector<TYPE>&	H_PDF, 
-								thrust::device_vector<TYPE>&	D__PDF, 
-											std::vector<TYPE>&	AdaptPDF, 
-		std::vector<gridPoint>& 	AdaptGrid,
-					const grid&	Problem_Domain,
-					const grid&	Base_Mesh,
-						grid&		Supp_BBox) {
+							thrust::device_vector<TYPE>&		D__PDF, 
+							std::vector<TYPE>&					AdaptPDF, 
+							std::vector<gridPoint>& 			AdaptGrid,
+							const grid&							Problem_Domain,
+							const grid&							Base_Mesh,
+							grid&								Supp_BBox) {
 
 
 	UINT rescaling = 2;
@@ -157,7 +157,7 @@ int16_t setInitialParticles(const thrust::host_vector<TYPE>&	H_PDF,
 	if (fmod(log2(Supp_BBox.Nodes_per_Dim), 1) != 0) {
 		Supp_BBox.Nodes_per_Dim = pow(2, ceil(log2(Supp_BBox.Nodes_per_Dim)));
 
-		if (Supp_BBox.Nodes_per_Dim == Problem_Domain.Nodes_per_Dim) {
+		if (Supp_BBox.Nodes_per_Dim >= Problem_Domain.Nodes_per_Dim) {
 			Supp_BBox = Problem_Domain;
 		}
 		else{

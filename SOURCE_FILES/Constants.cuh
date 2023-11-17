@@ -74,6 +74,9 @@ if (code != cudaSuccess) {
 // Some more defines that shouldn't be modified
 #define gpuError_Check(ans) {gpuAssert((cudaError_t) ans, __FILE__, __LINE__);}
 
+// Error checking in the CPU code
+#define errorCheck(ans) {if(ans == -1){std::cout << "Error found at:\n" << __FILE__ << "\nLine: " << __LINE__ << ".\n"; return -1;}}
+
 // This is for the thrust library
 #define rpc(ans,offset) raw_pointer_cast(&ans[offset])
 
@@ -121,7 +124,6 @@ inline bool isNumeric(const std::string& inputTerminal){
 				return false;
 			}
 		}
-
 		CharPosition++;
 	}
 	return true;

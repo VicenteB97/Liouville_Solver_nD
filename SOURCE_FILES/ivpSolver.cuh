@@ -29,15 +29,19 @@ namespace ivpSolver{
 
 class ivpSolver{
 public:
+	//Domain where the PDF will evolve (positively invariant set)
 	grid Problem_Domain;
 	
+	// Distributions for the model parameters
 	Distributions IC_Distributions[PHASE_SPACE_DIMENSIONS];
 	Distributions Parameter_Distributions[PARAM_SPACE_DIMENSIONS];
 	
+	// Time vector, impulse information, timestep and effective timestep
 	std::vector<Time_instants> time_vector;
 	double deltaT;
 	int32_t ReinitSteps;
 
+	// Final simulation storage
 	std::vector<TYPE> storeFrames;
 
 	// Set the default constructor. Parametric constructor won't be needed!
@@ -49,16 +53,16 @@ public:
 	int16_t buildDomain(){
 
 		bool getAnswer=true;
+		int16_t LvlFine;
 
 		while(getAnswer){
-
 			std::string inputTerminal;
 			std::cout << "Finest level in the domain?: ";
 			std::cin >> inputTerminal;
 
 			if(!isNumeric(inputTerminal)){std::cout << "Error: Non-numerical values not allowed. ";}
 			else{
-				int16_t LvlFine = std::stoi(inputTerminal);
+				LvlFine = (int16_t) std::stoi(inputTerminal);
 				if(LvlFine == -1){
 					std::cout << "Error building Domain. Exiting simulation\n";
 					return -1;
@@ -89,7 +93,7 @@ public:
 	}
 
 	// Build the Distribution information for all random parameters
-	int16_t getDistributions(){
+	int16_t buildDistributions(){
 
 		// Read initial probability distribution information from the Case_definition file
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
@@ -140,11 +144,12 @@ public:
 			}
 			Parameter_Distributions[p].num_Samples = temp;
 		}
+
 		return 0;
 	}
 	
 	// This function contains the most important function of them all: The full numerical method!
-	int16_t EvolvePDF(const cudaDeviceProp* D_Properties){
+	int16_t evolvePDF(const cudaDeviceProp* D_Properties){
 
 		//--------------------------------------------------------------------------------------------//
 		//--------------------------------------------------------------------------------------------//
@@ -253,7 +258,6 @@ public:
 		const UINT MAX_BYTES_USEABLE = 0.95 * D_Properties->totalGlobalMem;		
 
 		// ------------------ DEFINITION OF THE INTERPOLATION VARIABLES AND ARRAYS ------------------ //
-
 		// The following consts don't need an explanation
 		const UINT	ConjGrad_MaxSteps  = 1000;		 								
 		const TYPE	RBF_SupportRadius  = DISC_RADIUS * Problem_Domain.Discr_length();
@@ -425,16 +429,19 @@ public:
 
 				std::cout << "RVT transformation at time: " << t0 << "\n";
 
+				D_Particle_Values = D_lambdas;
+
 				startTimeSeconds = std::chrono::high_resolution_clock::now();
 
-				error_check = IMPULSE_TRANSFORM_PDF<PHASE_SPACE_DIMENSIONS, TYPE>(D_PDF_ProbDomain,
-																		Particle_Locations,
-																		Particle_Values,
-																		time_vector[simStepCount],
-																		jumpCount,
-																		Problem_Domain,
-																		Expanded_Domain,
-																		PDF_Support);
+				error_check = IMPULSE_TRANSFORM_PDF(D_PDF_ProbDomain,
+													Particle_Locations,
+													Particle_Values,
+													D_lambdas,
+													time_vector[simStepCount],
+													jumpCount,
+													Problem_Domain,
+													Expanded_Domain,
+													PDF_Support);
 
 				endTimeSeconds = std::chrono::high_resolution_clock::now();
 				durationSeconds = endTimeSeconds - startTimeSeconds;
@@ -454,7 +461,7 @@ public:
 				PDF_ProbDomain = D_PDF_ProbDomain;
 
 				// Store info in cumulative variable
-				thrust::copy(PDF_ProbDomain.begin(), PDF_ProbDomain.end(), &(*storeFrames)[simStepCount * Problem_Domain.Total_Nodes()]);
+				thrust::copy(PDF_ProbDomain.begin(), PDF_ProbDomain.end(), &storeFrames[simStepCount * Problem_Domain.Total_Nodes()]);
 
 				#elif(IMPULSE_TYPE == 2)	// THIS IS FOR HEAVISIDE-TYPE IMPULSE!
 				mode++;
@@ -476,14 +483,14 @@ public:
 			else {
 				std::cout << "Simulation time: " << t0 << " to " << tF << "\n";
 
-				// Max. memory requirements for next Liouville step
+				// Max. memory requirements for next step
 				const UINT Bytes_per_sample = AMR_ActiveNodeCount * (sizeof(TYPE) * 2 + sizeof(gridPoint));
 
 				// Set number of random samples to work with at the same time
 				UINT Samples_PerBlk = fmin((UINT)totalSampleCount, MAX_BYTES_USEABLE / Bytes_per_sample);
 				
 				// Number of blocks to simulate
-				UINT total_simulation_blocks = (UINT) ceilf((float)totalSampleCount / Samples_PerBlk);
+				UINT total_simulation_blocks = (UINT) ceil((double)totalSampleCount / Samples_PerBlk);
 
 				for (UINT b = 0; b < total_simulation_blocks; b++) {
 
@@ -520,7 +527,6 @@ public:
 					// Print the active nodes in the current step
 					printCLI = "Number of active particles: " + std::to_string(AMR_ActiveNodeCount);
 					std::cout << printCLI << "\n";
-
 
 					/////////////////////////////////////////////////////////////////////////////////////////
 					/////////////////////////////////////////////////////////////////////////////////////////
@@ -569,8 +575,8 @@ public:
 
 					D_PDF_ProbDomain.resize(Problem_Domain.Total_Nodes(), 0);	// PDF is reset to 0, so that we may use atomic adding at the remeshing step
 					
-					Threads = fminf(THREADS_P_BLK, ActiveNodes_PerBlk);
-					Blocks  = floorf((ActiveNodes_PerBlk - 1) / Threads) + 1;
+					Threads = fmin(THREADS_P_BLK, ActiveNodes_PerBlk);
+					Blocks  = floor((ActiveNodes_PerBlk - 1) / Threads) + 1;
 
 					startTimeSeconds = std::chrono::high_resolution_clock::now();
 					RESTART_GRID_FIND_GN << < Blocks, Threads >> > (rpc(D_Particle_Locations, 0),
@@ -604,8 +610,8 @@ public:
 				Particle_Values.clear();
 
 				// Correction of any possible negative PDF values
-				UINT Threads = fminf(THREADS_P_BLK, Problem_Domain.Total_Nodes());
-				UINT Blocks = floorf((Problem_Domain.Total_Nodes() - 1) / Threads) + 1;
+				UINT Threads = fmin(THREADS_P_BLK, Problem_Domain.Total_Nodes());
+				UINT Blocks = floor((Problem_Domain.Total_Nodes() - 1) / Threads) + 1;
 
 				CORRECTION<< <Blocks, Threads >> > (rpc(D_PDF_ProbDomain, 0), Problem_Domain.Total_Nodes());
 				gpuError_Check(cudaDeviceSynchronize());
@@ -640,7 +646,7 @@ public:
 
 	}
 
-	int16_t WriteFramesToFile(const double& simulationDuration){
+	int16_t writeFramesToFile(const double& simulationDuration){
             // We have added the capability of automatically detecting the number of 1 GB files where we can store the simulation output
             bool saving_active = true;		// see if saving is still active
             int16_t error_check = 0;

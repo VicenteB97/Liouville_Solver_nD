@@ -25,7 +25,7 @@
 #define CASE "Duffing System"
 
 // Choosing whether showing full or simplified timing information
-#define OUTPUT_INFO false
+#define OUTPUT_INFO 0
 
 #define TYPE float
 
@@ -35,11 +35,9 @@
 #define DISC_RADIUS         4.45
 
 // State variables information
-#define PHASE_SPACE_DIMENSIONS  2
+#define PHASE_SPACE_DIMENSIONS 2
 #define DOMAIN_INF	{-6, -6}
 #define DOMAIN_SUP	{6, 6}
-
-#define Time_0 0
 
 static const char   IC_NAMES[PHASE_SPACE_DIMENSIONS] = { 'N','N' };
 static const bool   IC_isTRUNC[PHASE_SPACE_DIMENSIONS] = { false, false };

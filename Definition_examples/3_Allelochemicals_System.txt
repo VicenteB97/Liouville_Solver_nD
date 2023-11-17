@@ -34,7 +34,7 @@
 #define TOLERANCE_ConjGrad  powf(10,-7)
 #define DISC_RADIUS         3.75
 
-#define Time_0 0
+
 
 // State variables information
 #define PHASE_SPACE_DIMENSIONS  2
@@ -91,9 +91,9 @@ inline TYPE 		_DIST_STD	 [PARAM_SPACE_DIMENSIONS]	= {sqrtf(0.00092928f), sqrtf(0
 // #define TYPE float
 
 // AMR tolerance, Conjugate Gradient tolerance and number of discretization size for the radius of the RBFs
-// #define TOLERANCE_AMR       0.00035
-// #define TOLERANCE_ConjGrad  powf(10,-7)
-// #define DISC_RADIUS         4.75
+// static const double TOLERANCE_AMR =        0.00035
+// static const double TOLERANCE_ConjGrad =  powf(10,-7)
+// static const double DISC_RADIUS =          4.75
 
 // State variables information
 // #define PHASE_SPACE_DIMENSIONS  2

@@ -26,15 +26,15 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 
 	ivpSolver::ivpSolver Solver;
 
-	if(Solver.buildDomain() == -1){return -1;};
+	errorCheck(Solver.buildDomain())
 	
-	if(Solver.buildTimeVec() == -1){return -1;};
+	errorCheck(Solver.buildTimeVec())
 
-	if(Solver.getDistributions() == -1){return -1;};
+	errorCheck(Solver.buildDistributions())
 
 auto start = std::chrono::high_resolution_clock::now();
 
-	if(Solver.EvolvePDF(prop) == -1){return -1;};
+	errorCheck(Solver.evolvePDF(prop))
 
 auto end = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<float> duration = end - start; // duration
@@ -47,7 +47,7 @@ auto end = std::chrono::high_resolution_clock::now();
 // -------------------------------------------------------------------------------------------- //
 // -------------------------------------------------------------------------------------------- //
 
-	if(Solver.WriteFramesToFile(duration.count())){return -1;};
+	errorCheck(Solver.writeFramesToFile(duration.count()))
 	gpuError_Check(cudaDeviceReset());
 
 	return 0;
