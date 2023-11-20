@@ -17,12 +17,12 @@ Name_var1 = 'S';
 Name_var2 = 'I';
 Name_var3 = 'R';
 
-DIMENSIONS=3;
+PHASE_SPACE_DIMENSIONS=3;
 conf_lvl = 0.95;
 
 %% CHANGE FOR YOUR CURRENT COMPUTER
 
-Info=readcell  ('../SIMULATION_OUTPUT/Simulation_Info_3.csv');
+Info=readcell  ('../SIMULATION_OUTPUT/Simulation_Info_0.csv');
 
 Total_Pts           = Info{1,1};
 Pts_Per_Dimension   = Info{1,2};
@@ -37,10 +37,10 @@ h_Z =(Info{1,8}-Info{1,7})/(Pts_Per_Dimension-1);
 Z   =Info{1,7}:h_X:Info{1,8};
 
 % F_Output=zeros(Pts_Per_Dimension, Pts_Per_Dimension, Pts_Per_Dimension, timesteps);
-timesteps = 5;%length(Info);
+timesteps = length(Info);
 
 %%
-fileID = fopen('../SIMULATION_OUTPUT/Mean_PDFs_3.bin');
+fileID = fopen('../SIMULATION_OUTPUT/Mean_PDFs_0.bin');
 Data=fread(fileID,[Pts_Per_Dimension^3,timesteps],'float');
 fclose(fileID);
 
@@ -72,7 +72,7 @@ for l = 1:skip:timesteps
     Integral_vals(l)=sum(F_Output(:,:,:,l),[1,2,3])*h_X*h_Y*h_Z;
 
     % COMPUTE THE "HEIGHT" OF THE PDF OVER WHOM WE HAVE "conf_lvl" MASS
-    iso_val(l,:)=ComputeRegion(Data(:,l)',conf_lvl*Integral_vals(l),h_X,DIMENSIONS);
+    iso_val(l,:)=ComputeRegion(Data(:,l)',conf_lvl*Integral_vals(l),h_X,PHASE_SPACE_DIMENSIONS);
 
     figure(l)
     xlim([0,1]);xlabel(Name_var2);

@@ -69,7 +69,7 @@ public:
 /// @param Mesh 
 /// @param PDF_value 
 /// @param IC_dist_parameters 
-int16_t PDF_INITIAL_CONDITION(const grid& Mesh, thrust::host_vector<TYPE>& PDF_value, const Distributions *IC_dist_parameters) {
+int16_t PDF_INITIAL_CONDITION(const Mesh& Mesh, thrust::host_vector<TYPE>& PDF_value, const Distributions *IC_dist_parameters) {
 
 	std::vector<TYPE> temp_val(Mesh.Nodes_per_Dim * PHASE_SPACE_DIMENSIONS);
 

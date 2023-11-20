@@ -25,7 +25,7 @@
 #define CASE "Allelochemicals' system"
 
 // Choosing whether showing full or simplified timing information
-#define OUTPUT_INFO true
+#define OUTPUT_INFO 1
 
 #define TYPE float
 
@@ -60,12 +60,12 @@ static const TYPE	IC_STD [PHASE_SPACE_DIMENSIONS] = {sqrtf(0.0130f),sqrtf(0.0000
 
 // Parameter information
 #define PARAM_SPACE_DIMENSIONS 3
-inline const char  	_DIST_NAMES  [PARAM_SPACE_DIMENSIONS]	= {'U','U','U'};
-inline const bool  	_DIST_isTRUNC  [PARAM_SPACE_DIMENSIONS]	= {false,false,false};
+inline const char  	_DIST_NAMES  [PARAM_SPACE_DIMENSIONS] = {'U','U','U'};
+inline const bool  	_DIST_isTRUNC[PARAM_SPACE_DIMENSIONS] = {false,false,false};
 inline const TYPE 	_DIST_InfTVAL[PARAM_SPACE_DIMENSIONS] = {0.0f, 0.0f,0.0f};
 inline const TYPE 	_DIST_SupTVAL[PARAM_SPACE_DIMENSIONS] = {1.5f, 1.5f, 1.5f};
-inline TYPE 		_DIST_MEAN	 [PARAM_SPACE_DIMENSIONS]	= {0.6734, 0.6755, 6.5325};
-inline TYPE 		_DIST_STD	 [PARAM_SPACE_DIMENSIONS]	= {sqrtf(0.00092928f), sqrtf(0.0011f), sqrtf(0.1067f)};
+inline TYPE 		_DIST_MEAN	 [PARAM_SPACE_DIMENSIONS] = {0.6734, 0.6755, 6.5325};
+inline TYPE 		_DIST_STD	 [PARAM_SPACE_DIMENSIONS] = {sqrtf(0.00092928f), sqrtf(0.0011f), sqrtf(0.1067f)};
 
 #define IMPULSE_TYPE 2
 #define INCLUDE_XTRA_PARAMS false
@@ -91,9 +91,9 @@ inline TYPE 		_DIST_STD	 [PARAM_SPACE_DIMENSIONS]	= {sqrtf(0.00092928f), sqrtf(0
 // #define TYPE float
 
 // AMR tolerance, Conjugate Gradient tolerance and number of discretization size for the radius of the RBFs
-// static const double TOLERANCE_AMR =        0.00035
-// static const double TOLERANCE_ConjGrad =  powf(10,-7)
-// static const double DISC_RADIUS =          4.75
+// #define TOLERANCE_AMR       0.000035
+// #define TOLERANCE_ConjGrad  powf(10,-7)
+// #define DISC_RADIUS         3.75
 
 // State variables information
 // #define PHASE_SPACE_DIMENSIONS  2

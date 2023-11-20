@@ -12,6 +12,7 @@
 #include <string>       // For strings
 #include <omp.h>        // For simple use of thread-parallel computations
 #include <chrono>       // Timing the execution of functions
+#include <limits>		// To get limits from variables
 
 // Headers for the CUDA libraries
 #include "cuda_runtime.h"
@@ -75,7 +76,7 @@ if (code != cudaSuccess) {
 #define gpuError_Check(ans) {gpuAssert((cudaError_t) ans, __FILE__, __LINE__);}
 
 // Error checking in the CPU code
-#define errorCheck(ans) {if(ans == -1){std::cout << "Error found at:\n" << __FILE__ << "\nLine: " << __LINE__ << ".\n"; return -1;}}
+#define errorCheck(ans) {if(ans == -1){std::cout << "Error found at:\n" << __FILE__ << "\nLine: " << std::to_string(__LINE__) << ".\n"; return -1;}}
 
 // This is for the thrust library
 #define rpc(ans,offset) raw_pointer_cast(&ans[offset])
@@ -128,6 +129,63 @@ inline bool isNumeric(const std::string& inputTerminal){
 	}
 	return true;
 
+}
+
+#define DISTR_ERR_MSG "At least 1 sample must be chosen. Try again...\n"
+#define DOMAIN_ERR_MSG "You must choose a STRICTLY positive integer!. Try again...\n"
+#define INIT_TIME_ERR_MSG "You must choose a STRICTLY positive initial time.\n"
+#define END_TIME_ERR_MSG "You must choose a STRICTLY positive end time. Also, has to be greater than init. time!\n"
+#define TIMESTEP_ERR_MSG "You must choose a STRICTLY positive timestep.\n"
+#define REINIT_ERR_MSG "You must choose a STRICTLY positive number of steps.\n"
+
+inline int16_t intCheck(bool& getAnswer, const std::string& inputTerminal, const std::string& errMessage = "Undefined error occured.\n", const INT non_accepted = 0, const INT minArg = std::numeric_limits<INT>::lowest(), 
+						const INT maxArg = std::numeric_limits<INT>::max()) {
+	
+	if (!isNumeric(inputTerminal)) { std::cout << "Error: Non-numerical inputs not allowed. "; }
+	else {
+
+		INT temp = std::stoi(inputTerminal);
+
+		if (temp == -1) {
+			std::cout << "Definition error in file: " << __FILE__ << "\nLine: " << __LINE__ << "\nExiting simulation.\n";
+			return -1;
+		}
+
+		if (temp < minArg || temp == non_accepted || temp > maxArg) {
+			std::cout << errMessage;
+		}
+		else {
+			getAnswer = false;
+		}
+	}
+
+	return 0;
+	
+}
+
+inline int16_t doubleCheck(bool& getAnswer, const std::string& inputTerminal, const std::string& errMessage = "Undefined error occured.\n", const double non_accepted = 0, const double minArg = std::numeric_limits<double>::lowest(),
+							const double maxArg = std::numeric_limits<double>::max()) {
+
+	if (!isNumeric(inputTerminal)) { std::cout << "Error: Non-numerical inputs not allowed. "; }
+	else {
+
+		double temp = std::stod(inputTerminal);
+
+		if (temp == -1) {
+			std::cout << "Definition error in file: " << __FILE__ << "\nLine: " << __LINE__ << "\nExiting simulation.\n";
+			return -1;
+		}
+
+		if (temp == non_accepted || temp < minArg || temp > maxArg) {
+			std::cout << errMessage;
+		}
+		else {
+			getAnswer = false;
+		}
+	}
+
+	return 0;
+	
 }
 
 #endif

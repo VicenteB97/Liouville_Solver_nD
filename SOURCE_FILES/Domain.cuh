@@ -9,13 +9,13 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Grid points ---------------------------------------------------------------------------------------------------------------- //
 
-class gridPoint {
+class Particle {
 public:
 	TYPE dim[PHASE_SPACE_DIMENSIONS];
 
 	// Default constructor
 	__host__ __device__
-	gridPoint() {
+	Particle() {
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
 			dim[d] = (TYPE)0;
 		}
@@ -23,14 +23,14 @@ public:
 
 	// Parametric constructors
 	__host__ __device__
-		gridPoint(const TYPE(&input)[PHASE_SPACE_DIMENSIONS]) {
+		Particle(const TYPE(&input)[PHASE_SPACE_DIMENSIONS]) {
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
 			dim[d] = input[d];
 		}
 	}
 
 	__host__ __device__
-	gridPoint(const gridPoint& input) {
+	Particle(const Particle& input) {
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
 			dim[d] = input.dim[d];
 		}
@@ -38,9 +38,9 @@ public:
 
 	// Operators and methods
 	__host__ __device__ 
-	gridPoint operator+(const gridPoint& other) const {
+	Particle operator+(const Particle& other) const {
 
-		gridPoint out;
+		Particle out;
 
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
 			TYPE aux = dim[d];
@@ -51,8 +51,8 @@ public:
 		return out;
 	}
 	__host__ __device__ 
-	gridPoint operator-(const gridPoint& other) const {
-		gridPoint out;
+	Particle operator-(const Particle& other) const {
+		Particle out;
 
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
 			TYPE aux = dim[d];
@@ -63,7 +63,7 @@ public:
 		return out;
 	}
 	__host__ __device__ 
-	bool operator==(const gridPoint& other) const {
+	bool operator==(const Particle& other) const {
 		bool out = true;
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
 			if (dim[d] != other.dim[d]) { out = false; }
@@ -72,7 +72,7 @@ public:
 	}
 
 	__host__ __device__ 
-	inline TYPE Distance(const gridPoint& other) const {
+	inline TYPE Distance(const Particle& other) const {
 		TYPE dist = 0;
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
 			dist += (dim[d] - other.dim[d]) * (dim[d] - other.dim[d]);
@@ -82,8 +82,8 @@ public:
 
 	
 	__host__ __device__ 
-	inline gridPoint Mult_by_Scalar(TYPE scalar) const {
-		gridPoint out;
+	inline Particle Mult_by_Scalar(TYPE scalar) const {
+		Particle out;
 
 		
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
@@ -103,7 +103,7 @@ public:
 
 // This function is defined aside because CUDA does not allow defining __global__ functions inside class definitions! (At least not statically)
  
-__global__ void findProjection(const gridPoint* particles, TYPE* projections, const UINT totalParticles, const UINT dimension) {
+__global__ void findProjection(const Particle* particles, TYPE* projections, const UINT totalParticles, const UINT dimension) {
 	
 	const uint64_t globalID = blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -116,69 +116,69 @@ __global__ void findProjection(const gridPoint* particles, TYPE* projections, co
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Grid class definition
 
-class grid{
+class Mesh{
 public:
-	gridPoint 	Boundary_inf, Boundary_sup;
+	Particle 	Boundary_inf, Boundary_sup;
 	UINT				Nodes_per_Dim;
 
 	// Default constructor:
-	__host__ __device__	grid(){
+	__host__ __device__	Mesh(){
 		Nodes_per_Dim	= 1;
-		Boundary_inf	= gridPoint(DOMAIN_INF);
-		Boundary_sup	= gridPoint(DOMAIN_SUP);
+		Boundary_inf	= Particle(DOMAIN_INF);
+		Boundary_sup	= Particle(DOMAIN_SUP);
 	}
 
 	// Parametric constructors:
 	
-	/// @brief Create a grid knowing the nodes per dimension
+	/// @brief Create a Mesh knowing the nodes per dimension
 	/// @param Nodes_per_dim 
 	/// @return 
-	__host__ __device__	grid(const INT& Nodes_per_dim) {
+	__host__ __device__	Mesh(const INT& Nodes_per_dim) {
 
 		Nodes_per_Dim = Nodes_per_dim;
-		Boundary_inf  = gridPoint(DOMAIN_INF);
-		Boundary_sup  = gridPoint(DOMAIN_SUP);
+		Boundary_inf  = Particle(DOMAIN_INF);
+		Boundary_sup  = Particle(DOMAIN_SUP);
 	}
 
-	/// @brief Create a grid knowing the discretization length
+	/// @brief Create a Mesh knowing the discretization length
 	/// @param Discretization_length 
 	/// @return 
-	__host__ __device__	grid(const TYPE& Discretization_length) {
+	__host__ __device__	Mesh(const TYPE& Discretization_length) {
 
-		Boundary_inf = gridPoint(DOMAIN_INF);
-		Boundary_sup = gridPoint(DOMAIN_SUP);
+		Boundary_inf = Particle(DOMAIN_INF);
+		Boundary_sup = Particle(DOMAIN_SUP);
 		Nodes_per_Dim = roundf((Boundary_sup.dim[0] - Boundary_inf.dim[0]) / Discretization_length);
 	}
 
-	/// @brief Create a grid specifying the extremal nodes. 2 nodes per dimension by default
+	/// @brief Create a Mesh specifying the extremal nodes. 2 nodes per dimension by default
 	/// @param Bnd_inf 
 	/// @param Bnd_sup 
 	/// @return 
-	__host__ __device__	grid(const gridPoint& Bnd_inf, const gridPoint& Bnd_sup) {
+	__host__ __device__	Mesh(const Particle& Bnd_inf, const Particle& Bnd_sup) {
 
 		Nodes_per_Dim = 2;
 		Boundary_inf = Bnd_inf;
 		Boundary_sup = Bnd_sup;
 	}
 
-	/// @brief Create a grid specifying all the parameters
+	/// @brief Create a Mesh specifying all the parameters
 	/// @param Bnd_inf 
 	/// @param Bnd_sup 
 	/// @param Nodes_per_dim 
 	/// @return 
-	__host__ __device__	grid(const gridPoint& Bnd_inf, const gridPoint& Bnd_sup, const INT& Nodes_per_dim){
+	__host__ __device__	Mesh(const Particle& Bnd_inf, const Particle& Bnd_sup, const INT& Nodes_per_dim){
 
 		Nodes_per_Dim	= Nodes_per_dim;
 		Boundary_inf	= Bnd_inf;
 		Boundary_sup	= Bnd_sup;
 	}
 
-	/// @brief Create a grid specifying all the parameters (discr. length instead of the nodes per dimension)
+	/// @brief Create a Mesh specifying all the parameters (discr. length instead of the nodes per dimension)
 	/// @param Bnd_inf 
 	/// @param Bnd_sup 
 	/// @param Discretization_length 
 	/// @return 
-	__host__ __device__	grid(const gridPoint& Bnd_inf, const gridPoint& Bnd_sup, const TYPE& Discretization_length) {
+	__host__ __device__	Mesh(const Particle& Bnd_inf, const Particle& Bnd_sup, const TYPE& Discretization_length) {
 
 		Boundary_inf = Bnd_inf;
 		Boundary_sup = Bnd_sup;
@@ -197,8 +197,8 @@ public:
 		return (Boundary_sup.dim[0] - Boundary_inf.dim[0]);
 	}
 
-	/// @brief Gives the center node of the grid
-	__host__ __device__	inline gridPoint Center() const {
+	/// @brief Gives the center node of the Mesh
+	__host__ __device__	inline Particle Center() const {
 		return (Boundary_sup + Boundary_inf).Mult_by_Scalar(0.5);
 	}
 
@@ -209,25 +209,25 @@ public:
 		return (TYPE)(this->Edge_size() / (Nodes_per_Dim - 1));
 	}
 
-	/// @brief Gives the node (point in space) given the global index in the grid
-	/// @param globalIdx Global index in the current grid
+	/// @brief Gives the node (point in space) given the global index in the Mesh
+	/// @param globalIdx Global index in the current Mesh
 	/// @return point in space
-	__host__ __device__	inline gridPoint Get_node(const INT& globalIdx) const {
+	__host__ __device__	inline Particle Get_node(const INT& globalIdx) const {
 
-		gridPoint out(Boundary_inf);
+		Particle out(Boundary_inf);
 
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
 			INT j = floorf( positive_rem(globalIdx, pow(Nodes_per_Dim, d + 1)) / pow(Nodes_per_Dim, d) );	// This line gives the index at each dimension
 
-			out.dim[d] += j * this->Discr_length();															// This line gives the grid node per se
+			out.dim[d] += j * this->Discr_length();															// This line gives the Mesh node per se
 		}
 		return out;
 	}
 
-	/// @brief This method decides whether Particle is inside the grid or not
+	/// @brief This method decides whether Particle is inside the Mesh or not
 	/// @param Particle 
-	/// @return bool. True if particle is inside grid, false otherwise
-	__host__ __device__	inline bool Contains_particle(const gridPoint& Particle) const {
+	/// @return bool. True if particle is inside Mesh, false otherwise
+	__host__ __device__	inline bool Contains_particle(const Particle& Particle) const {
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
 			if (Particle.dim[d] < Boundary_inf.dim[d] || Particle.dim[d] > Boundary_sup.dim[d]) { return false; }
 		}
@@ -235,7 +235,7 @@ public:
 	}
 
 	// Returns the bin (or ID of the closest node) where Particle belongs to, adding bin_offset.
-	__host__ __device__ inline UINT Get_binIdx(const gridPoint& Particle) const {
+	__host__ __device__ inline UINT Get_binIdx(const Particle& Particle) const {
 		UINT bin_idx = 0;
 
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
@@ -247,7 +247,7 @@ public:
 	};
 	
 	// Returns the bin (or ID of the closest node) where Particle belongs to, adding bin_offset.
-	__host__ __device__ inline UINT Get_binIdx(const gridPoint& Particle, const INT& bin_offset) const {
+	__host__ __device__ inline UINT Get_binIdx(const Particle& Particle, const INT& bin_offset) const {
 		UINT bin_idx = 0;
  
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
@@ -259,17 +259,17 @@ public:
 	};
 
 	// Compute the global index at your mesh, given the global index in "other" mesh.
-	__host__ inline UINT Indx_here(const UINT& indx_at_other, const grid& other) const {
+	__host__ inline UINT Indx_here(const UINT& indx_at_other, const Mesh& other) const {
 		return this->Get_binIdx(other.Get_node(indx_at_other));
 	}
 
-	/// @brief This function expands a fixed grid "Other" by a length of  "expansion_length" in each direction/dimension
-	/// @param Other The base grid from which we will expand
+	/// @brief This function expands a fixed Mesh "Other" by a length of  "expansion_length" in each direction/dimension
+	/// @param Other The base Mesh from which we will expand
 	/// @param expansion_nodes Number of nodes we will expand in every direction
-	__host__ __device__	inline void Expand_From(const grid& Other, const UINT& expansion_nodes) {
+	__host__ __device__	inline void Expand_From(const Mesh& Other, const UINT& expansion_nodes) {
 		
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-			// To make sure that the points fall into the grid nodes
+			// To make sure that the points fall into the Mesh nodes
 			Boundary_inf.dim[d] = Other.Boundary_inf.dim[d] - Other.Discr_length() * expansion_nodes;
 			Boundary_sup.dim[d] = Other.Boundary_sup.dim[d] + Other.Discr_length() * expansion_nodes;
 		}
@@ -292,10 +292,10 @@ public:
 		}
 	}
 
-	/// @brief This function updates a grid-defined bounding box
+	/// @brief This function updates a Mesh-defined bounding box
 	/// @param D_Particle_Locations GPU array storing the positions of the particles
 	/// @returns Nothing
-	inline void Update_boundingBox(const thrust::device_vector<gridPoint>& D_Particle_Locations){
+	inline void Update_boundingBox(const thrust::device_vector<Particle>& D_Particle_Locations){
 		
 		UINT Threads = fmin(THREADS_P_BLK, D_Particle_Locations.size());
 		UINT Blocks	 = floor((D_Particle_Locations.size() - 1) / Threads) + 1;
@@ -308,11 +308,9 @@ public:
 
 			TYPE temp_1 = *(thrust::min_element(thrust::device, projection.begin(), projection.end())); // min element from the projection in that direction
 			TYPE temp_2 = *(thrust::max_element(thrust::device, projection.begin(), projection.end()));
-
-
-			// Eliminate the need for it to be in the Problem domain
-			Boundary_inf.dim[d] = fmax(temp_1 - ceil(DISC_RADIUS) * this->Discr_length(), Boundary_inf.dim[d]);
-			Boundary_sup.dim[d] = fmin(temp_2 + ceil(DISC_RADIUS) * this->Discr_length(), Boundary_sup.dim[d]);
+			
+			Boundary_inf.dim[d] = temp_1 - ceil(DISC_RADIUS) * this->Discr_length();
+			Boundary_sup.dim[d] = temp_2 + ceil(DISC_RADIUS) * this->Discr_length();
 		}
 		projection.clear();
 	}

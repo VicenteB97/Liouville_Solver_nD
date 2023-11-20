@@ -30,7 +30,7 @@ namespace ivpSolver{
 class ivpSolver{
 public:
 	//Domain where the PDF will evolve (positively invariant set)
-	grid Problem_Domain;
+	Mesh Problem_Domain;
 	
 	// Distributions for the model parameters
 	Distributions IC_Distributions[PHASE_SPACE_DIMENSIONS];
@@ -53,29 +53,17 @@ public:
 	int16_t buildDomain(){
 
 		bool getAnswer=true;
-		int16_t LvlFine;
+		std::string inputTerminal;
 
 		while(getAnswer){
-			std::string inputTerminal;
 			std::cout << "Finest level in the domain?: ";
 			std::cin >> inputTerminal;
 
-			if(!isNumeric(inputTerminal)){std::cout << "Error: Non-numerical values not allowed. ";}
-			else{
-				LvlFine = (int16_t) std::stoi(inputTerminal);
-				if(LvlFine == -1){
-					std::cout << "Error building Domain. Exiting simulation\n";
-					return -1;
-				}
-				else if(LvlFine < -1 || LvlFine == 0){
-					std::cout << "You must choose a STRICTLY positive integer!. Try again...\n";
-				}
-				else{
-					getAnswer = false;
-				}
-			}
+			errorCheck(intCheck(getAnswer, inputTerminal, DOMAIN_ERR_MSG, 1, 0))
 		}
 		
+		int16_t LvlFine = std::stoi(inputTerminal);
+
 		// This variable represents the problem domain, which is NOT going to be the one used for computations
 		Problem_Domain.Nodes_per_Dim = pow(2, LvlFine);
 
@@ -117,32 +105,16 @@ public:
 
 			// Read number of samples from terminal
 			bool get_answer = true;
-			INT temp = 1;
+			std::string inputTerminal;
 
 			while (get_answer) {
-				std::string inputTerminal;
 
 				std::cout << "How many samples for parameter " << p + 1 << " ? ";
 				std::cin >> inputTerminal;
 
-				if(!isNumeric(inputTerminal)){std::cout << "Error: Non-numerical inputs not allowed. ";}
-				else{
-
-					temp = std::stoi(inputTerminal);
-
-					if (temp == -1) {
-						std::cout << "Error defining distributions. Exiting simulation.\n"; return -1;
-					}
-
-					if (temp == 0) {
-						std::cout << "At least 1 sample must be selected. ";
-					}
-					else {
-						get_answer = false;
-					} 
-				}
+				errorCheck(intCheck(get_answer, inputTerminal, DISTR_ERR_MSG, 0, 1))
 			}
-			Parameter_Distributions[p].num_Samples = temp;
+			Parameter_Distributions[p].num_Samples = std::stoi(inputTerminal);
 		}
 
 		return 0;
@@ -159,11 +131,11 @@ public:
 		//--------------------------------------------------------------------------------------------//
 		//--------------------------------------------------------------------------------------------//
 		// Storing AMR-selected particles
-		std::vector<gridPoint>	Particle_Locations;
+		std::vector<Particle>	Particle_Locations;
 		std::vector<TYPE>		Particle_Values;
 
 		// Full array storing appended particles for all parameter samples
-		std::vector<gridPoint>	Full_Particle_Locations;
+		std::vector<Particle>	Full_Particle_Locations;
 		std::vector<TYPE>		Full_Particle_Values;
 
 		// Simulation logging
@@ -222,8 +194,8 @@ public:
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// PROBLEM DOMAIN AND INITIAL PDF
 
-		// This grid will be defined by the support bounding box of the data.
-		grid PDF_Support(IC_InfTVAL, IC_SupTVAL);
+		// This Mesh will be defined by the support bounding box of the data.
+		Mesh PDF_Support(IC_InfTVAL, IC_SupTVAL);
 
 		// Make it square for AMR-purposes
 		PDF_Support.Squarify();
@@ -231,10 +203,10 @@ public:
 		// Update the number of pts per dimension
 		PDF_Support.Nodes_per_Dim = round((IC_SupTVAL[0] - IC_InfTVAL[0]) / Problem_Domain.Discr_length());
 
-		// PDF values at the fixed, high-res grid (CPU)
+		// PDF values at the fixed, high-res Mesh (CPU)
 		thrust::host_vector<TYPE> PDF_ProbDomain(Problem_Domain.Total_Nodes(), 0);	 			
 
-		// initialize the grid and the PDF at the grid nodes (change so as to change the parameters as well)
+		// initialize the Mesh and the PDF at the Mesh nodes (change so as to change the parameters as well)
 		error_check = PDF_INITIAL_CONDITION(Problem_Domain, PDF_ProbDomain, IC_Distributions); 	
 		if (error_check == -1){return -1;}
 
@@ -242,7 +214,7 @@ public:
 		thrust::device_vector<TYPE> D_PDF_ProbDomain = PDF_ProbDomain;
 
 		// Particle positions (for the GPU)
-		thrust::device_vector<gridPoint> D_Particle_Locations;
+		thrust::device_vector<Particle> D_Particle_Locations;
 		
 		// PDF value at Particle positions (for the GPU)
 		thrust::device_vector<TYPE> D_Particle_Values;
@@ -263,7 +235,7 @@ public:
 		const TYPE	RBF_SupportRadius  = DISC_RADIUS * Problem_Domain.Discr_length();
 
 		// Now we make a slightly larger domain for the computations:
-		grid Expanded_Domain;
+		Mesh Expanded_Domain;
 
 		// Expand 40 nodes appears to be just fine
 		const UINT expansion_nodes = 40;
@@ -458,10 +430,8 @@ public:
 				jumpCount++;
 				simStepCount++;
 
+				// Send back to CPU
 				PDF_ProbDomain = D_PDF_ProbDomain;
-
-				// Store info in cumulative variable
-				thrust::copy(PDF_ProbDomain.begin(), PDF_ProbDomain.end(), &storeFrames[simStepCount * Problem_Domain.Total_Nodes()]);
 
 				#elif(IMPULSE_TYPE == 2)	// THIS IS FOR HEAVISIDE-TYPE IMPULSE!
 				mode++;
@@ -484,7 +454,7 @@ public:
 				std::cout << "Simulation time: " << t0 << " to " << tF << "\n";
 
 				// Max. memory requirements for next step
-				const UINT Bytes_per_sample = AMR_ActiveNodeCount * (sizeof(TYPE) * 2 + sizeof(gridPoint));
+				const UINT Bytes_per_sample = AMR_ActiveNodeCount * (sizeof(TYPE) * 2 + sizeof(Particle));
 
 				// Set number of random samples to work with at the same time
 				UINT Samples_PerBlk = fmin((UINT)totalSampleCount, MAX_BYTES_USEABLE / Bytes_per_sample);
@@ -629,14 +599,14 @@ public:
 
 				// Upadte simulation step
 				simStepCount++;
-
-				// Store info in cumulative variable
-				thrust::copy(PDF_ProbDomain.begin(), PDF_ProbDomain.end(), &storeFrames[simStepCount * Problem_Domain.Total_Nodes()]);
 			}
-		}
 
-		// Write entire log to a log file!
-		SimLog.writeToFile();
+			// Store info in cumulative variable
+			thrust::copy(PDF_ProbDomain.begin(), PDF_ProbDomain.end(), &storeFrames[simStepCount * Problem_Domain.Total_Nodes()]);
+
+			// Write entire log to a log file!
+			SimLog.writeToFile();
+		}
 		
 		// Memory management
 		delete[] Parameter_Mesh;
@@ -735,26 +705,13 @@ public:
                         }
                         file1 << simulationDuration << "\n";
 
-                        #if IMPULSE_TYPE == 0 || IMPULSE_TYPE ==1
+                        // #if IMPULSE_TYPE == 0 || IMPULSE_TYPE ==1
                         for (UINT i = k * max_frames_file + frames_init; i < k * max_frames_file + frames_in_file + frames_init - 1; i++) {
                             file1 << time_vector[i].time << ",";
                         }
                         file1 << time_vector[k * max_frames_file + frames_in_file + frames_init - 1].time;
 
-                        #elif IMPULSE_TYPE == 2
-                        file1 << time_vector[k * max_frames_file + frames_init].time << ",";
-
-                        for (UINT i = k * max_frames_file + 1 + frames_init; i < k * max_frames_file + frames_init + frames_in_file; i++) {
-                            if (abs(time_vector[i].time - time_vector[i - 1].time) > pow(10, -7)) {
-                                file1 << time_vector[i].time << ",";
-                            }
-                            else if (i == k * max_frames_file + frames_in_file + frames_init - 1) {
-                                if (time_vector[i].time != time_vector[i - 1].time) {
-                                    file1 << time_vector[i].time;
-                                }
-                            }
-                        }
-                        #endif
+                        
                         file1.close();
 
                     	// SIMULATION OUTPUT

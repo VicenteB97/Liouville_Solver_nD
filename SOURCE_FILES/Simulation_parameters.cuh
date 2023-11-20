@@ -11,99 +11,48 @@ int16_t BuildTimeVector(std::vector<Time_instants>& time_vector, double& deltaT,
 
 	// Read init. Time from terminal 
 	bool get_answer = true;
+	std::string terminalInput;
+
 	while (get_answer) {
-		std::string terminalInput;
 
 		std::cout << "Choose initial simulation time: ";
 		std::cin >> terminalInput;
 
-		if(!isNumeric(terminalInput)){std::cout << "Error: Non-numeric entries are not allowed. ";}
-		else{
-			t0 = std::stod(terminalInput);
-
-			if (t0 == -1) {return -1;}
-			
-			if (t0 < 0) {
-				std::cout << "You must choose a STRICTLY positive initial time.\n";
-			}
-			else {
-				get_answer = false;
-			}
-		}
+		errorCheck(doubleCheck(get_answer, terminalInput, INIT_TIME_ERR_MSG, -pow(10,-6), 0))
 	}
+	t0 = std::stod(terminalInput);
 
 	// Read final time from terminal
 	get_answer = true;
 	while (get_answer) {
-
-		std::string terminalInput;
 		std::cout << "Choose end simulation time: ";
-		
 		std::cin >> terminalInput;
-		if(!isNumeric(terminalInput)){std::cout << "Error: Non-numeric entries are not allowed. ";}
-		else{		
-			tF = std::stod(terminalInput);
-
-			if (tF == -1) {return -1;}
-			
-			if (tF <= t0) {
-				std::cout << "Your final time must be STRICTLY larger than the initial time.\n";
-			}
-			else {
-				get_answer = false;
-			}
-		}
+		
+		errorCheck(doubleCheck(get_answer, terminalInput, END_TIME_ERR_MSG, 0, t0))
 	}
+	tF = std::stod(terminalInput);
 
 	// Get timestep
 	get_answer = true; 
 	while (get_answer) {
 
-		std::string terminalInput;
 		std::cout << "Choose time-step: ";
 		std::cin >> terminalInput;
 
-		if(!isNumeric(terminalInput)){std::cout << "Error: Non-numeric entries are not allowed. ";}
-		else{
-			deltaT = std::stod(terminalInput);
-			if (deltaT == -1) {
-				return -1;
-			}
-			
-			if (deltaT == 0) {
-				std::cout << "You must choose a STRICTLY positive timestep.\n";
-			}
-			else {
-				get_answer = false;
-			}
-		}
+		errorCheck(doubleCheck(get_answer, terminalInput, TIMESTEP_ERR_MSG, 0, 0))
 	}
+	deltaT = std::stod(terminalInput);
 
 	// Get reinit steps
 	get_answer = true;
 	while (get_answer) {
 
-		std::string terminalInput;
 		std::cout << "Re-initialization steps?: ";
 		std::cin >> terminalInput;
 
-		if(!isNumeric(terminalInput)){std::cout << "Error: Non-numeric entries are not allowed. ";}
-		else{
-
-			ReinitSteps = std::stoi(terminalInput);
-
-			if (ReinitSteps == -1) {
-				return -1;
-			}
-			
-			if (ReinitSteps == 0) {
-				std::cout << "You must choose a STRICTLY positive number of steps.\n";
-			}
-			else {
-				get_answer = false;
-			}
-		}
+		errorCheck(intCheck(get_answer, terminalInput, REINIT_ERR_MSG, 0, 1))
 	}
+	ReinitSteps = std::stoi(terminalInput);
 
 	// Build the vector as such!
 	while (t0 < tF + ReinitSteps * deltaT / 2) {						// THIS WAY, WE MAKE SURE THAT ROUND-OFF ERRORS ARE NOT ALLOWED!!

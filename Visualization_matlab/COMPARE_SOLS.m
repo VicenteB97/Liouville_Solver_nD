@@ -54,7 +54,7 @@ LInf_Test_12 = max(temp_diff_LInf);
 
 %%
 figure(1)
-plot(t_1, temp_diff_L1,t_1,temp_diff_L2); legend('L_1','L_2','L_{Inf}'); grid minor
+plot(t_1, temp_diff_L1,t_1,temp_diff_L2); legend('L_1','L_2','L_{Inf}'); Mesh minor
 
 figure(10)
 title('Error comparison')
@@ -94,7 +94,7 @@ L2_Test_13 = sum(temp_diff_L2) * (t_1(2)-t_1(1));
 LInf_Test_13 = max(temp_diff_LInf);
 
 figure(3)
-plot(t_1, temp_diff_L1,t_1,temp_diff_L2,t_1, temp_diff_LInf); legend('L_1','L_2','L_{Inf}');grid minor
+plot(t_1, temp_diff_L1,t_1,temp_diff_L2,t_1, temp_diff_LInf); legend('L_1','L_2','L_{Inf}');Mesh minor
 
 % Compute errors in test errors 2-3
 for k = 1:temp_steps
@@ -115,6 +115,6 @@ L2_Test_23 = sum(temp_diff_L2) * (t_1(2)-t_1(1));
 LInf_Test_23 = max(temp_diff_LInf);
 
 figure(5)
-plot(t_1, temp_diff_L1,t_1,temp_diff_L2,t_1, temp_diff_LInf); legend('L_1','L_2','L_{Inf}');grid minor
+plot(t_1, temp_diff_L1,t_1,temp_diff_L2,t_1, temp_diff_LInf); legend('L_1','L_2','L_{Inf}');Mesh minor
 
 %% Generate graphics in PDF

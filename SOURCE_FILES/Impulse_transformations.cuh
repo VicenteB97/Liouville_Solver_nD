@@ -15,7 +15,7 @@ int16_t RANDOMIZE_II(	const INT* 					n_samples,
 						const Distributions* 			Dist_Parameters);
 
 
-__global__ void TRANSFORM_PARTICLES(gridPoint*					Particle_Locations,
+__global__ void TRANSFORM_PARTICLES(Particle*					Particle_Locations,
 									const Param_vec<PHASE_SPACE_DIMENSIONS>*	impulse_strengths,
 									const INT					Num_Particles_per_sample,
 									const INT					Total_Particles) {
@@ -35,14 +35,14 @@ __global__ void TRANSFORM_PARTICLES(gridPoint*					Particle_Locations,
 }
 
 int16_t IMPULSE_TRANSFORM_PDF(thrust::device_vector<TYPE>&	GPU_PDF,				// PDF in Mesh
-							std::vector<gridPoint>& 		Particle_Locations,	// Particle positions
+							std::vector<Particle>& 		Particle_Locations,	// Particle positions
 							std::vector<TYPE>&				Particle_Values,		// PDF in AMR-selected points
 							thrust::device_vector<TYPE>&	D_Lambdas,		// lambdas
 							const Time_instants				time,					// time-impulse information 
 							const INT						jumpCount,				// current jumpCount 
-							const grid&						Problem_Domain,
-							const grid&						Expanded_Domain,
-							grid&							Supp_BBox){	 
+							const Mesh&						Problem_Domain,
+							const Mesh&						Expanded_Domain,
+							Mesh&							Supp_BBox){	 
 
 // 0.- Create the impulse samples
 
@@ -81,7 +81,7 @@ int16_t IMPULSE_TRANSFORM_PDF(thrust::device_vector<TYPE>&	GPU_PDF,				// PDF in
 		const INT Total_Particles = Particle_Locations.size() * Random_Samples;
 
 		thrust::host_vector<TYPE> Lambdas = D_Lambdas;
-		thrust::host_vector<gridPoint> Full_Particle_Locations(Total_Particles);
+		thrust::host_vector<Particle> Full_Particle_Locations(Total_Particles);
 		thrust::host_vector<TYPE> Full_Particle_Values(Total_Particles);
 		thrust::host_vector<TYPE> tempLambdas = D_Lambdas;
 
@@ -91,7 +91,7 @@ int16_t IMPULSE_TRANSFORM_PDF(thrust::device_vector<TYPE>&	GPU_PDF,				// PDF in
 		}
 
 // 1.- Do the transformation of the points according to the info given by the time-impulse vector
-		thrust::device_vector<gridPoint>							D_Particle_Locations = Full_Particle_Locations;		// To compute the transformations at the GPU
+		thrust::device_vector<Particle>							D_Particle_Locations = Full_Particle_Locations;		// To compute the transformations at the GPU
 		thrust::device_vector<float>								D_PDF_Particles = Full_Particle_Values;		// PDF of the transformations at the GPU
 		thrust::device_vector<Param_vec<PHASE_SPACE_DIMENSIONS>> 	Impulses = Impulse_Parameter_Mesh;
 

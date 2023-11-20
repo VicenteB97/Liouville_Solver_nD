@@ -18,7 +18,7 @@ using namespace thrust::placeholders; // this is useful for the multiplication o
 /// @param Adapt_Points Number of particles as computed by the AMR scheme
 /// @param Random_Samples Number of random paramRealization samples
 /// @return 
-__global__ void ODE_INTEGRATE(gridPoint* Particles,
+__global__ void ODE_INTEGRATE(Particle* Particles,
 							TYPE* PDF,
 							const TYPE* 			 lambdas,
 							const Param_pair* parameters,
@@ -30,7 +30,7 @@ __global__ void ODE_INTEGRATE(gridPoint* Particles,
 							const INT		Random_Samples,
 							const UINT		mode,
 							const double* extra_param,
-							const grid D_Mesh) {
+							const Mesh D_Mesh) {
 
 	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -43,7 +43,7 @@ __global__ void ODE_INTEGRATE(gridPoint* Particles,
 
 		const Param_vec<PARAM_SPACE_DIMENSIONS> paramRealization = Gather_Param_Vec<PARAM_SPACE_DIMENSIONS>(i_sample, parameters, n_Samples);
 
-		gridPoint k0, k1, k2, k3, k_final, temp, x0 = Particles[i];	// register storing the initial particle loc. ;
+		Particle k0, k1, k2, k3, k_final, temp, x0 = Particles[i];	// register storing the initial particle loc. ;
 		TYPE	  Int1, Int2, Int3, Int_PDF = lambdas[i_particle];	// register storing the initial particle value;
 
 		while (t0 < tF - deltaT / 2) {

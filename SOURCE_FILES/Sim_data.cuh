@@ -141,7 +141,7 @@ public:
 // The following functions are NOT inside the Simulation Data information
 
 __device__ 
-inline gridPoint VECTOR_FIELD(gridPoint X, 
+inline Particle VECTOR_FIELD(Particle X, 
                             double      t, 
                             const Param_vec<PARAM_SPACE_DIMENSIONS> parameter, 
                             const UINT      mode, 
@@ -153,7 +153,7 @@ inline gridPoint VECTOR_FIELD(gridPoint X,
 
 //-------------------------------------------------------------------------
 __device__
-inline TYPE DIVERGENCE_FIELD (gridPoint X,
+inline TYPE DIVERGENCE_FIELD (Particle X,
                             double      t, 
                             const Param_vec<PARAM_SPACE_DIMENSIONS> parameter, 
                             const UINT   mode, 

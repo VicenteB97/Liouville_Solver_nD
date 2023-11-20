@@ -5,7 +5,7 @@ clc
 delete(gcp('nocreate'));
 
 %% PRE-(POST-PROCESSING)
-Show_AMR = true;
+Show_AMR = false;
 Show_Confidence_Region = true;
 Show_Animation = false;
 Save_Animation = false; % STILL NOT WORKING...I'LL FIND OUT SOON
@@ -99,7 +99,7 @@ for k=1:timesteps
             hold off;
         end
     
-        % Adaptive Mesh Refinement output
+        % Adaptive grid Refinement output
         subplot(1,2,2)
         M=sparse(val); % Perfect!!!!
         spy(M);view(0,-90);

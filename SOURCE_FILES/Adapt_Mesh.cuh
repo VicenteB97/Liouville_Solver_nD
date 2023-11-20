@@ -39,14 +39,14 @@ __device__ inline void _1D_WVLET(TYPE& s1, TYPE& s2){
 /// @tparam TYPE
 /// @param PDF Our "signal". The multidimensional signal we want to compress
 /// @param Activate_node An array with the nodes and the indication whether the node is chosen or not
-/// @param BoundingBox The "smallest" grid where the support of the PDF is contained
+/// @param BoundingBox The "smallest" Mesh where the support of the PDF is contained
 /// @param Problem_Domain Problem domain
 /// @param rescaling Rescaling value that indicates the level of the wavelet transform
 /// @return 
 __global__ void D__Wavelet_Transform__F(	TYPE*	PDF,
 								  AMR_node_select* 	Activate_node,
-										const grid 	BoundingBox,
-										const grid	Problem_Domain,
+										const Mesh 	BoundingBox,
+										const Mesh	Problem_Domain,
 										const TYPE	rescaling){
 
 	const uint64_t globalID = blockDim.x * blockIdx.x + threadIdx.x;
@@ -85,8 +85,8 @@ __global__ void D__Wavelet_Transform__F(	TYPE*	PDF,
 				// Compute corresponding detail node
 				INT det_IDX_at_BBox = app_IDX_at_BBox + pow(BoundingBox.Nodes_per_Dim, d) * rescaling / 2;
 
-				gridPoint app_node = BoundingBox.Get_node(app_IDX_at_BBox);
-				gridPoint det_node = BoundingBox.Get_node(det_IDX_at_BBox);
+				Particle app_node = BoundingBox.Get_node(app_IDX_at_BBox);
+				Particle det_node = BoundingBox.Get_node(det_IDX_at_BBox);
 
 				// Check which ones are in the problem domain!
 				if (Problem_Domain.Contains_particle(app_node) && Problem_Domain.Contains_particle(det_node)) {
@@ -108,7 +108,7 @@ __global__ void D__Wavelet_Transform__F(	TYPE*	PDF,
 
 	for (UINT k = 1; k < pow(2, PHASE_SPACE_DIMENSIONS); k++) {
 
-		gridPoint visit_node = BoundingBox.Get_node(cube_app_IDX);
+		Particle visit_node = BoundingBox.Get_node(cube_app_IDX);
 
 		// Get the indeces at the bounding box:
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
@@ -143,25 +143,23 @@ __global__ void D__Wavelet_Transform__F(	TYPE*	PDF,
 int16_t setInitialParticles(const thrust::host_vector<TYPE>&	H_PDF, 
 							thrust::device_vector<TYPE>&		D__PDF, 
 							std::vector<TYPE>&					AdaptPDF, 
-							std::vector<gridPoint>& 			AdaptGrid,
-							const grid&							Problem_Domain,
-							const grid&							Base_Mesh,
-							grid&								Supp_BBox) {
+							std::vector<Particle>& 			AdaptGrid,
+							const Mesh&							Problem_Domain,
+							const Mesh&							Base_Mesh,
+							Mesh&								Supp_BBox) {
 
 
 	UINT rescaling = 2;
 
+	// Prepare the bounding box for the Wavelet-based AMR procedure! (We don't really care if it's off limits from the problem domain)
 	Supp_BBox.Squarify();	// Make it square
 	Supp_BBox.Nodes_per_Dim = (Supp_BBox.Boundary_sup.dim[0] - Supp_BBox.Boundary_inf.dim[0]) / Problem_Domain.Discr_length() + 1;
 
 	if (fmod(log2(Supp_BBox.Nodes_per_Dim), 1) != 0) {
 		Supp_BBox.Nodes_per_Dim = pow(2, ceil(log2(Supp_BBox.Nodes_per_Dim)));
 
-		if (Supp_BBox.Nodes_per_Dim >= Problem_Domain.Nodes_per_Dim) {
-			Supp_BBox = Problem_Domain;
-		}
+		if (Supp_BBox.Nodes_per_Dim >= Problem_Domain.Nodes_per_Dim) {Supp_BBox = Problem_Domain;}
 		else{
-
 			Supp_BBox.Boundary_inf = Base_Mesh.Get_node(Base_Mesh.Get_binIdx(Supp_BBox.Boundary_inf));	// To make sure it falls into the mesh nodes
 
 			for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
@@ -169,6 +167,7 @@ int16_t setInitialParticles(const thrust::host_vector<TYPE>&	H_PDF,
 			}
 		}
 	}
+
 
 	thrust::host_vector<AMR_node_select> 	H__Node_selection(Supp_BBox.Total_Nodes(), { 0,0 });
 	thrust::device_vector<AMR_node_select>	D__Node_selection = H__Node_selection;
@@ -181,7 +180,7 @@ int16_t setInitialParticles(const thrust::host_vector<TYPE>&	H_PDF,
 		D__Wavelet_Transform__F <<<Blocks, Threads>>> (rpc(D__PDF,0), rpc(D__Node_selection,0), Supp_BBox, Problem_Domain, rescaling);
 		gpuError_Check(cudaDeviceSynchronize());
 
-		rescaling *= 2;	// our grid will now have half the number of points
+		rescaling *= 2;	// our Mesh will now have half the number of points
 	}
 
 	thrust::sort(thrust::device, D__Node_selection.begin(), D__Node_selection.end());
