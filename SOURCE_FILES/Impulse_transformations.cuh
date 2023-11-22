@@ -34,19 +34,18 @@ __global__ void TRANSFORM_PARTICLES(Particle*					Particle_Locations,
 	}
 }
 
-int16_t IMPULSE_TRANSFORM_PDF(thrust::device_vector<TYPE>&	GPU_PDF,				// PDF in Mesh
-							std::vector<Particle>& 		Particle_Locations,	// Particle positions
-							std::vector<TYPE>&				Particle_Values,		// PDF in AMR-selected points
-							thrust::device_vector<TYPE>&	D_Lambdas,		// lambdas
-							const Time_instants				time,					// time-impulse information 
-							const INT						jumpCount,				// current jumpCount 
-							const Mesh&						Problem_Domain,
-							const Mesh&						Expanded_Domain,
-							Mesh&							Supp_BBox){	 
+int16_t IMPULSE_TRANSFORM_PDF(thrust::device_vector<TYPE>&		GPU_PDF,				// PDF in Mesh
+							thrust::device_vector<Particle>& 	D_Particle_Locations,	// Particle positions
+							thrust::device_vector<TYPE>&		D_Particle_Values,		// PDF in AMR-selected points
+							const Time_instants					time,					// time-impulse information 
+							const INT							jumpCount,				// current jumpCount 
+							const Mesh&							Problem_Domain,
+							const Mesh&							Expanded_Domain,
+							Mesh&								Supp_BBox){	 
 
 // 0.- Create the impulse samples
 
-		UINT AMR_ActiveNodeCount = Particle_Values.size();
+		UINT AMR_ActiveNodeCount = D_Particle_Locations.size();
 
 		Distributions* Imp_Param_Dist = new Distributions[PHASE_SPACE_DIMENSIONS];
 		INT n_samples[PHASE_SPACE_DIMENSIONS];
@@ -78,21 +77,17 @@ int16_t IMPULSE_TRANSFORM_PDF(thrust::device_vector<TYPE>&	GPU_PDF,				// PDF in
 			Sum_Rand_Params += Impulse_Parameter_Mesh[i].Joint_PDF;
 		}		
 
-		const INT Total_Particles = Particle_Locations.size() * Random_Samples;
+		const INT Total_Particles = AMR_ActiveNodeCount * Random_Samples;
 
-		thrust::host_vector<TYPE> Lambdas = D_Lambdas;
-		thrust::host_vector<Particle> Full_Particle_Locations(Total_Particles);
-		thrust::host_vector<TYPE> Full_Particle_Values(Total_Particles);
-		thrust::host_vector<TYPE> tempLambdas = D_Lambdas;
+		D_Particle_Locations.resize(Total_Particles);
+		D_Particle_Values.resize(Total_Particles);
 
-		for(uint16_t k = 0; k < Random_Samples; k++){
-			std::copy(Particle_Locations.begin(),Particle_Locations.end(),&Full_Particle_Locations[k*Particle_Locations.size()]);
-			thrust::copy(tempLambdas.begin(),tempLambdas.end(),&Full_Particle_Values[k*Particle_Values.size()]);
+		for(uint16_t k = 1; k < Random_Samples; k++){
+			thrust::copy(thrust::device, &D_Particle_Locations[0], &D_Particle_Locations[AMR_ActiveNodeCount], &D_Particle_Locations[k * AMR_ActiveNodeCount]);
+			thrust::copy(thrust::device, &D_Particle_Values[0], &D_Particle_Values[AMR_ActiveNodeCount], &D_Particle_Values[k * AMR_ActiveNodeCount]);
 		}
 
 // 1.- Do the transformation of the points according to the info given by the time-impulse vector
-		thrust::device_vector<Particle>							D_Particle_Locations = Full_Particle_Locations;		// To compute the transformations at the GPU
-		thrust::device_vector<float>								D_PDF_Particles = Full_Particle_Values;		// PDF of the transformations at the GPU
 		thrust::device_vector<Param_vec<PHASE_SPACE_DIMENSIONS>> 	Impulses = Impulse_Parameter_Mesh;
 
 		INT Threads = (INT)fmin(THREADS_P_BLK, Total_Particles);
@@ -118,7 +113,7 @@ for (UINT s = 0; s < Random_Samples; s++){
 
 	RESTART_GRID_FIND_GN<<< Blocks, Threads >>>(rpc(D_Particle_Locations, 0),
 												rpc(GPU_PDF, 0),
-												rpc(D_PDF_Particles, 0),
+												rpc(D_Particle_Values, 0),
 												rpc(Impulses, 0),
 												search_radius,
 												AMR_ActiveNodeCount,

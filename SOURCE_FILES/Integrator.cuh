@@ -20,7 +20,6 @@ using namespace thrust::placeholders; // this is useful for the multiplication o
 /// @return 
 __global__ void ODE_INTEGRATE(Particle* Particles,
 							TYPE* PDF,
-							const TYPE* 			 lambdas,
 							const Param_pair* parameters,
 							const INT* n_Samples,
 							double				t0,
@@ -39,12 +38,11 @@ __global__ void ODE_INTEGRATE(Particle* Particles,
 		// AUXILIARY DATA TO RUN THE ITERATIONS
 		// So, the total amount of advections are going to be: (no. particles x no. of samples)
 		const UINT  i_sample = floor((double)i / Adapt_Points);
-		const UINT  i_particle = positive_rem(i, Adapt_Points);
 
 		const Param_vec<PARAM_SPACE_DIMENSIONS> paramRealization = Gather_Param_Vec<PARAM_SPACE_DIMENSIONS>(i_sample, parameters, n_Samples);
 
 		Particle k0, k1, k2, k3, k_final, temp, x0 = Particles[i];	// register storing the initial particle loc. ;
-		TYPE	  Int1, Int2, Int3, Int_PDF = lambdas[i_particle];	// register storing the initial particle value;
+		TYPE	  Int1, Int2, Int3, Int_PDF = PDF[i];	// register storing the initial particle value;
 
 		while (t0 < tF - deltaT / 2) {
 			// Particle flow

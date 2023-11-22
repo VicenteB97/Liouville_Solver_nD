@@ -73,7 +73,7 @@ public:
 	// Use the time information 
 	int16_t buildTimeVec(){
 
-		if (BuildTimeVector(time_vector, deltaT, ReinitSteps) == -1){std::cout << "Error building the time vector. Exiting simulation\n"; return -1;}
+		errorCheck(BuildTimeVector(time_vector, deltaT, ReinitSteps))
 
 		storeFrames.resize(Problem_Domain.Total_Nodes() * time_vector.size());
 
@@ -393,6 +393,14 @@ public:
 			D_Mat_Vals.clear();
 			D_Mat_NumNeighbors.clear();
 
+			// Volume conservation!
+			if (PHASE_SPACE_DIMENSIONS < 3) {
+				TYPE temp = thrust::reduce(thrust::device, D_lambdas.begin(), D_lambdas.end());
+				thrust::transform(D_lambdas.begin(), D_lambdas.end(), D_lambdas.begin(), 1 / temp * _1);
+			}
+
+			D_Particle_Values = D_lambdas;
+
 
 			// FIX THIS PART!!
 			if (time_vector[simStepCount].impulse) {
@@ -401,14 +409,14 @@ public:
 
 				std::cout << "RVT transformation at time: " << t0 << "\n";
 
+				// Our "values" are actually going to be the RBF weights
 				D_Particle_Values = D_lambdas;
 
 				startTimeSeconds = std::chrono::high_resolution_clock::now();
 
 				error_check = IMPULSE_TRANSFORM_PDF(D_PDF_ProbDomain,
-													Particle_Locations,
-													Particle_Values,
-													D_lambdas,
+													D_Particle_Locations,
+													D_Particle_Values,
 													time_vector[simStepCount],
 													jumpCount,
 													Problem_Domain,
@@ -421,8 +429,6 @@ public:
 				
 				// Enter the information into the log information
 				SimLog.subFrame_time[5*simStepCount + 1] = durationSeconds.count();
-
-				assert(error_check == 0);
 
 				Particle_Locations.clear();
 				Particle_Values.clear();
@@ -474,25 +480,13 @@ public:
 					// Total AMR-activated nodes in the current block
 					UINT ActiveNodes_PerBlk = Samples_PerBlk * AMR_ActiveNodeCount;
 
-					// 1.2.- Append the optimal particles once per sample!
-					Full_Particle_Locations.resize(ActiveNodes_PerBlk);
-					Full_Particle_Values   .resize(ActiveNodes_PerBlk);
+					D_Particle_Locations.resize(ActiveNodes_PerBlk);
+					D_Particle_Values.resize(ActiveNodes_PerBlk);
 
-					for (UINT k = 0; k < Samples_PerBlk; k++) {
-						std::copy(Particle_Locations.begin(), Particle_Locations.end(), &Full_Particle_Locations[k * AMR_ActiveNodeCount]);
-						std::copy(Particle_Values.begin(), Particle_Values.end(), &Full_Particle_Values[k * AMR_ActiveNodeCount]);
+					for (UINT k = 1; k < Samples_PerBlk; k++) {
+						thrust::copy(thrust::device, &D_Particle_Locations[0], &D_Particle_Locations[AMR_ActiveNodeCount], &D_Particle_Locations[k * AMR_ActiveNodeCount]);
+						thrust::copy(thrust::device, &D_Particle_Values[0], &D_Particle_Values[AMR_ActiveNodeCount], &D_Particle_Values[k * AMR_ActiveNodeCount]);
 					}
-
-					// Upload information to the GPU
-					D_Particle_Values.resize(Samples_PerBlk);
-					D_Particle_Locations.resize(Samples_PerBlk);
-
-					D_Particle_Values 	 = Full_Particle_Values;
-					D_Particle_Locations = Full_Particle_Locations;
-
-					// Clear CPU info about the AMR procedure: no longer needed
-					Full_Particle_Locations.clear();
-					Full_Particle_Values.clear();
 
 					// Print the active nodes in the current step
 					printCLI = "Number of active particles: " + std::to_string(AMR_ActiveNodeCount);
@@ -509,7 +503,6 @@ public:
 					startTimeSeconds = std::chrono::high_resolution_clock::now();
 						ODE_INTEGRATE<< <Blocks, Threads >> > (rpc(D_Particle_Locations, 0),
 																rpc(D_Particle_Values, 0),
-																rpc(D_lambdas, 0),
 																rpc(D_Parameter_Mesh, Sample_idx_offset_init),
 																rpc(D_sampVec, 0),
 																t0,

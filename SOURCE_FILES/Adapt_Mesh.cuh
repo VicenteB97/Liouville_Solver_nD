@@ -143,7 +143,7 @@ __global__ void D__Wavelet_Transform__F(	TYPE*	PDF,
 int16_t setInitialParticles(const thrust::host_vector<TYPE>&	H_PDF, 
 							thrust::device_vector<TYPE>&		D__PDF, 
 							std::vector<TYPE>&					AdaptPDF, 
-							std::vector<Particle>& 			AdaptGrid,
+							std::vector<Particle>& 				AdaptGrid,
 							const Mesh&							Problem_Domain,
 							const Mesh&							Base_Mesh,
 							Mesh&								Supp_BBox) {
