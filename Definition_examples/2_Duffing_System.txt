@@ -30,9 +30,9 @@
 #define TYPE float
 
 // AMR tolerance, Conjugate Gradient tolerance and number of discretization size for the radius of the RBFs
-#define TOLERANCE_AMR       0.0005
-#define TOLERANCE_ConjGrad  powf(10,-6)
-#define DISC_RADIUS         4.45
+#define TOLERANCE_AMR       0.00005
+#define TOLERANCE_ConjGrad  powf(10,-8)
+#define DISC_RADIUS         3.45
 
 // State variables information
 #define PHASE_SPACE_DIMENSIONS 2
@@ -44,7 +44,7 @@ static const bool   IC_isTRUNC[PHASE_SPACE_DIMENSIONS] = { false, false };
 static const TYPE   IC_InfTVAL[PHASE_SPACE_DIMENSIONS] = { -6, -6 };
 static const TYPE   IC_SupTVAL[PHASE_SPACE_DIMENSIONS] = { 6, 6 };
 static const TYPE	IC_MEAN[PHASE_SPACE_DIMENSIONS] = { 1.75f, 0.00f };
-static const TYPE	IC_STD[PHASE_SPACE_DIMENSIONS] = { sqrtf(0.025f),sqrtf(0.025f) };
+static const TYPE	IC_STD[PHASE_SPACE_DIMENSIONS] = { sqrtf(0.015f),sqrtf(0.015f) };
 
 
 
@@ -60,7 +60,7 @@ static const bool   _DIST_isTRUNC[PARAM_SPACE_DIMENSIONS] = { true,true };
 static const TYPE  _DIST_InfTVAL[PARAM_SPACE_DIMENSIONS] = { 0.0f, 0.0f };
 static const TYPE  _DIST_SupTVAL[PARAM_SPACE_DIMENSIONS] = { 1000.0f, 1000.0f };
 static TYPE 		_DIST_MEAN[PARAM_SPACE_DIMENSIONS] = { 0.2f, 3.0f };
-static TYPE 		_DIST_STD[PARAM_SPACE_DIMENSIONS] = { sqrtf(0.02f),sqrtf(0.3f) };
+static TYPE 		_DIST_STD[PARAM_SPACE_DIMENSIONS] = { sqrtf(0.002f),sqrtf(0.03f) };
 
 // Impulse information
 #define IMPULSE_TYPE 1

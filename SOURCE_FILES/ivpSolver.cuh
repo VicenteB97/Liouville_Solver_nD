@@ -393,12 +393,6 @@ public:
 			D_Mat_Vals.clear();
 			D_Mat_NumNeighbors.clear();
 
-			// Volume conservation!
-			if (PHASE_SPACE_DIMENSIONS < 3) {
-				TYPE temp = thrust::reduce(thrust::device, D_lambdas.begin(), D_lambdas.end());
-				thrust::transform(D_lambdas.begin(), D_lambdas.end(), D_lambdas.begin(), 1 / temp * _1);
-			}
-
 			D_Particle_Values = D_lambdas;
 
 
@@ -523,7 +517,7 @@ public:
 					PDF_Support.Update_boundingBox(D_Particle_Locations);
 					
 					// ----------------------------------------------------------------------------------- //
-					// COMPUTE THE SOLUTION "PROJECTION" INTO THE L1 SUBSPACE
+					// COMPUTE THE SOLUTION "PROJECTION" INTO THE L1 SUBSPACE. THIS WAY, THE REINITIALIZATION CONSERVES VOLUME (=1)
 					if (PHASE_SPACE_DIMENSIONS < 3) {
 						TYPE temp = thrust::reduce(thrust::device, D_Particle_Values.begin(), D_Particle_Values.end());
 						thrust::transform(D_Particle_Values.begin(), D_Particle_Values.end(), D_Particle_Values.begin(), Samples_PerBlk / temp * _1);

@@ -26,11 +26,11 @@ int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
 
 	ivpSolver::ivpSolver Solver;
 
-	Solver.buildDomain();
+	errorCheck(Solver.buildDomain())
 	
-	Solver.buildTimeVec();
+	errorCheck(Solver.buildTimeVec())
 
-	Solver.buildDistributions();
+	errorCheck(Solver.buildDistributions())
 
 auto start = std::chrono::high_resolution_clock::now();
 
