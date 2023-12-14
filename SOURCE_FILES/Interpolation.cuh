@@ -130,8 +130,7 @@ __global__ void Count_sort( const Particle*fixed_Particles,
 __global__ void Neighbor_search(Particle*		Search_Particles,
 								const UINT* Bin_count,
 								INT*		Index_Array,
-								TYPE*				Matrix_Entries,
-								UINT*		Num_Neighbors,
+								TYPE*		Matrix_Entries,
 								const UINT	max_neighbor_num,
 								const UINT	Total_Particles,
 								const UINT	offset,
@@ -196,7 +195,6 @@ __global__ void Neighbor_search(Particle*		Search_Particles,
 			}
 		}
 	}
-	Num_Neighbors[globalID + offset] = temp_counter;
 }
 
 
@@ -223,7 +221,6 @@ __host__ int16_t CS_Neighbor_Search(thrust::device_vector<Particle>& Search_Part
 									thrust::device_vector<TYPE> &PDF_vals,
 									thrust::device_vector<INT>& Index_Array,
 									thrust::device_vector<TYPE>& Matrix_Entries,
-									thrust::device_vector<UINT>& Num_Neighbors,
 									const UINT Adapt_Points, 
 									const UINT max_neighbor_num,
 									const Mesh& Bounding_Box,
@@ -286,7 +283,6 @@ __host__ int16_t CS_Neighbor_Search(thrust::device_vector<Particle>& Search_Part
 												rpc(Bin_globalCount, 0),
 												rpc(Index_Array, 0),
 												rpc(Matrix_Entries, 0),
-												rpc(Num_Neighbors, 0),
 												max_neighbor_num,
 												Adapt_Points,
 												offset,
@@ -313,8 +309,7 @@ __host__ int16_t CS_Neighbor_Search(thrust::device_vector<Particle>& Search_Part
 /// @param Search_Particles 
 /// @param Fixed_Particles 
 /// @param Index_Array 
-/// @param Matrix_Entries 
-/// @param Num_Neighbors 
+/// @param Matrix_Entries
 /// @param max_neighbor_num 
 /// @param Adapt_Points 
 /// @param Total_Particles 
@@ -324,7 +319,6 @@ __global__ void Exh_PP_Search(const Particle* Search_Particles,
 							const Particle* Fixed_Particles,
 							INT* Index_Array,
 							TYPE* Matrix_Entries,
-							UINT* Num_Neighbors,
 							const INT max_neighbor_num,
 							const UINT Adapt_Points,
 							const UINT Total_Particles,
@@ -356,10 +350,46 @@ __global__ void Exh_PP_Search(const Particle* Search_Particles,
 			aux++;
 		}
 	}
-	Num_Neighbors[i] = aux;
 }
 
 
+int16_t particleNeighborSearch(thrust::device_vector<Particle>& Search_Particles,
+								thrust::device_vector<TYPE> &PDF_vals,
+								thrust::device_vector<INT>& Index_Array,
+								thrust::device_vector<TYPE>& Matrix_Entries,
+								const UINT Adapt_Points, 
+								const UINT MaxNeighborNum,
+								const Mesh& Bounding_Box,
+								const TYPE search_radius){
+									
+	uint16_t	Threads = fmin(THREADS_P_BLK, Adapt_Points);
+	UINT		Blocks	= floor((Adapt_Points - 1) / Threads) + 1;
+
+	// Dynamical choice of either exhaustive or counting sort-based point search
+	if (Adapt_Points < ptSEARCH_THRESHOLD) {
+		Exh_PP_Search<< <Blocks, Threads >> > (rpc(Search_Particles, 0),
+											rpc(Search_Particles, 0),
+											rpc(Index_Array, 0),
+											rpc(Matrix_Entries, 0),
+											MaxNeighborNum,
+											Adapt_Points,
+											Adapt_Points,
+											search_radius);
+		gpuError_Check(cudaDeviceSynchronize());
+	}
+	else {
+		errorCheck(CS_Neighbor_Search(Search_Particles,
+										PDF_vals,
+										Index_Array,
+										Matrix_Entries,
+										Adapt_Points,
+										MaxNeighborNum,
+										Bounding_Box,
+										search_radius));
+	}
+	return 0;
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -367,13 +397,20 @@ __global__ void Exh_PP_Search(const Particle* Search_Particles,
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+
+#define ELEMENTS_AT_A_TIME 3
 
 __global__ void UPDATE_VEC(TYPE* x, const TYPE* x0, const TYPE scalar, const TYPE* v, const INT Max_Length) {
-	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
+	const uint64_t globalIDX = blockDim.x * blockIdx.x + threadIdx.x;
 
-	if (i < Max_Length) {
-		x[i] = x0[i] + scalar * v[i];
+	uint64_t i = globalIDX * ELEMENTS_AT_A_TIME;
+
+	#pragma unroll
+	for(uint16_t k = 0; k < ELEMENTS_AT_A_TIME; k++){
+		if ((i + k) < Max_Length) { x[i + k] = x0[i + k] + scalar * v[i + k]; }
+		else{ return; }
 	}
+
 }
 
 
@@ -381,7 +418,7 @@ __global__ void UPDATE_VEC(TYPE* x, const TYPE* x0, const TYPE scalar, const TYP
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-__global__ void MATRIX_VECTOR_MULTIPLICATION(TYPE* X, const TYPE* x0, const INT* Matrix_idxs, const TYPE* Matrix_entries, const INT total_length, const UINT* Interaction_Lengths, const INT Max_Neighbors) {
+__global__ void MATRIX_VECTOR_MULTIPLICATION(TYPE* X, const TYPE* x0, const INT* Matrix_idxs, const TYPE* Matrix_entries, const INT total_length, const INT Max_Neighbors) {
 
 	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;	// For each i, which represents the matrix row, we read the index positions and multiply against the particle weights
 
@@ -389,16 +426,15 @@ __global__ void MATRIX_VECTOR_MULTIPLICATION(TYPE* X, const TYPE* x0, const INT*
 
 // 1.- Compute A*X0										
 	// 1.1.- Determine where my particles are!!
-	const UINT n  = Interaction_Lengths[i];	// total neighbors to look at
 	const UINT i0 = i * Max_Neighbors;		// where does my search index start
 
 	TYPE a = 0;					// auxiliary value for sum (the diagonal is always 1 in our case)
-
-	// 1.2.- Multiply row vec (from matrix) - column vec (possible solution)
-	for (UINT j = i0; j < i0 + n; j++) {
+	UINT j = i0;
+	while(Matrix_idxs[j] != -1){
 		INT p = Matrix_idxs[j];
 
 		a += Matrix_entries[j] * x0[p]; 		// < n calls to global memory
+		j++;
 	}
 
 // 2.- Output
@@ -413,7 +449,6 @@ __global__ void MATRIX_VECTOR_MULTIPLICATION(TYPE* X, const TYPE* x0, const INT*
 __host__ INT CONJUGATE_GRADIENT_SOLVE(	thrust::device_vector<TYPE>&		GPU_lambdas,
 									thrust::device_vector<INT>& GPU_Index_array,
 									thrust::device_vector<TYPE>&		GPU_Mat_entries,
-									thrust::device_vector<UINT>& GPU_Num_Neighbors,
 									thrust::device_vector<TYPE>&		GPU_AdaptPDF,
 									const INT					Total_Particles,
 									const INT					MaxNeighborNum,
@@ -424,6 +459,10 @@ __host__ INT CONJUGATE_GRADIENT_SOLVE(	thrust::device_vector<TYPE>&		GPU_lambdas
 	// Determine threads and blocks for the simulation
 	const UINT Threads = (UINT)fminf(THREADS_P_BLK, Total_Particles);
 	const UINT Blocks  = (UINT)floorf((Total_Particles - 1) / Threads) + 1;
+	
+	// These are for the update_vec function
+	const UINT Threads_2 = (UINT)fminf(THREADS_P_BLK, (float)Total_Particles / ELEMENTS_AT_A_TIME);
+	const UINT Blocks_2  = (UINT)floorf((float)(Total_Particles / ELEMENTS_AT_A_TIME - 1) / Threads) + 1;
 
 	// ------------------ AUXILIARIES FOR THE INTEPROLATION PROC. ------------------------------- //
 	thrust::device_vector<TYPE>	GPU_R	(Total_Particles);		// residual vector
@@ -439,11 +478,11 @@ __host__ INT CONJUGATE_GRADIENT_SOLVE(	thrust::device_vector<TYPE>&		GPU_lambdas
 // Initialize Conjugate gradient method ----------------------------------------------------
 	// Compute A * X0
 	MATRIX_VECTOR_MULTIPLICATION << < Blocks, Threads >> > (rpc(GPU_temp, 0), rpc(GPU_lambdas,0), rpc(GPU_Index_array,0),
-		rpc(GPU_Mat_entries,0), Total_Particles, rpc(GPU_Num_Neighbors,0), MaxNeighborNum);
+		rpc(GPU_Mat_entries,0), Total_Particles, MaxNeighborNum);
 	gpuError_Check(cudaDeviceSynchronize());
 
 	// Compute R=B-A*X0
-	UPDATE_VEC << <Blocks, Threads >> > (rpc(GPU_R,0), rpc(GPU_AdaptPDF,0), (TYPE)-1, rpc(GPU_temp,0), Total_Particles);
+	UPDATE_VEC << <Blocks_2, Threads_2 >> > (rpc(GPU_R,0), rpc(GPU_AdaptPDF,0), (TYPE)-1, rpc(GPU_temp,0), Total_Particles);
 	gpuError_Check(cudaDeviceSynchronize());
 
 	TYPE Alpha, R0_norm, r_norm, aux, beta;
@@ -454,7 +493,7 @@ __host__ INT CONJUGATE_GRADIENT_SOLVE(	thrust::device_vector<TYPE>&		GPU_lambdas
 	// Alpha computation (EVERYTHING IS CORRECT!)
 		// 1.1.- Compute AP=A*P
 		MATRIX_VECTOR_MULTIPLICATION << < Blocks, Threads >> > (rpc(GPU_AP,0), rpc(GPU_P,0), rpc(GPU_Index_array,0),
-			rpc(GPU_Mat_entries,0), Total_Particles, rpc(GPU_Num_Neighbors,0), MaxNeighborNum);
+			rpc(GPU_Mat_entries,0), Total_Particles, MaxNeighborNum);
 		gpuError_Check(cudaDeviceSynchronize());
 
 		// 1.2.- Compute P'*AP
@@ -469,11 +508,11 @@ __host__ INT CONJUGATE_GRADIENT_SOLVE(	thrust::device_vector<TYPE>&		GPU_lambdas
 
 		// New X and R: (new, old, scalar, driving vec, total length)
 		// 1.- Update Lambdas
-		UPDATE_VEC << <Blocks, Threads >> > (rpc(GPU_lambdas,0), rpc(GPU_lambdas,0), Alpha, rpc(GPU_P,0), Total_Particles);
+		UPDATE_VEC << <Blocks_2, Threads_2 >> > (rpc(GPU_lambdas,0), rpc(GPU_lambdas,0), Alpha, rpc(GPU_P,0), Total_Particles);
 		// we DO NOT use cudaDeviceSynchronize() because the following CUDA kernel does not require this kernel to be done...we may save a (very small) amount of time
 
 		// 2.- Update residuals 
-		UPDATE_VEC << <Blocks, Threads >> > (rpc(GPU_R,0), rpc(GPU_R,0), -Alpha, rpc(GPU_AP,0), Total_Particles);
+		UPDATE_VEC << <Blocks_2, Threads_2 >> > (rpc(GPU_R,0), rpc(GPU_R,0), -Alpha, rpc(GPU_AP,0), Total_Particles);
 		gpuError_Check(cudaDeviceSynchronize());
 
 		// Compute residual l_2 norm
@@ -487,9 +526,8 @@ __host__ INT CONJUGATE_GRADIENT_SOLVE(	thrust::device_vector<TYPE>&		GPU_lambdas
 		}
 		else if (k > max_steps) {
 			std::cout << "No convergence was obtained after reaching max. allowed iterations. Last residual norm was: " << r_norm << "\n";
-			std::cout << "+-------------------------------------------------------------------+\n";
+			std::cout << border_mid;
 
-			std::cin.get();
 			k = -1;
 			flag = false;
 			break;
@@ -497,7 +535,7 @@ __host__ INT CONJUGATE_GRADIENT_SOLVE(	thrust::device_vector<TYPE>&		GPU_lambdas
 		else {
 			beta = r_norm * r_norm / R0_norm;
 
-			UPDATE_VEC << <Blocks, Threads >> > (rpc(GPU_P,0), rpc(GPU_R,0), beta, rpc(GPU_P,0), Total_Particles);
+			UPDATE_VEC << <Blocks_2, Threads_2 >> > (rpc(GPU_P,0), rpc(GPU_R,0), beta, rpc(GPU_P,0), Total_Particles);
 			gpuError_Check(cudaDeviceSynchronize());
 			k++;
 		}

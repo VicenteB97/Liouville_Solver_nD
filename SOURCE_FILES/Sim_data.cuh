@@ -22,14 +22,15 @@ public:
     std::vector<int32_t> ConvergenceIterations;
 
     // default constructor
-    Logger() {
-        subFrame_time[0] = 0;
-        ConvergenceIterations[0] = 0;
-    }
-
-    Logger(const uint32_t& size) {
+    Logger(const uint32_t& size = 1) {
         subFrame_time.resize(5 * size, (double)0);
         ConvergenceIterations.resize(size, (int32_t)0);
+    }
+
+public:
+    inline void resize(const int32_t& size) {
+        subFrame_time.resize(5 * size);
+        ConvergenceIterations.resize(size);
     }
 
     // Get the total frame time:

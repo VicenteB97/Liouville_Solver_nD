@@ -21,7 +21,7 @@
 #include "Probability.cuh"
 #include "Simulation_parameters.cuh"
 #include "Interpolation.cuh"
-#include "Impulse_transformations.cuh" // STILL GOTTA FIX THIS!
+#include "Impulse_transformations.cuh"
 #include "Integrator.cuh"
 
 
@@ -40,6 +40,9 @@ public:
 	std::vector<Time_instants> time_vector;
 	double deltaT;
 	int32_t ReinitSteps;
+
+	// Logging
+	Logger SimLog;
 
 	// Final simulation storage
 	std::vector<TYPE> storeFrames;
@@ -97,11 +100,11 @@ public:
 		// Read parameter's probability distribution information from the Case_definition file
 		for (uint16_t p = 0; p < PARAM_SPACE_DIMENSIONS; p++){
 			Parameter_Distributions[p].Name  			 = _DIST_NAMES[p];		// N, G or U distributions
-			Parameter_Distributions[p].isTruncated  	 = _DIST_isTRUNC[p];		// TRUNCATED?
-			Parameter_Distributions[p].trunc_interval[0] = _DIST_InfTVAL[p];		// min of trunc. interval
+			Parameter_Distributions[p].isTruncated  	 = _DIST_isTRUNC[p];	// TRUNCATED?
+			Parameter_Distributions[p].trunc_interval[0] = _DIST_InfTVAL[p];	// min of trunc. interval
 			Parameter_Distributions[p].trunc_interval[1] = _DIST_SupTVAL[p]; 	// max. of trunc. interval (if chosen large enough, automatically bounds to 6 std. deviations)
 			Parameter_Distributions[p].params[0] 		 = _DIST_MEAN[p];		// mean
-			Parameter_Distributions[p].params[1] 		 = _DIST_STD[p];			// std
+			Parameter_Distributions[p].params[1] 		 = _DIST_STD[p];		// std
 
 			// Read number of samples from terminal
 			bool get_answer = true;
@@ -121,32 +124,11 @@ public:
 	}
 	
 	// This function contains the most important function of them all: The full numerical method!
-	int16_t evolvePDF(const cudaDeviceProp* D_Properties){
-
-		//--------------------------------------------------------------------------------------------//
-		//--------------------------------------------------------------------------------------------//
-		//--------------------------------------------------------------------------------------------//
-		//------------------- INITIALIZATION OF VECTORS/ARRAYS THAT WILL BE USED ---------------------//
-		//--------------------------------------------------------------------------------------------//
-		//--------------------------------------------------------------------------------------------//
-		//--------------------------------------------------------------------------------------------//
-		// Storing AMR-selected particles
-		std::vector<Particle>	Particle_Locations;
-		std::vector<TYPE>		Particle_Values;
-
-		// Full array storing appended particles for all parameter samples
-		std::vector<Particle>	Full_Particle_Locations;
-		std::vector<TYPE>		Full_Particle_Values;
-
-		// Simulation logging
-		Logger SimLog(time_vector.size() - 1);
-
-		//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		// 	PARAMETERS
+	int16_t evolvePDF(const cudaDeviceProp D_Properties){
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// 	PARAMETERS
 
 		INT totalSampleCount = 1, sum_sampleNum = 0;
 		INT Samples_per_Param[PARAM_SPACE_DIMENSIONS];
@@ -165,11 +147,10 @@ public:
 		}
 
 		// Full parameter array
-		Param_pair*	Parameter_Mesh = new Param_pair[sum_sampleNum];				
+		Param_pair*	Parameter_Mesh = new Param_pair[sum_sampleNum];
 
 		// Build the parameter mesh from previous info
-		int16_t error_check = RANDOMIZE<PARAM_SPACE_DIMENSIONS>(Parameter_Mesh, Parameter_Distributions);
-		if (error_check == -1){return -1;}
+		errorCheck(RANDOMIZE<PARAM_SPACE_DIMENSIONS>(Parameter_Mesh, Parameter_Distributions));
 
 		// Small vector containing the number of samples per parameter
 		thrust::device_vector<INT>	D_sampVec(Samples_per_Param, Samples_per_Param + PARAM_SPACE_DIMENSIONS);	
@@ -184,11 +165,12 @@ public:
 			sum_sample_val += temp.Joint_PDF;
 		}
 
+		// Memory management
+		delete[] Parameter_Mesh;
+
 		// Output to the CLI
 		std::cout << "Total number of random samples: " << totalSampleCount << ".\n";
 
-	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -207,8 +189,7 @@ public:
 		thrust::host_vector<TYPE> PDF_ProbDomain(Problem_Domain.Total_Nodes(), 0);	 			
 
 		// initialize the Mesh and the PDF at the Mesh nodes (change so as to change the parameters as well)
-		error_check = PDF_INITIAL_CONDITION(Problem_Domain, PDF_ProbDomain, IC_Distributions); 	
-		if (error_check == -1){return -1;}
+		errorCheck(PDF_INITIAL_CONDITION(Problem_Domain, PDF_ProbDomain, IC_Distributions)); 	
 
 		// PDF values at fixed Grid Nodes (for the GPU)
 		thrust::device_vector<TYPE> D_PDF_ProbDomain = PDF_ProbDomain;
@@ -218,28 +199,52 @@ public:
 		
 		// PDF value at Particle positions (for the GPU)
 		thrust::device_vector<TYPE> D_Particle_Values;
-
-
-	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		
-		// max memory to be used (in bytes). 95% just in case
-		const UINT MAX_BYTES_USEABLE = 0.95 * D_Properties->totalGlobalMem;		
-
-		// ------------------ DEFINITION OF THE INTERPOLATION VARIABLES AND ARRAYS ------------------ //
-		// The following consts don't need an explanation
-		const UINT	ConjGrad_MaxSteps  = 1000;		 								
-		const TYPE	RBF_SupportRadius  = DISC_RADIUS * Problem_Domain.Discr_length();
 
 		// Now we make a slightly larger domain for the computations:
 		Mesh Expanded_Domain;
 
-		// Expand 40 nodes appears to be just fine
-		const UINT expansion_nodes = 40;
+		// Expand 40 nodes appears to be just fine (MAKE IT BETTER)
+		const uint16_t expansion_nodes = 40;
 		Expanded_Domain.Expand_From(Problem_Domain, expansion_nodes);
+
+
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// VARIABLES DEFINITION
+		
+		// Max memory to be used (in bytes). 95% just in case
+		const UINT MAX_BYTES_USEABLE = 0.95 * D_Properties.totalGlobalMem;		
+
+		// The following consts don't need an explanation
+		const UINT	ConjGrad_MaxSteps  = 1000;		 								
+		const TYPE	RBF_SupportRadius  = DISC_RADIUS * Problem_Domain.Discr_length();
+
+		// The string to be used for printing to the console
+		std::string printCLI;
+
+		// Storing AMR-selected particles
+		std::vector<Particle>	Particle_Locations;
+		std::vector<TYPE>		Particle_Values;
+
+		// Full array storing appended particles for all parameter samples
+		std::vector<Particle>	Full_Particle_Locations;
+		std::vector<TYPE>		Full_Particle_Values;
+
+		// Simulation logging
+		SimLog.resize(time_vector.size() - 1);
+
+
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// START OF SIMULATION STEPS AS SUCH
+
+		// Store the 1st PDF (Init. Cond.)
+		thrust::copy(PDF_ProbDomain.begin(), PDF_ProbDomain.end(), &storeFrames[0]);
 
 		// Simulation steps
 		uint32_t simStepCount = 0;
@@ -260,22 +265,9 @@ public:
 			thrust::device_vector<double> Extra_Parameter(0);
 		#endif
 
-		// The string to be used for printing to the console
-		std::string printCLI;
-
-
-	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// START OF SIMULATION STEPS AS SUCH
-
-		// Store the 1st PDF (Init. Cond.)
-		thrust::copy(PDF_ProbDomain.begin(), PDF_ProbDomain.end(), &storeFrames[0]);
 
 		// IN THIS LINE WE START WITH THE ACTUAL ITERATIONS OF THE LIOUVILLE EQUATION
-		while (simStepCount < time_vector.size() - 1 && error_check != -1) {
+		while (simStepCount < time_vector.size() - 1 /*&& error_check != -1*/) {
 
 			// select the first and last time value of the current iteration
 			double	t0 = time_vector[simStepCount].time, tF = time_vector[simStepCount + 1].time;
@@ -289,10 +281,9 @@ public:
 			/////////////////////////////////////////////////////////////////////////////////////////
 			auto startTimeSeconds = std::chrono::high_resolution_clock::now();
 
-				error_check = setInitialParticles(PDF_ProbDomain, D_PDF_ProbDomain,
-													Particle_Values, Particle_Locations, 
-													Problem_Domain, Expanded_Domain, PDF_Support);
-				if (error_check == -1) { break; }
+				errorCheck(setInitialParticles(	PDF_ProbDomain, D_PDF_ProbDomain,				// Initial, gridded PDF
+												Particle_Values, Particle_Locations, 			// Output vectors that will give the relevant nodes
+												Problem_Domain, Expanded_Domain, PDF_Support));	// Domain information
 
 			auto endTimeSeconds = std::chrono::high_resolution_clock::now();
 			std::chrono::duration<float> durationSeconds = endTimeSeconds - startTimeSeconds;
@@ -315,90 +306,75 @@ public:
 
 			/////////////////////////////////////////////////////////////////////////////////////////
 			/////////////////////////////////////////////////////////////////////////////////////////
-			// -------------------------- PT. SEARCH & INTERPOLATION ----------------------------- //
+			// -------------------------- PT. SEARCH --------------------------------------------- //
 			/////////////////////////////////////////////////////////////////////////////////////////
 			/////////////////////////////////////////////////////////////////////////////////////////
-			uint16_t	Threads = fmin(THREADS_P_BLK, AMR_ActiveNodeCount);
-			UINT		Blocks	= floor((AMR_ActiveNodeCount - 1) / Threads) + 1;
 
 			// Maximum neighbors to search. Diameter number of points powered to the dimension
 			UINT MaxNeighborNum = round(fmin(pow(2 * round(DISC_RADIUS) + 1, PHASE_SPACE_DIMENSIONS), AMR_ActiveNodeCount));
 			
 			// Compressed COO-style indexing of the sparse interpolation matrix
 			thrust::device_vector<INT>	D_Mat_Indx(MaxNeighborNum * AMR_ActiveNodeCount, -1);
-
 			// Sparse interpolation matrix values
 			thrust::device_vector<TYPE>	D_Mat_Vals(MaxNeighborNum * AMR_ActiveNodeCount, 0);
-
-			// Number of nonzeros per row (neighbors for each particle)
-			thrust::device_vector<UINT>	D_Mat_NumNeighbors(AMR_ActiveNodeCount, 0);
 			
 
 			startTimeSeconds = std::chrono::high_resolution_clock::now();
-				// Dynamical choice of either exhaustive or counting sort-based point search
-				if (AMR_ActiveNodeCount < ptSEARCH_THRESHOLD) {
-					Exh_PP_Search<< <Blocks, Threads >> > (rpc(D_Particle_Locations, 0),
-														rpc(D_Particle_Locations, 0),
-														rpc(D_Mat_Indx, 0),
-														rpc(D_Mat_Vals, 0),
-														rpc(D_Mat_NumNeighbors, 0),
-														MaxNeighborNum,
-														AMR_ActiveNodeCount,
-														AMR_ActiveNodeCount,
-														RBF_SupportRadius);
-					gpuError_Check(cudaDeviceSynchronize());
-				}
-				else {
-					error_check = CS_Neighbor_Search(D_Particle_Locations,
+
+				errorCheck(particleNeighborSearch(D_Particle_Locations,
 													D_Particle_Values,
 													D_Mat_Indx,
 													D_Mat_Vals,
-													D_Mat_NumNeighbors,
 													AMR_ActiveNodeCount,
 													MaxNeighborNum,
 													PDF_Support,
-													RBF_SupportRadius);
+													RBF_SupportRadius));
 
-					if (error_check == -1) { break; }
-				}
 			endTimeSeconds = std::chrono::high_resolution_clock::now();
 			durationSeconds = endTimeSeconds - startTimeSeconds;
 			
 			// Enter the information into the log information
 			SimLog.subFrame_time[5*simStepCount + 2] = durationSeconds.count();
 
+
+			/////////////////////////////////////////////////////////////////////////////////////////
+			/////////////////////////////////////////////////////////////////////////////////////////
+			// -------------------------- INTERPOLATION ------------------------------------------ //
+			/////////////////////////////////////////////////////////////////////////////////////////
+			/////////////////////////////////////////////////////////////////////////////////////////
 			// Declare the solution of the interpolation vector (weights of the RBF functions)
 			thrust::device_vector<TYPE> D_lambdas(AMR_ActiveNodeCount, 0);
 
 			startTimeSeconds = std::chrono::high_resolution_clock::now();
-				error_check = CONJUGATE_GRADIENT_SOLVE(	D_lambdas,
-														D_Mat_Indx,
-														D_Mat_Vals,
-														D_Mat_NumNeighbors,
-														D_Particle_Values,
-														AMR_ActiveNodeCount,
-														MaxNeighborNum,
-														ConjGrad_MaxSteps,
-														TOLERANCE_ConjGrad);
-				if (error_check == -1) { std::cout << "Convergence failure.\n"; break; }
+				int32_t iterations = CONJUGATE_GRADIENT_SOLVE(	D_lambdas,
+																D_Mat_Indx,
+																D_Mat_Vals,
+																D_Particle_Values,
+																AMR_ActiveNodeCount,
+																MaxNeighborNum,
+																ConjGrad_MaxSteps,
+																TOLERANCE_ConjGrad);
+				if (iterations == -1) { std::cout << "Convergence failure.\n"; break; }
 			endTimeSeconds = std::chrono::high_resolution_clock::now();
 			durationSeconds = endTimeSeconds - startTimeSeconds;
 			
 			// Enter the information into the log information
 			SimLog.subFrame_time[5*simStepCount + 3] = durationSeconds.count();
-			SimLog.ConvergenceIterations[simStepCount] = error_check;
+			SimLog.ConvergenceIterations[simStepCount] = iterations;
 
 			// Clear the vectors to save memory
 			D_Mat_Indx.clear();
 			D_Mat_Vals.clear();
-			D_Mat_NumNeighbors.clear();
 
 			D_Particle_Values = D_lambdas;
 
 
-			// FIX THIS PART!!
 			if (time_vector[simStepCount].impulse) {
-
+				/////////////////////////////////////////////////////////////////////////////////////////
+				/////////////////////////////////////////////////////////////////////////////////////////
+				// -------------------------- DELTA/HEAVISIDE IMPULSE TERMS -------------------------- //
+				/////////////////////////////////////////////////////////////////////////////////////////
+				/////////////////////////////////////////////////////////////////////////////////////////
 				#if(IMPULSE_TYPE == 1)	// THIS IS FOR DELTA-TYPE IMPULSE!
 
 				std::cout << "RVT transformation at time: " << t0 << "\n";
@@ -408,14 +384,14 @@ public:
 
 				startTimeSeconds = std::chrono::high_resolution_clock::now();
 
-				error_check = IMPULSE_TRANSFORM_PDF(D_PDF_ProbDomain,
+				errorCheck(IMPULSE_TRANSFORM_PDF(	D_PDF_ProbDomain,
 													D_Particle_Locations,
 													D_Particle_Values,
 													time_vector[simStepCount],
 													jumpCount,
 													Problem_Domain,
 													Expanded_Domain,
-													PDF_Support);
+													PDF_Support));
 
 				endTimeSeconds = std::chrono::high_resolution_clock::now();
 				durationSeconds = endTimeSeconds - startTimeSeconds;
@@ -432,8 +408,14 @@ public:
 
 				// Send back to CPU
 				PDF_ProbDomain = D_PDF_ProbDomain;
+				
 
-				#elif(IMPULSE_TYPE == 2)	// THIS IS FOR HEAVISIDE-TYPE IMPULSE!
+				#elif(IMPULSE_TYPE == 2)
+				/////////////////////////////////////////////////////////////////////////////////////////
+				/////////////////////////////////////////////////////////////////////////////////////////
+				// ----------------------------- HEAVISIDE/STEP IMPULSE ------------------------------ //
+				/////////////////////////////////////////////////////////////////////////////////////////
+				/////////////////////////////////////////////////////////////////////////////////////////
 				mode++;
 				std::cout << "Now the vector field is in mode: " << mode % 2 << ".\n";
 
@@ -442,15 +424,25 @@ public:
 
 				simStepCount++;
 
+
 				#elif(IMPULSE_TYPE != 0)
+				/////////////////////////////////////////////////////////////////////////////////////////
+				/////////////////////////////////////////////////////////////////////////////////////////
+				// -------------------------- ERROR:  UNDEFINED IMPULSE TYPE ------------------------- //
+				/////////////////////////////////////////////////////////////////////////////////////////
+				/////////////////////////////////////////////////////////////////////////////////////////
 				std::cout << "Error in 'Dynamics.cuh'. You are choosing an unavailable option. Go back to 'Case_definition.cuh' and re-check options for IMPULSE_TYPE.\n";
 				error_check = -1;
 				break;
 
 				#endif
 			}
-			// 1.2.- COMPUTE THE SMOOTH EVOLUTION VIA LIOUVILLE GIBBS/CONTINUITY EQUATION
 			else {
+				/////////////////////////////////////////////////////////////////////////////////////////
+				/////////////////////////////////////////////////////////////////////////////////////////
+				// -------------------------- SMOOTH PARTICLE INTEGRATION ---------------------------- //
+				/////////////////////////////////////////////////////////////////////////////////////////
+				/////////////////////////////////////////////////////////////////////////////////////////
 				std::cout << "Simulation time: " << t0 << " to " << tF << "\n";
 
 				// Max. memory requirements for next step
@@ -478,8 +470,11 @@ public:
 					D_Particle_Values.resize(ActiveNodes_PerBlk);
 
 					for (UINT k = 1; k < Samples_PerBlk; k++) {
-						thrust::copy(thrust::device, &D_Particle_Locations[0], &D_Particle_Locations[AMR_ActiveNodeCount], &D_Particle_Locations[k * AMR_ActiveNodeCount]);
-						thrust::copy(thrust::device, &D_Particle_Values[0], &D_Particle_Values[AMR_ActiveNodeCount], &D_Particle_Values[k * AMR_ActiveNodeCount]);
+						thrust::copy(thrust::device, &D_Particle_Locations[0], &D_Particle_Locations[AMR_ActiveNodeCount], 
+								&D_Particle_Locations[k * AMR_ActiveNodeCount]);
+
+						thrust::copy(thrust::device, &D_Particle_Values[0], &D_Particle_Values[AMR_ActiveNodeCount], 
+								&D_Particle_Values[k * AMR_ActiveNodeCount]);
 					}
 
 					// Print the active nodes in the current step
@@ -491,11 +486,11 @@ public:
 					// -------------------------- POINT ADVECTION ---------------------------------------- //
 					/////////////////////////////////////////////////////////////////////////////////////////
 					/////////////////////////////////////////////////////////////////////////////////////////
-					Threads = fmin(THREADS_P_BLK, ActiveNodes_PerBlk);
-					Blocks	= floor((ActiveNodes_PerBlk - 1) / Threads) + 1;
+					uint16_t Threads = fmin(THREADS_P_BLK, ActiveNodes_PerBlk);
+					UINT Blocks	= floor((ActiveNodes_PerBlk - 1) / Threads) + 1;
 
 					startTimeSeconds = std::chrono::high_resolution_clock::now();
-						ODE_INTEGRATE<< <Blocks, Threads >> > (rpc(D_Particle_Locations, 0),
+						ODE_INTEGRATE<< <Blocks, Threads >> > ( rpc(D_Particle_Locations, 0),
 																rpc(D_Particle_Values, 0),
 																rpc(D_Parameter_Mesh, Sample_idx_offset_init),
 																rpc(D_sampVec, 0),
@@ -516,13 +511,11 @@ public:
 
 					PDF_Support.Update_boundingBox(D_Particle_Locations);
 					
-					// ----------------------------------------------------------------------------------- //
-					// COMPUTE THE SOLUTION "PROJECTION" INTO THE L1 SUBSPACE. THIS WAY, THE REINITIALIZATION CONSERVES VOLUME (=1)
+					// COMPUTE THE SOLUTION "PROJECTION" INTO THE L1 SUBSPACE. THIS WAY, REINITIALIZATION CONSERVES VOLUME (=1)
 					if (PHASE_SPACE_DIMENSIONS < 3) {
 						TYPE temp = thrust::reduce(thrust::device, D_Particle_Values.begin(), D_Particle_Values.end());
 						thrust::transform(D_Particle_Values.begin(), D_Particle_Values.end(), D_Particle_Values.begin(), Samples_PerBlk / temp * _1);
 					}
-					// ----------------------------------------------------------------------------------- //
 
 					/////////////////////////////////////////////////////////////////////////////////////////
 					/////////////////////////////////////////////////////////////////////////////////////////
@@ -591,16 +584,12 @@ public:
 			// Store info in cumulative variable
 			thrust::copy(PDF_ProbDomain.begin(), PDF_ProbDomain.end(), &storeFrames[simStepCount * Problem_Domain.Total_Nodes()]);
 
-			// Write entire log to a log file!
+			// Write entire log to a file!
 			SimLog.writeToFile();
 		}
-		
-		// Memory management
-		delete[] Parameter_Mesh;
 
 		// Exit current function
-		return error_check;
-
+		return 0;
 	}
 
 	int16_t writeFramesToFile(const double& simulationDuration){

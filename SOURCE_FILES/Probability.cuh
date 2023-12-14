@@ -314,8 +314,7 @@ int16_t RANDOMIZE(Param_pair* 			Parameter_Mesh,
 		// call the parameter pair vec. function
 		Param_pair* PP = new Param_pair[nSamples];
 
-		int16_t err_check = PARAMETER_VEC_BUILD(nSamples, PP, Dist_Parameters[d]);
-		if (err_check == -1){ return -1; }
+		errorCheck(PARAMETER_VEC_BUILD(nSamples, PP, Dist_Parameters[d]));
 
 		std::copy_n(&PP[0], nSamples, &Parameter_Mesh[aux]);
 

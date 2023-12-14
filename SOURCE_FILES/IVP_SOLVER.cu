@@ -17,7 +17,11 @@
 // --------------------------------------------------------- //
 
 //--------------------------------------------------------------------------------------------- //
-int16_t PDF_EVOLUTION(cudaDeviceProp* prop) {
+int16_t PDF_EVOLUTION() {
+
+	cudaDeviceProp prop;
+	errorCheck(IntroDisplay(prop));
+
 	std::cout << "You are simulating the " << CASE <<". Log level is (0 = off, 1 = only frame time, 2 = all steps time): " << OUTPUT_INFO << ".\n\n";
 	std::cout << "You must choose: \n - FINEST MESH LEVEL \n - FINAL time \n - TIMESTEP";
 	std::cout << "\n - Reinitialization Steps \n - SAMPLES PER PARAMETER \n";

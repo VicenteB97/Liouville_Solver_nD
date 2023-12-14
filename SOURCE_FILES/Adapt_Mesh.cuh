@@ -101,8 +101,6 @@ __global__ void D__Wavelet_Transform__F(	TYPE*	PDF,
 		}
 	}
 
-	// STILL THIS PART IS NOT WELL DONE!
-
 	// Now we have to go see what happens with the outputs
 	Activate_node[cube_app_IDX].node = 0;
 

@@ -54,13 +54,13 @@ int16_t BuildTimeVector(std::vector<Time_instants>& time_vector, double& deltaT,
 	}
 	ReinitSteps = std::stoi(terminalInput);
 
-	// Build the vector as such!
+	// Build the vector
 	while (t0 < tF + ReinitSteps * deltaT / 2) {						// THIS WAY, WE MAKE SURE THAT ROUND-OFF ERRORS ARE NOT ALLOWED!!
 		time_vector.push_back({ t0, false});
 		t0 = t0 + ReinitSteps * deltaT;
 	}
 
-// 2.- if there are impulses: SHOULD RECHEK AND SEE IF IT WORKS!
+// 2.- if there are impulses:
 	#if (IMPULSE_TYPE != 0)
 		#if (IMPULSE_TYPE == 1)
 			for (short int j = 0; j < DiracDelta_impulseCount; j++){
@@ -88,7 +88,7 @@ int16_t BuildTimeVector(std::vector<Time_instants>& time_vector, double& deltaT,
 			std::cout << "Error in 'Simulation_parameters.cuh'. You are choosing an unavailable jumpCount option. Go back to 'Classes.cuh' and re-check options for IMPULSE_TYPE.\n"
 		#endif
 
-		std::sort(time_vector.begin(), time_vector.end());					// re-sort the time values of the vector
+		std::sort(time_vector.begin(), time_vector.end());					// sort the time values of the vector
 		for (unsigned i = 0; i < time_vector.size() - 1; i++) {				// Update dt
 			double aux_dt = time_vector[i + 1].time - time_vector[i].time;	// auxiliary dt for next computation
 
@@ -99,7 +99,7 @@ int16_t BuildTimeVector(std::vector<Time_instants>& time_vector, double& deltaT,
 				deltaT = fmin(deltaT, -aux_dt / ReinitSteps);
 			}
 			else if (time_vector[i].impulse == false && time_vector[i+1].impulse == true) {
-				std::swap(time_vector[i], time_vector[i + 1]);		// swap the impulse times so that the one with the impulse is set before
+				std::swap(time_vector[i], time_vector[i + 1]);				// swap the impulse times so that the one with the impulse is set before
 			}
 			else if (time_vector[i].impulse == time_vector[i+1].impulse) {
 				time_vector.erase(time_vector.begin() + i);	

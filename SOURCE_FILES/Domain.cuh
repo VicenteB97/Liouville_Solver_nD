@@ -236,24 +236,26 @@ public:
 
 	// Returns the bin (or ID of the closest node) where Particle belongs to, adding bin_offset.
 	__host__ __device__ inline UINT Get_binIdx(const Particle& Particle) const {
-		UINT bin_idx = 0;
+		UINT bin_idx = 0, accPower = 1;
 
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
 			INT temp_idx = roundf((Particle.dim[d] - Boundary_inf.dim[d]) / this->Discr_length());
 
-			bin_idx += temp_idx * pow(Nodes_per_Dim, d);
+			bin_idx  += temp_idx * accPower;
+			accPower *= Nodes_per_Dim;
 		}
 		return bin_idx;
 	};
 	
 	// Returns the bin (or ID of the closest node) where Particle belongs to, adding bin_offset.
 	__host__ __device__ inline UINT Get_binIdx(const Particle& Particle, const INT& bin_offset) const {
-		UINT bin_idx = 0;
+		UINT bin_idx = 0, accPower = 1;
  
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
 			INT temp_idx = roundf((Particle.dim[d] - Boundary_inf.dim[d]) / this->Discr_length()) + bin_offset;
 
-			bin_idx += temp_idx * pow(Nodes_per_Dim, d);
+			bin_idx  += temp_idx * accPower;
+			accPower *= Nodes_per_Dim;
 		}
 		return bin_idx;
 	};

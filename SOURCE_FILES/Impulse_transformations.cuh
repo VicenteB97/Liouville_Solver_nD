@@ -24,12 +24,12 @@ __global__ void TRANSFORM_PARTICLES(Particle*					Particle_Locations,
 
 	if (i < Total_Particles){
 
-		const INT j =(INT) floorf((float)i / Num_Particles_per_sample);				// current sample
+		const INT j =(INT) floorf((float)i / Num_Particles_per_sample);		// current sample
 		Param_vec<PHASE_SPACE_DIMENSIONS> aux = impulse_strengths[j];
 
 		 
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++){			
-			Particle_Locations[i].dim[d] += aux.sample_vec[d];		// we only have to add to the second variable!
+			Particle_Locations[i].dim[d] += aux.sample_vec[d];				// we only have to add to the second variable!
 		}
 	}
 }
