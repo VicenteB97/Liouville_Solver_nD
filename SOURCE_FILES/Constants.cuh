@@ -55,6 +55,8 @@
 // Define the number of threads per block (128 for consumer GPUs such as the RTX3060 or Quadro RTX4000)
 #define THREADS_P_BLK 128
 
+#define ELEMENTS_AT_A_TIME 4
+
 // Mathematical definitions we need
 #define M_PI 3.14159265358979323846
 #define ptSEARCH_THRESHOLD 1000000 // The min. number of particles per sample where we use the counting sort search (not worth it yet)

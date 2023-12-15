@@ -397,9 +397,6 @@ int16_t particleNeighborSearch(thrust::device_vector<Particle>& Search_Particles
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
-#define ELEMENTS_AT_A_TIME 3
-
 __global__ void UPDATE_VEC(TYPE* x, const TYPE* x0, const TYPE scalar, const TYPE* v, const INT Max_Length) {
 	const uint64_t globalIDX = blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -605,7 +602,6 @@ __global__ void RESTART_GRID_FIND_GN(Particle* Particle_Positions,
 
 				atomicAdd(&PDF[idx], dist);
 			}
-
 		}
 	}
 }
@@ -664,7 +660,6 @@ __global__ void RESTART_GRID_FIND_GN(Particle*	Particle_Positions,
 
 				atomicAdd(&PDF[idx], dist);
 			}
-
 		}
 	}
 }
@@ -683,11 +678,18 @@ __global__ void RESTART_GRID_FIND_GN(Particle*	Particle_Positions,
 /// @return 
 
 __global__ void CORRECTION(TYPE* PDF, const INT Grid_Nodes){
-	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
+	const uint64_t globalIDX = blockDim.x * blockIdx.x + threadIdx.x;
 
-	if (i < Grid_Nodes){
-		PDF[i] = fmaxf(PDF[i], 0.00f);
+	const uint64_t i = globalIDX * ELEMENTS_AT_A_TIME;
+
+	#pragma unroll
+	for(uint16_t k = 0; k < ELEMENTS_AT_A_TIME; k++){
+		if (i + k < Grid_Nodes){
+			PDF[i + k] = fmaxf(PDF[i + k], 0.00f);
+		}
 	}
+
+	
 }
 
 

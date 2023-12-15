@@ -560,8 +560,8 @@ public:
 				Particle_Values.clear();
 
 				// Correction of any possible negative PDF values
-				UINT Threads = fmin(THREADS_P_BLK, Problem_Domain.Total_Nodes());
-				UINT Blocks = floor((Problem_Domain.Total_Nodes() - 1) / Threads) + 1;
+				UINT Threads = fmin(THREADS_P_BLK, Problem_Domain.Total_Nodes() / ELEMENTS_AT_A_TIME);
+				UINT Blocks = floor((Problem_Domain.Total_Nodes()/ ELEMENTS_AT_A_TIME - 1) / Threads) + 1;
 
 				CORRECTION<< <Blocks, Threads >> > (rpc(D_PDF_ProbDomain, 0), Problem_Domain.Total_Nodes());
 				gpuError_Check(cudaDeviceSynchronize());
