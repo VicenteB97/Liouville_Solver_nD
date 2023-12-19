@@ -119,21 +119,13 @@ __global__ void findProjection(const Particle* particles, TYPE* projections, con
 class Mesh{
 public:
 	Particle 	Boundary_inf, Boundary_sup;
-	UINT				Nodes_per_Dim;
-
-	// Default constructor:
-	__host__ __device__	Mesh(){
-		Nodes_per_Dim	= 1;
-		Boundary_inf	= Particle(DOMAIN_INF);
-		Boundary_sup	= Particle(DOMAIN_SUP);
-	}
+	UINT		Nodes_per_Dim;
 
 	// Parametric constructors:
-	
 	/// @brief Create a Mesh knowing the nodes per dimension
 	/// @param Nodes_per_dim 
 	/// @return 
-	__host__ __device__	Mesh(const INT& Nodes_per_dim) {
+	__host__ __device__	Mesh(const INT& Nodes_per_dim = 2) {
 
 		Nodes_per_Dim = Nodes_per_dim;
 		Boundary_inf  = Particle(DOMAIN_INF);
@@ -150,23 +142,12 @@ public:
 		Nodes_per_Dim = roundf((Boundary_sup.dim[0] - Boundary_inf.dim[0]) / Discretization_length);
 	}
 
-	/// @brief Create a Mesh specifying the extremal nodes. 2 nodes per dimension by default
-	/// @param Bnd_inf 
-	/// @param Bnd_sup 
-	/// @return 
-	__host__ __device__	Mesh(const Particle& Bnd_inf, const Particle& Bnd_sup) {
-
-		Nodes_per_Dim = 2;
-		Boundary_inf = Bnd_inf;
-		Boundary_sup = Bnd_sup;
-	}
-
 	/// @brief Create a Mesh specifying all the parameters
 	/// @param Bnd_inf 
 	/// @param Bnd_sup 
 	/// @param Nodes_per_dim 
 	/// @return 
-	__host__ __device__	Mesh(const Particle& Bnd_inf, const Particle& Bnd_sup, const INT& Nodes_per_dim){
+	__host__ __device__	Mesh(const Particle& Bnd_inf, const Particle& Bnd_sup, const INT& Nodes_per_dim = 2){
 
 		Nodes_per_Dim	= Nodes_per_dim;
 		Boundary_inf	= Bnd_inf;
@@ -215,11 +196,12 @@ public:
 	__host__ __device__	inline Particle Get_node(const INT& globalIdx) const {
 
 		Particle out(Boundary_inf);
+		UINT temp = 1;
 
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-			INT j = floorf( positive_rem(globalIdx, pow(Nodes_per_Dim, d + 1)) / pow(Nodes_per_Dim, d) );	// This line gives the index at each dimension
+			INT j = floorf( positive_rem(globalIdx, temp * Nodes_per_Dim) / temp );	// This line gives the index at each dimension
 
-			out.dim[d] += j * this->Discr_length();															// This line gives the Mesh node per se
+			out.dim[d] += j * this->Discr_length(); temp *= Nodes_per_Dim;			// This line gives the Mesh node per se
 		}
 		return out;
 	}
@@ -233,22 +215,9 @@ public:
 		}
 		return true;
 	}
-
-	// Returns the bin (or ID of the closest node) where Particle belongs to, adding bin_offset.
-	__host__ __device__ inline UINT Get_binIdx(const Particle& Particle) const {
-		UINT bin_idx = 0, accPower = 1;
-
-		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-			INT temp_idx = roundf((Particle.dim[d] - Boundary_inf.dim[d]) / this->Discr_length());
-
-			bin_idx  += temp_idx * accPower;
-			accPower *= Nodes_per_Dim;
-		}
-		return bin_idx;
-	};
 	
 	// Returns the bin (or ID of the closest node) where Particle belongs to, adding bin_offset.
-	__host__ __device__ inline UINT Get_binIdx(const Particle& Particle, const INT& bin_offset) const {
+	__host__ __device__ inline UINT Get_binIdx(const Particle& Particle, const INT& bin_offset = 0) const {
 		UINT bin_idx = 0, accPower = 1;
  
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {

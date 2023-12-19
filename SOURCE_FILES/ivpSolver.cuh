@@ -379,9 +379,6 @@ public:
 
 				std::cout << "RVT transformation at time: " << t0 << "\n";
 
-				// Our "values" are actually going to be the RBF weights
-				D_Particle_Values = D_lambdas;
-
 				startTimeSeconds = std::chrono::high_resolution_clock::now();
 
 				errorCheck(IMPULSE_TRANSFORM_PDF(	D_PDF_ProbDomain,
@@ -454,6 +451,9 @@ public:
 				// Number of blocks to simulate
 				UINT total_simulation_blocks = (UINT) ceil((double)totalSampleCount / Samples_PerBlk);
 
+				// For correct reinitialization
+				thrust::device_vector<Particle> D_fixedParticles = D_Particle_Locations;
+
 				for (UINT b = 0; b < total_simulation_blocks; b++) {
 
 					// Parameter sample offset init. and final to account for the block position
@@ -469,11 +469,11 @@ public:
 					D_Particle_Locations.resize(ActiveNodes_PerBlk);
 					D_Particle_Values.resize(ActiveNodes_PerBlk);
 
-					for (UINT k = 1; k < Samples_PerBlk; k++) {
-						thrust::copy(thrust::device, &D_Particle_Locations[0], &D_Particle_Locations[AMR_ActiveNodeCount], 
+					for (UINT k = 0; k < Samples_PerBlk; k++) {
+						thrust::copy(thrust::device, &D_fixedParticles[0], &D_fixedParticles[AMR_ActiveNodeCount], 
 								&D_Particle_Locations[k * AMR_ActiveNodeCount]);
 
-						thrust::copy(thrust::device, &D_Particle_Values[0], &D_Particle_Values[AMR_ActiveNodeCount], 
+						thrust::copy(thrust::device, &D_lambdas[0], &D_lambdas[AMR_ActiveNodeCount], 
 								&D_Particle_Values[k * AMR_ActiveNodeCount]);
 					}
 
