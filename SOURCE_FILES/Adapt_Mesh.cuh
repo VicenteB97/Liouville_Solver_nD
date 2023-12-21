@@ -182,6 +182,9 @@ int16_t setInitialParticles(const thrust::host_vector<TYPE>&	H_PDF,
 	}
 
 	thrust::sort(thrust::device, D__Node_selection.begin(), D__Node_selection.end());
+	
+	///////
+	// TODO: Try to avoid the GPU-to-CPU memory movement 
 	H__Node_selection = D__Node_selection;
 
 	UINT counter = 0;

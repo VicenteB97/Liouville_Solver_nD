@@ -103,7 +103,11 @@ int16_t IMPULSE_TRANSFORM_PDF(thrust::device_vector<TYPE>&		GPU_PDF,				// PDF i
 
 
 // 3.- Reinitialization
-	GPU_PDF.resize(Problem_Domain.Total_Nodes(), 0);
+	#if ERASE_dPDF
+	GPU_PDF.resize(Problem_Domain.Total_Nodes(), 0);	// PDF is reset to 0, so that we may use atomic adding at the remeshing step
+	#else
+	thrust::fill(thrust::device, GPU_PDF.begin(), GPU_PDF.end(), 0);
+	#endif
 
 	TYPE search_radius = DISC_RADIUS * Problem_Domain.Discr_length();
 

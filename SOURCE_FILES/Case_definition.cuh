@@ -39,10 +39,6 @@
 #define DOMAIN_INF {-5.5, -5.5}
 #define DOMAIN_SUP {5.5 , 5.5}
 
-
-
-
-
 static const char   IC_NAMES[PHASE_SPACE_DIMENSIONS] = { 'N','N' };
 static const bool   IC_isTRUNC[PHASE_SPACE_DIMENSIONS] = { true, true };
 static const TYPE   IC_InfTVAL[PHASE_SPACE_DIMENSIONS] = { -2, 0.5 };

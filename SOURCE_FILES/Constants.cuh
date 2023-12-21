@@ -58,6 +58,8 @@
 // In low-impact CUDA kernels we process more than one element at a time 
 #define ELEMENTS_AT_A_TIME 4
 
+#define ERASE_dPDF false
+
 // Mathematical definitions we need
 #define M_PI 3.14159265358979323846
 #define ptSEARCH_THRESHOLD 1000000 // The min. number of particles per sample where we use the counting sort search (not worth it yet)

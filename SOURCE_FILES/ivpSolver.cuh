@@ -41,8 +41,10 @@ public:
 	double deltaT;
 	int32_t ReinitSteps;
 
+	#if OUTPUT_INFO > 0
 	// Logging
 	Logger SimLog;
+	#endif
 
 	// Final simulation storage
 	std::vector<TYPE> storeFrames;
@@ -124,7 +126,7 @@ public:
 	}
 	
 	// This function contains the most important function of them all: The full numerical method!
-	int16_t evolvePDF(const cudaDeviceProp D_Properties){
+	int16_t evolvePDF(const cudaDeviceProp& D_Properties){
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -200,7 +202,6 @@ public:
 		// PDF value at Particle positions (for the GPU)
 		thrust::device_vector<TYPE> D_Particle_Values;
 		
-
 		// Now we make a slightly larger domain for the computations:
 		Mesh Expanded_Domain;
 
@@ -215,7 +216,7 @@ public:
 	// VARIABLES DEFINITION
 		
 		// Max memory to be used (in bytes). 95% just in case
-		const UINT MAX_BYTES_USEABLE = 0.95 * D_Properties.totalGlobalMem;		
+		const UINT MAX_BYTES_USEABLE = 0.95 * (D_Properties.totalGlobalMem - Problem_Domain.Total_Nodes()*sizeof(TYPE));		
 
 		// The following consts don't need an explanation
 		const UINT	ConjGrad_MaxSteps  = 1000;		 								
@@ -232,9 +233,10 @@ public:
 		std::vector<Particle>	Full_Particle_Locations;
 		std::vector<TYPE>		Full_Particle_Values;
 
+		#if OUTPUT_INFO > 0
 		// Simulation logging
 		SimLog.resize(time_vector.size() - 1);
-
+		#endif
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -267,7 +269,7 @@ public:
 
 
 		// IN THIS LINE WE START WITH THE ACTUAL ITERATIONS OF THE LIOUVILLE EQUATION
-		while (simStepCount < time_vector.size() - 1 /*&& error_check != -1*/) {
+		while (simStepCount < time_vector.size() - 1) {
 
 			// select the first and last time value of the current iteration
 			double	t0 = time_vector[simStepCount].time, tF = time_vector[simStepCount + 1].time;
@@ -288,14 +290,18 @@ public:
 			auto endTimeSeconds = std::chrono::high_resolution_clock::now();
 			std::chrono::duration<float> durationSeconds = endTimeSeconds - startTimeSeconds;
 
-			// Enter the information into the log information
-			SimLog.subFrame_time[5*simStepCount] = durationSeconds.count();
+			#if OUTPUT_INFO > 0
+				// Enter the information into the log information
+				SimLog.subFrame_time[5*simStepCount] = durationSeconds.count();
+			#endif
 			
 			// Number of particles to advect
 			UINT AMR_ActiveNodeCount = Particle_Locations.size();
 
-			// Clear the GPU-stored PDF for better memory availability
-			D_PDF_ProbDomain.clear();
+			#if ERASE_dPDF
+				// Clear the GPU-stored PDF for better memory availability
+				D_PDF_ProbDomain.clear();
+			#endif
 
 			// Send adapted values and points to the GPU
 			D_Particle_Values.resize(AMR_ActiveNodeCount);
@@ -332,10 +338,11 @@ public:
 
 			endTimeSeconds = std::chrono::high_resolution_clock::now();
 			durationSeconds = endTimeSeconds - startTimeSeconds;
-			
-			// Enter the information into the log information
-			SimLog.subFrame_time[5*simStepCount + 2] = durationSeconds.count();
 
+			#if OUTPUT_INFO > 0		
+				// Enter the information into the log information
+				SimLog.subFrame_time[5*simStepCount + 2] = durationSeconds.count();
+			#endif
 
 			/////////////////////////////////////////////////////////////////////////////////////////
 			/////////////////////////////////////////////////////////////////////////////////////////
@@ -358,9 +365,11 @@ public:
 			endTimeSeconds = std::chrono::high_resolution_clock::now();
 			durationSeconds = endTimeSeconds - startTimeSeconds;
 			
-			// Enter the information into the log information
-			SimLog.subFrame_time[5*simStepCount + 3] = durationSeconds.count();
-			SimLog.ConvergenceIterations[simStepCount] = iterations;
+			#if OUTPUT_INFO > 0
+				// Enter the information into the log information
+				SimLog.subFrame_time[5*simStepCount + 3] = durationSeconds.count();
+				SimLog.ConvergenceIterations[simStepCount] = iterations;
+			#endif
 
 			// Clear the vectors to save memory
 			D_Mat_Indx.clear();
@@ -506,8 +515,10 @@ public:
 					endTimeSeconds = std::chrono::high_resolution_clock::now();
 					durationSeconds = endTimeSeconds - startTimeSeconds;
 
-					// To the Log
-					SimLog.subFrame_time[5*simStepCount + 1] = durationSeconds.count();
+					#if OUTPUT_INFO > 0
+						// To the Log
+						SimLog.subFrame_time[5*simStepCount + 1] = durationSeconds.count();
+					#endif
 
 					PDF_Support.Update_boundingBox(D_Particle_Locations);
 					
@@ -523,8 +534,12 @@ public:
 					/////////////////////////////////////////////////////////////////////////////////////////
 					/////////////////////////////////////////////////////////////////////////////////////////
 
+					#if ERASE_dPDF
 					D_PDF_ProbDomain.resize(Problem_Domain.Total_Nodes(), 0);	// PDF is reset to 0, so that we may use atomic adding at the remeshing step
-					
+					#else
+					thrust::fill(thrust::device, D_PDF_ProbDomain.begin(), D_PDF_ProbDomain.end(), 0);
+					#endif
+
 					Threads = fmin(THREADS_P_BLK, ActiveNodes_PerBlk);
 					Blocks  = floor((ActiveNodes_PerBlk - 1) / Threads) + 1;
 
@@ -544,9 +559,10 @@ public:
 					endTimeSeconds = std::chrono::high_resolution_clock::now();
 					durationSeconds = endTimeSeconds - startTimeSeconds;
 
-					
-					// Enter the information into the log information
-					SimLog.subFrame_time[5 * simStepCount + 4] = durationSeconds.count();
+					#if OUTPUT_INFO > 0
+						// Enter the information into the log information
+						SimLog.subFrame_time[5 * simStepCount + 4] = durationSeconds.count();
+					#endif
 				}
 
 				/////////////////////////////////////////////////////////////////////////////////////////
@@ -572,8 +588,10 @@ public:
 				// Send back to CPU
 				PDF_ProbDomain = D_PDF_ProbDomain;
 
+				#if OUTPUT_INFO > 0
 				// Write some log info to the command line
 				SimLog.writeToCLI(OUTPUT_INFO, simStepCount);
+				#endif
 
 				std::cout << "+---------------------------------------------------------------------+\n";
 
@@ -584,8 +602,10 @@ public:
 			// Store info in cumulative variable
 			thrust::copy(PDF_ProbDomain.begin(), PDF_ProbDomain.end(), &storeFrames[simStepCount * Problem_Domain.Total_Nodes()]);
 
-			// Write entire log to a file!
-			SimLog.writeToFile();
+			#if OUTPUT_INFO > 0
+				// Write entire log to a file!
+				SimLog.writeToFile();
+			#endif
 		}
 
 		// Exit current function
