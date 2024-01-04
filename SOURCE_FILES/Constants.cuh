@@ -53,7 +53,7 @@
 	#define INT int64_t
 	#define UINT uint64_t
 	#define ERASE_dPDF true
-	#define ERASE_auxVectors true
+	#define ERASE_auxVectors false
 #endif
 
 // Define the number of threads per block (128 for consumer GPUs such as the RTX3060 or Quadro RTX4000)

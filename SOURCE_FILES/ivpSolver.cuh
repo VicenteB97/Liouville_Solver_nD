@@ -21,6 +21,7 @@
 #include "Probability.cuh"
 #include "Simulation_parameters.cuh"
 #include "Interpolation.cuh"
+#include "PointSearch.cuh"
 #include "Impulse_transformations.cuh"
 #include "Integrator.cuh"
 
@@ -167,7 +168,7 @@ public:
 			sum_sample_val += temp.Joint_PDF;
 		}
 
-		// Memory management
+		// Memory management (POSSIBLE MEMORY ISSUES IF SOMETHING GOES WRONG?)
 		delete[] Parameter_Mesh;
 
 		// Output to the CLI
@@ -237,6 +238,7 @@ public:
 		thrust::device_vector<TYPE>	D_Mat_Vals;
 		thrust::device_vector<INT>	D_Mat_Indx;
 		InterpHandle interpVectors;
+		thrust::device_vector<Particle> D_fixedParticles;
 
 		#if OUTPUT_INFO > 0
 		// Simulation logging
@@ -329,7 +331,7 @@ public:
 			thrust::fill(D_Mat_Indx.begin(),D_Mat_Indx.end(), -1);
 			// Sparse interpolation matrix values
 			D_Mat_Vals.resize(MaxNeighborNum * AMR_ActiveNodeCount);
-			thrust::fill(D_Mat_Vals.begin(), D_Mat_Vals.end(), 0);
+			thrust::fill(D_Mat_Vals.begin(),D_Mat_Vals.end(), 0);
 			
 
 			startTimeSeconds = std::chrono::high_resolution_clock::now();
@@ -361,9 +363,6 @@ public:
 			thrust::fill(D_lambdas.begin(), D_lambdas.end(), 0);
 
 			interpVectors.resize(AMR_ActiveNodeCount);
-
-			// TODO!!!!
-			// Make an "interpolation handle" with all the information in a single class
 
 			startTimeSeconds = std::chrono::high_resolution_clock::now();
 				int32_t iterations = CONJUGATE_GRADIENT_SOLVE(	D_lambdas,
@@ -478,7 +477,7 @@ public:
 				UINT total_simulation_blocks = (UINT) ceil((double)totalSampleCount / Samples_PerBlk);
 
 				// For correct reinitialization
-				thrust::device_vector<Particle> D_fixedParticles = D_Particle_Locations;
+				D_fixedParticles = D_Particle_Locations;
 
 				for (UINT b = 0; b < total_simulation_blocks; b++) {
 
