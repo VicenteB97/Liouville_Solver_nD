@@ -103,7 +103,7 @@ public:
 
 // This function is defined aside because CUDA does not allow defining __global__ functions inside class definitions! (At least not statically)
  
-__global__ void findProjection(const Particle* particles, TYPE* projections, const UINT totalParticles, const UINT dimension) {
+__global__ void findProjection(const Particle* particles, TYPE* projections, UINT totalParticles, UINT dimension) {
 	
 	const uint64_t globalID = blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -125,7 +125,7 @@ public:
 	/// @brief Create a Mesh knowing the nodes per dimension
 	/// @param Nodes_per_dim 
 	/// @return 
-	__host__ __device__	Mesh(const INT& Nodes_per_dim = 2) {
+	__host__ __device__	Mesh(INT Nodes_per_dim = 2) {
 
 		Nodes_per_Dim = Nodes_per_dim;
 		Boundary_inf  = Particle(DOMAIN_INF);
@@ -135,7 +135,7 @@ public:
 	/// @brief Create a Mesh knowing the discretization length
 	/// @param Discretization_length 
 	/// @return 
-	__host__ __device__	Mesh(const TYPE& Discretization_length) {
+	__host__ __device__	Mesh(TYPE Discretization_length) {
 
 		Boundary_inf = Particle(DOMAIN_INF);
 		Boundary_sup = Particle(DOMAIN_SUP);
@@ -147,7 +147,7 @@ public:
 	/// @param Bnd_sup 
 	/// @param Nodes_per_dim 
 	/// @return 
-	__host__ __device__	Mesh(const Particle& Bnd_inf, const Particle& Bnd_sup, const INT& Nodes_per_dim = 2){
+	__host__ __device__	Mesh(const Particle& Bnd_inf, const Particle& Bnd_sup, INT Nodes_per_dim = 2){
 
 		Nodes_per_Dim	= Nodes_per_dim;
 		Boundary_inf	= Bnd_inf;
@@ -159,7 +159,7 @@ public:
 	/// @param Bnd_sup 
 	/// @param Discretization_length 
 	/// @return 
-	__host__ __device__	Mesh(const Particle& Bnd_inf, const Particle& Bnd_sup, const TYPE& Discretization_length) {
+	__host__ __device__	Mesh(const Particle& Bnd_inf, const Particle& Bnd_sup, TYPE Discretization_length) {
 
 		Boundary_inf = Bnd_inf;
 		Boundary_sup = Bnd_sup;
@@ -193,7 +193,7 @@ public:
 	/// @brief Gives the node (point in space) given the global index in the Mesh
 	/// @param globalIdx Global index in the current Mesh
 	/// @return point in space
-	__host__ __device__	inline Particle Get_node(const INT& globalIdx) const {
+	__host__ __device__	inline Particle Get_node(INT globalIdx) const {
 
 		Particle out(Boundary_inf);
 		UINT temp = 1;
@@ -217,7 +217,7 @@ public:
 	}
 	
 	// Returns the bin (or ID of the closest node) where Particle belongs to, adding bin_offset.
-	__host__ __device__ inline UINT Get_binIdx(const Particle& Particle, const INT& bin_offset = 0) const {
+	__host__ __device__ inline UINT Get_binIdx(const Particle& Particle, INT bin_offset = 0) const {
 		UINT bin_idx = 0, accPower = 1;
  
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
@@ -230,14 +230,14 @@ public:
 	};
 
 	// Compute the global index at your mesh, given the global index in "other" mesh.
-	__host__ inline UINT Indx_here(const UINT& indx_at_other, const Mesh& other) const {
+	__host__ inline UINT Indx_here(UINT indx_at_other, const Mesh& other) const {
 		return this->Get_binIdx(other.Get_node(indx_at_other));
 	}
 
 	/// @brief This function expands a fixed Mesh "Other" by a length of  "expansion_length" in each direction/dimension
 	/// @param Other The base Mesh from which we will expand
 	/// @param expansion_nodes Number of nodes we will expand in every direction
-	__host__ __device__	inline void Expand_From(const Mesh& Other, const UINT& expansion_nodes) {
+	__host__ __device__	inline void Expand_From(const Mesh& Other, UINT expansion_nodes) {
 		
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
 			// To make sure that the points fall into the Mesh nodes

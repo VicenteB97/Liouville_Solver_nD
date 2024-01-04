@@ -442,11 +442,39 @@ __global__ void MATRIX_VECTOR_MULTIPLICATION(TYPE* X, const TYPE* x0, const INT*
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+class InterpHandle{
+// Attributes
+public:
+thrust::device_vector<TYPE> GPU_R;
+thrust::device_vector<TYPE> GPU_temp;
+thrust::device_vector<TYPE> GPU_AP;
+thrust::device_vector<TYPE> GPU_P;
+
+// Constructor
+__host__ InterpHandle(UINT size = 1){
+	GPU_R.resize(size);
+	GPU_temp.resize(size);
+	GPU_AP.resize(size);
+	GPU_P.resize(size);
+}
+
+// Methods
+public:
+void resize(UINT size){
+	GPU_R.resize(size);
+	GPU_temp.resize(size);
+	GPU_AP.resize(size);
+	GPU_P.resize(size);
+};
+
+};
+
 
 __host__ INT CONJUGATE_GRADIENT_SOLVE(	thrust::device_vector<TYPE>&		GPU_lambdas,
 									thrust::device_vector<INT>& GPU_Index_array,
 									thrust::device_vector<TYPE>&		GPU_Mat_entries,
 									thrust::device_vector<TYPE>&		GPU_AdaptPDF,
+									InterpHandle&						interpVectors,
 									const INT					Total_Particles,
 									const INT					MaxNeighborNum,
 									const UINT					max_steps,
@@ -462,10 +490,10 @@ __host__ INT CONJUGATE_GRADIENT_SOLVE(	thrust::device_vector<TYPE>&		GPU_lambdas
 	const UINT Blocks_2  = (UINT)floorf((float)(Total_Particles / ELEMENTS_AT_A_TIME - 1) / Threads) + 1;
 
 	// ------------------ AUXILIARIES FOR THE INTEPROLATION PROC. ------------------------------- //
-	thrust::device_vector<TYPE>	GPU_R	(Total_Particles);		// residual vector
-	thrust::device_vector<TYPE>	GPU_temp(Total_Particles);		// auxiliary vector for computation storage
-	thrust::device_vector<TYPE>	GPU_AP	(Total_Particles);		// vector for storing the A*P multiplication
-	thrust::device_vector<TYPE>	GPU_P	(Total_Particles);		// P vector
+	// thrust::device_vector<TYPE>	GPU_R	(Total_Particles);		// residual vector
+	// thrust::device_vector<TYPE>	GPU_temp(Total_Particles);		// auxiliary vector for computation storage
+	// thrust::device_vector<TYPE>	GPU_AP	(Total_Particles);		// vector for storing the A*P multiplication
+	// thrust::device_vector<TYPE>	GPU_P	(Total_Particles);		// P vector
 	// ------------------------------------------------------------------------------------------ //
 
 	// Auxiliary values
@@ -474,47 +502,47 @@ __host__ INT CONJUGATE_GRADIENT_SOLVE(	thrust::device_vector<TYPE>&		GPU_lambdas
 
 // Initialize Conjugate gradient method ----------------------------------------------------
 	// Compute A * X0
-	MATRIX_VECTOR_MULTIPLICATION << < Blocks, Threads >> > (rpc(GPU_temp, 0), rpc(GPU_lambdas,0), rpc(GPU_Index_array,0),
+	MATRIX_VECTOR_MULTIPLICATION << < Blocks, Threads >> > (rpc(interpVectors.GPU_temp, 0), rpc(GPU_lambdas,0), rpc(GPU_Index_array,0),
 		rpc(GPU_Mat_entries,0), Total_Particles, MaxNeighborNum);
 	gpuError_Check(cudaDeviceSynchronize());
 
 	// Compute R=B-A*X0
-	UPDATE_VEC << <Blocks_2, Threads_2 >> > (rpc(GPU_R,0), rpc(GPU_AdaptPDF,0), (TYPE)-1, rpc(GPU_temp,0), Total_Particles);
+	UPDATE_VEC << <Blocks_2, Threads_2 >> > (rpc(interpVectors.GPU_R,0), rpc(GPU_AdaptPDF,0), (TYPE)-1, rpc(interpVectors.GPU_temp,0), Total_Particles);
 	gpuError_Check(cudaDeviceSynchronize());
 
 	TYPE Alpha, R0_norm, r_norm, aux, beta;
 
-	GPU_P = GPU_R;
+	interpVectors.GPU_P = interpVectors.GPU_R;
 
 	while (flag) { // this flag is useful to know when we have arrived to the desired tolerance
 	// Alpha computation (EVERYTHING IS CORRECT!)
 		// 1.1.- Compute AP=A*P
-		MATRIX_VECTOR_MULTIPLICATION << < Blocks, Threads >> > (rpc(GPU_AP,0), rpc(GPU_P,0), rpc(GPU_Index_array,0),
+		MATRIX_VECTOR_MULTIPLICATION << < Blocks, Threads >> > (rpc(interpVectors.GPU_AP,0), rpc(interpVectors.GPU_P,0), rpc(GPU_Index_array,0),
 			rpc(GPU_Mat_entries,0), Total_Particles, MaxNeighborNum);
 		gpuError_Check(cudaDeviceSynchronize());
 
 		// 1.2.- Compute P'*AP
-		thrust::transform(GPU_P.begin(), GPU_P.end(), GPU_AP.begin(), GPU_temp.begin(), thrust::multiplies<TYPE>());
-		aux = thrust::reduce(thrust::device, GPU_temp.begin(), GPU_temp.end());
+		thrust::transform(interpVectors.GPU_P.begin(), interpVectors.GPU_P.end(), interpVectors.GPU_AP.begin(), interpVectors.GPU_temp.begin(), thrust::multiplies<TYPE>());
+		aux = thrust::reduce(thrust::device, interpVectors.GPU_temp.begin(), interpVectors.GPU_temp.end());
 
 		// 1.3.- R'*R
-		thrust::transform(GPU_R.begin(), GPU_R.end(), GPU_R.begin(), GPU_temp.begin(), thrust::multiplies<TYPE>());
-		R0_norm = thrust::reduce(thrust::device, GPU_temp.begin(), GPU_temp.end());
+		thrust::transform(interpVectors.GPU_R.begin(), interpVectors.GPU_R.end(), interpVectors.GPU_R.begin(), interpVectors.GPU_temp.begin(), thrust::multiplies<TYPE>());
+		R0_norm = thrust::reduce(thrust::device, interpVectors.GPU_temp.begin(), interpVectors.GPU_temp.end());
 
 		Alpha = R0_norm / aux;
 
 		// New X and R: (new, old, scalar, driving vec, total length)
 		// 1.- Update Lambdas
-		UPDATE_VEC << <Blocks_2, Threads_2 >> > (rpc(GPU_lambdas,0), rpc(GPU_lambdas,0), Alpha, rpc(GPU_P,0), Total_Particles);
+		UPDATE_VEC << <Blocks_2, Threads_2 >> > (rpc(GPU_lambdas,0), rpc(GPU_lambdas,0), Alpha, rpc(interpVectors.GPU_P,0), Total_Particles);
 		// we DO NOT use cudaDeviceSynchronize() because the following CUDA kernel does not require this kernel to be done...we may save a (very small) amount of time
 
 		// 2.- Update residuals 
-		UPDATE_VEC << <Blocks_2, Threads_2 >> > (rpc(GPU_R,0), rpc(GPU_R,0), -Alpha, rpc(GPU_AP,0), Total_Particles);
+		UPDATE_VEC << <Blocks_2, Threads_2 >> > (rpc(interpVectors.GPU_R,0), rpc(interpVectors.GPU_R,0), -Alpha, rpc(interpVectors.GPU_AP,0), Total_Particles);
 		gpuError_Check(cudaDeviceSynchronize());
 
 		// Compute residual l_2 norm
-		thrust::transform(GPU_R.begin(), GPU_R.end(), GPU_R.begin(), GPU_temp.begin(), thrust::multiplies<TYPE>());
-		r_norm = thrust::reduce(thrust::device, GPU_temp.begin(), GPU_temp.end()); // sum of its elements
+		thrust::transform(interpVectors.GPU_R.begin(), interpVectors.GPU_R.end(), interpVectors.GPU_R.begin(), interpVectors.GPU_temp.begin(), thrust::multiplies<TYPE>());
+		r_norm = thrust::reduce(thrust::device, interpVectors.GPU_temp.begin(), interpVectors.GPU_temp.end()); // sum of its elements
 		r_norm = sqrt(r_norm);
 
 		if ((TYPE) r_norm / Total_Particles < in_tolerance) {
@@ -532,7 +560,7 @@ __host__ INT CONJUGATE_GRADIENT_SOLVE(	thrust::device_vector<TYPE>&		GPU_lambdas
 		else {
 			beta = r_norm * r_norm / R0_norm;
 
-			UPDATE_VEC << <Blocks_2, Threads_2 >> > (rpc(GPU_P,0), rpc(GPU_R,0), beta, rpc(GPU_P,0), Total_Particles);
+			UPDATE_VEC << <Blocks_2, Threads_2 >> > (rpc(interpVectors.GPU_P,0), rpc(interpVectors.GPU_R,0), beta, rpc(interpVectors.GPU_P,0), Total_Particles);
 			gpuError_Check(cudaDeviceSynchronize());
 			k++;
 		}

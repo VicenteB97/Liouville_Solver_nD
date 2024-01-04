@@ -232,6 +232,11 @@ public:
 		// Full array storing appended particles for all parameter samples
 		std::vector<Particle>	Full_Particle_Locations;
 		std::vector<TYPE>		Full_Particle_Values;
+	
+		thrust::device_vector<TYPE> D_lambdas;
+		thrust::device_vector<TYPE>	D_Mat_Vals;
+		thrust::device_vector<INT>	D_Mat_Indx;
+		InterpHandle interpVectors;
 
 		#if OUTPUT_INFO > 0
 		// Simulation logging
@@ -320,9 +325,11 @@ public:
 			UINT MaxNeighborNum = round(fmin(pow(2 * round(DISC_RADIUS) + 1, PHASE_SPACE_DIMENSIONS), AMR_ActiveNodeCount));
 			
 			// Compressed COO-style indexing of the sparse interpolation matrix
-			thrust::device_vector<INT>	D_Mat_Indx(MaxNeighborNum * AMR_ActiveNodeCount, -1);
+			D_Mat_Indx.resize(MaxNeighborNum * AMR_ActiveNodeCount); 
+			thrust::fill(D_Mat_Indx.begin(),D_Mat_Indx.end(), -1);
 			// Sparse interpolation matrix values
-			thrust::device_vector<TYPE>	D_Mat_Vals(MaxNeighborNum * AMR_ActiveNodeCount, 0);
+			D_Mat_Vals.resize(MaxNeighborNum * AMR_ActiveNodeCount);
+			thrust::fill(D_Mat_Vals.begin(), D_Mat_Vals.end(), 0);
 			
 
 			startTimeSeconds = std::chrono::high_resolution_clock::now();
@@ -350,13 +357,20 @@ public:
 			/////////////////////////////////////////////////////////////////////////////////////////
 			/////////////////////////////////////////////////////////////////////////////////////////
 			// Declare the solution of the interpolation vector (weights of the RBF functions)
-			thrust::device_vector<TYPE> D_lambdas(AMR_ActiveNodeCount, 0);
+			D_lambdas.resize(AMR_ActiveNodeCount);
+			thrust::fill(D_lambdas.begin(), D_lambdas.end(), 0);
+
+			interpVectors.resize(AMR_ActiveNodeCount);
+
+			// TODO!!!!
+			// Make an "interpolation handle" with all the information in a single class
 
 			startTimeSeconds = std::chrono::high_resolution_clock::now();
 				int32_t iterations = CONJUGATE_GRADIENT_SOLVE(	D_lambdas,
 																D_Mat_Indx,
 																D_Mat_Vals,
 																D_Particle_Values,
+																interpVectors,
 																AMR_ActiveNodeCount,
 																MaxNeighborNum,
 																ConjGrad_MaxSteps,
@@ -371,9 +385,11 @@ public:
 				SimLog.ConvergenceIterations[simStepCount] = iterations;
 			#endif
 
+			#if ERASE_auxVectors == true
 			// Clear the vectors to save memory
 			D_Mat_Indx.clear();
 			D_Mat_Vals.clear();
+			#endif
 
 			D_Particle_Values = D_lambdas;
 
@@ -402,9 +418,10 @@ public:
 				endTimeSeconds = std::chrono::high_resolution_clock::now();
 				durationSeconds = endTimeSeconds - startTimeSeconds;
 
-				
+				#if OUTPUT_INFO > 0
 				// Enter the information into the log information
 				SimLog.subFrame_time[5*simStepCount + 1] = durationSeconds.count();
+				#endif
 
 				Particle_Locations.clear();
 				Particle_Values.clear();
@@ -466,7 +483,7 @@ public:
 				for (UINT b = 0; b < total_simulation_blocks; b++) {
 
 					// Parameter sample offset init. and final to account for the block position
-					UINT Sample_idx_offset_init = b * Samples_PerBlk;
+					UINT Sample_idx_offset_init  = b * Samples_PerBlk;
 					UINT Sample_idx_offset_final = fmin((b + 1) * Samples_PerBlk, totalSampleCount);
 
 					// Actual number of samples in current block

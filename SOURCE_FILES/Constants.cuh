@@ -47,9 +47,13 @@
 #if PHASE_SPACE_DIM < 4
 	#define INT int32_t
 	#define UINT uint32_t
+	#define ERASE_dPDF false
+	#define ERASE_auxVectors false
 #else
 	#define INT int64_t
 	#define UINT uint64_t
+	#define ERASE_dPDF true
+	#define ERASE_auxVectors true
 #endif
 
 // Define the number of threads per block (128 for consumer GPUs such as the RTX3060 or Quadro RTX4000)
@@ -57,8 +61,6 @@
 
 // In low-impact CUDA kernels we process more than one element at a time 
 #define ELEMENTS_AT_A_TIME 4
-
-#define ERASE_dPDF false
 
 // Mathematical definitions we need
 #define M_PI 3.14159265358979323846
