@@ -153,7 +153,7 @@ public:
 		Param_pair*	Parameter_Mesh = new Param_pair[sum_sampleNum];
 
 		// Build the parameter mesh from previous info
-		errorCheck(RANDOMIZE<PARAM_SPACE_DIMENSIONS>(Parameter_Mesh, Parameter_Distributions));
+		if(RANDOMIZE<PARAM_SPACE_DIMENSIONS>(Parameter_Mesh, Parameter_Distributions) == -1) {delete[] Parameter_Mesh; return -1;}
 
 		// Small vector containing the number of samples per parameter
 		thrust::device_vector<INT>	D_sampVec(Samples_per_Param, Samples_per_Param + PARAM_SPACE_DIMENSIONS);	
@@ -168,7 +168,7 @@ public:
 			sum_sample_val += temp.Joint_PDF;
 		}
 
-		// Memory management (POSSIBLE MEMORY ISSUES IF SOMETHING GOES WRONG?)
+		// Memory management
 		delete[] Parameter_Mesh;
 
 		// Output to the CLI
@@ -281,7 +281,7 @@ public:
 			// select the first and last time value of the current iteration
 			double	t0 = time_vector[simStepCount].time, tF = time_vector[simStepCount + 1].time;
 
-			std::cout << "+---------------------------------------------------------------------+\n";
+			printCLI = "+---------------------------------------------------------------------+\n";
 
 			/////////////////////////////////////////////////////////////////////////////////////////
 			/////////////////////////////////////////////////////////////////////////////////////////
@@ -291,7 +291,7 @@ public:
 			auto startTimeSeconds = std::chrono::high_resolution_clock::now();
 
 				errorCheck(setInitialParticles(	PDF_ProbDomain, D_PDF_ProbDomain,				// Initial, gridded PDF
-												Particle_Values, Particle_Locations, 			// Output vectors that will give the relevant nodes
+												D_Particle_Values, D_Particle_Locations, 			// Output vectors that will give the relevant nodes
 												Problem_Domain, Expanded_Domain, PDF_Support));	// Domain information
 
 			auto endTimeSeconds = std::chrono::high_resolution_clock::now();
@@ -303,19 +303,19 @@ public:
 			#endif
 			
 			// Number of particles to advect
-			UINT AMR_ActiveNodeCount = Particle_Locations.size();
+			UINT AMR_ActiveNodeCount = D_Particle_Locations.size();
 
 			#if ERASE_dPDF
 				// Clear the GPU-stored PDF for better memory availability
 				D_PDF_ProbDomain.clear();
 			#endif
 
-			// Send adapted values and points to the GPU
-			D_Particle_Values.resize(AMR_ActiveNodeCount);
-			D_Particle_Locations.resize(AMR_ActiveNodeCount);
+			// // Send adapted values and points to the GPU
+			// D_Particle_Values.resize(AMR_ActiveNodeCount);
+			// D_Particle_Locations.resize(AMR_ActiveNodeCount);
 
-			D_Particle_Values 	 = Particle_Values;
-			D_Particle_Locations = Particle_Locations;
+			// D_Particle_Values 	 = Particle_Values;
+			// D_Particle_Locations = Particle_Locations;
 
 			/////////////////////////////////////////////////////////////////////////////////////////
 			/////////////////////////////////////////////////////////////////////////////////////////
@@ -465,7 +465,7 @@ public:
 				// -------------------------- SMOOTH PARTICLE INTEGRATION ---------------------------- //
 				/////////////////////////////////////////////////////////////////////////////////////////
 				/////////////////////////////////////////////////////////////////////////////////////////
-				std::cout << "Simulation time: " << t0 << " to " << tF << "\n";
+				printCLI.append( "Simulation time: " + std::to_string(t0) + " to " + std::to_string(tF) + "\n");
 
 				// Max. memory requirements for next step
 				const UINT Bytes_per_sample = AMR_ActiveNodeCount * (sizeof(TYPE) * 2 + sizeof(Particle));
@@ -503,8 +503,7 @@ public:
 					}
 
 					// Print the active nodes in the current step
-					printCLI = "Number of active particles: " + std::to_string(AMR_ActiveNodeCount);
-					std::cout << printCLI << "\n";
+					printCLI.append( "Number of active particles: " + std::to_string(AMR_ActiveNodeCount) + "\n" );
 
 					/////////////////////////////////////////////////////////////////////////////////////////
 					/////////////////////////////////////////////////////////////////////////////////////////
@@ -609,7 +608,9 @@ public:
 				SimLog.writeToCLI(OUTPUT_INFO, simStepCount);
 				#endif
 
-				std::cout << "+---------------------------------------------------------------------+\n";
+				printCLI.append( "+---------------------------------------------------------------------+\n");
+
+				std::cout << printCLI;
 
 				// Upadte simulation step
 				simStepCount++;

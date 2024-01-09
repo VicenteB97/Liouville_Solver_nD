@@ -36,10 +36,10 @@ public:
 
 class Distributions{
 public:
-	TYPE 	 params[2];				// mean and variance. The appropriate choice of distribution parameters are given by the method of moments
-	char Name;					// Distribution name. Currently supported distributions: Delta, Normal, Beta, Gamma and Uniform
-	bool isTruncated;			// isTruncated? TRUE or FALSE
-	TYPE 	 trunc_interval[2];		// Truncation interval (give min and max of the interval)
+	TYPE params[2];			// mean and variance. The appropriate choice of distribution parameters are given by the method of moments
+	char Name;				// Distribution name. Currently supported distributions: Delta, Normal, Beta, Gamma and Uniform
+	bool isTruncated;		// isTruncated? TRUE or FALSE
+	TYPE trunc_interval[2];	// Truncation interval (give min and max of the interval)
 	INT  num_Samples;
 
 	// Default constructor

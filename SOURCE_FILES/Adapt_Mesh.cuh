@@ -13,8 +13,13 @@ public:
 	UINT node, AMR_selected;
 
 	__host__ __device__ 
-	bool operator < (const AMR_node_select& other) const { // Note that we have changed order, for simpler work...
+	bool operator > (const AMR_node_select& other) const { // Note that we have changed order, for simpler work...
 		return (AMR_selected > other.AMR_selected);
+	}
+
+	__host__ __device__ 
+	UINT operator + (const AMR_node_select& other) const { // Note that we have changed order, for simpler work...
+		return {node + other.node};
 	}
 };
 
@@ -44,7 +49,9 @@ __device__ inline void _1D_WVLET(TYPE& s1, TYPE& s2){
 /// @param rescaling Rescaling value that indicates the level of the wavelet transform
 /// @return 
 __global__ void D__Wavelet_Transform__F(	TYPE*	PDF,
-								  AMR_node_select* 	Activate_node,
+								//   AMR_node_select* 	Activate_node,
+								  		UINT* nodeIdxs,
+										UINT* isActiveNode,
 										const Mesh 	BoundingBox,
 										const Mesh	Problem_Domain,
 										const TYPE	rescaling){
@@ -102,7 +109,7 @@ __global__ void D__Wavelet_Transform__F(	TYPE*	PDF,
 	}
 
 	// Now we have to go see what happens with the outputs
-	Activate_node[cube_app_IDX].node = 0;
+	nodeIdxs[cube_app_IDX] = 0;
 
 	for (UINT k = 1; k < pow(2, PHASE_SPACE_DIMENSIONS); k++) {
 
@@ -120,13 +127,26 @@ __global__ void D__Wavelet_Transform__F(	TYPE*	PDF,
 			INT temp = Problem_Domain.Get_binIdx(visit_node);
 			INT temp_IDX_at_BBox = BoundingBox.Get_binIdx(visit_node);
 
-			Activate_node[temp_IDX_at_BBox].node = temp;
+			nodeIdxs[temp_IDX_at_BBox] = temp;
 
 			if (abs(PDF[temp]) >= TOLERANCE_AMR) {
-				Activate_node[temp_IDX_at_BBox].AMR_selected = 1;
+				isActiveNode[temp_IDX_at_BBox] = 1;
 			}
 		}
 	}
+}
+
+__global__ void customAssignToGpuArray(TYPE* outputPDF, const TYPE* inputPDF, Particle* outputNodes, const Mesh inputNodes,
+										 const UINT* nodeIdx, const INT elementNr){
+	const int64_t globalId = blockDim.x * blockIdx.x + threadIdx.x;
+
+	if(globalId >= elementNr){ return; }
+
+	const INT myNodeIdx = nodeIdx[globalId];
+
+	outputPDF[globalId] = inputPDF[myNodeIdx];
+	outputNodes[globalId] = inputNodes.Get_node(myNodeIdx);
+
 }
 
 /// @brief (HOST FUNCTION)
@@ -140,8 +160,10 @@ __global__ void D__Wavelet_Transform__F(	TYPE*	PDF,
 /// @return Error code (0 = good, -1 = something went wrong)
 int16_t setInitialParticles(const thrust::host_vector<TYPE>&	H_PDF, 
 							thrust::device_vector<TYPE>&		D__PDF, 
-							std::vector<TYPE>&					AdaptPDF, 
-							std::vector<Particle>& 				AdaptGrid,
+							thrust::device_vector<TYPE>&		AdaptPDF, 
+							thrust::device_vector<Particle>& 	AdaptGrid,
+							// std::vector<TYPE>&					AdaptPDF, 
+							// std::vector<Particle>& 				AdaptGrid,
 							const Mesh&							Problem_Domain,
 							const Mesh&							Base_Mesh,
 							Mesh&								Supp_BBox) {
@@ -153,55 +175,73 @@ int16_t setInitialParticles(const thrust::host_vector<TYPE>&	H_PDF,
 	Supp_BBox.Squarify();	// Make it square
 	Supp_BBox.Nodes_per_Dim = (Supp_BBox.Boundary_sup.dim[0] - Supp_BBox.Boundary_inf.dim[0]) / Problem_Domain.Discr_length() + 1;
 
-	if (fmod(log2(Supp_BBox.Nodes_per_Dim), 1) != 0) {
-		Supp_BBox.Nodes_per_Dim = pow(2, ceil(log2(Supp_BBox.Nodes_per_Dim)));
+	const double refinementLvl = log2(Supp_BBox.Nodes_per_Dim);
+
+	if (fmod(refinementLvl, 1) != 0) {
+		Supp_BBox.Nodes_per_Dim = pow(2, ceil(refinementLvl));
 
 		if (Supp_BBox.Nodes_per_Dim >= Problem_Domain.Nodes_per_Dim) {Supp_BBox = Problem_Domain;}
 		else{
 			Supp_BBox.Boundary_inf = Base_Mesh.Get_node(Base_Mesh.Get_binIdx(Supp_BBox.Boundary_inf));	// To make sure it falls into the mesh nodes
 
+			#pragma unroll
 			for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
 				Supp_BBox.Boundary_sup.dim[d] = Supp_BBox.Boundary_inf.dim[d] + (Supp_BBox.Nodes_per_Dim - 1) * Problem_Domain.Discr_length();
 			}
 		}
 	}
 
+	// thrust::host_vector<AMR_node_select> 	H__Node_selection(Supp_BBox.Total_Nodes(), { 0,0 });
+	// thrust::device_vector<AMR_node_select>	D__Node_selection = H__Node_selection;
 
-	thrust::host_vector<AMR_node_select> 	H__Node_selection(Supp_BBox.Total_Nodes(), { 0,0 });
-	thrust::device_vector<AMR_node_select>	D__Node_selection = H__Node_selection;
+	thrust::device_vector<UINT> nodeIdxs(Supp_BBox.Total_Nodes(), 0);
+	thrust::device_vector<UINT> isAssignedNode(Supp_BBox.Total_Nodes(), 0);
 
 	for (uint16_t k = 0; k < log2(Supp_BBox.Nodes_per_Dim); k++) {
 
 		uint16_t Threads = fmin(THREADS_P_BLK, Supp_BBox.Total_Nodes()/pow(rescaling,PHASE_SPACE_DIMENSIONS) );
 		UINT	 Blocks	 = floor((Supp_BBox.Total_Nodes()/pow(rescaling, PHASE_SPACE_DIMENSIONS) - 1) / Threads) + 1;
 
-		D__Wavelet_Transform__F <<<Blocks, Threads>>> (rpc(D__PDF,0), rpc(D__Node_selection,0), Supp_BBox, Problem_Domain, rescaling);
+		D__Wavelet_Transform__F <<<Blocks, Threads>>> (rpc(D__PDF,0), rpc(nodeIdxs,0), rpc(isAssignedNode, 0), Supp_BBox, Problem_Domain, rescaling);
 		gpuError_Check(cudaDeviceSynchronize());
 
 		rescaling *= 2;	// our Mesh will now have half the number of points
 	}
-
-	thrust::sort(thrust::device, D__Node_selection.begin(), D__Node_selection.end());
 	
-	///////
-	// TODO: Try to avoid the GPU-to-CPU memory movement 
-	H__Node_selection = D__Node_selection;
+	const UINT nrSelectedNodes = thrust::reduce(thrust::device, isAssignedNode.begin(), isAssignedNode.end());
+	
+	thrust::sort_by_key(thrust::device, isAssignedNode.begin(), isAssignedNode.end(), nodeIdxs.begin(), thrust::greater<INT>());
 
-	UINT counter = 0;
-	while(H__Node_selection[counter].AMR_selected == 1){
-		counter++;
-	}
+	// Reinitialize values to the PDF (we'll need it)
+	D__PDF = H_PDF;
 
-	AdaptGrid.resize(counter);
-	AdaptPDF .resize(counter);
+	AdaptGrid.resize(nrSelectedNodes); AdaptPDF.resize(nrSelectedNodes);
 
-#pragma omp parallel for
-	for(INT k = 0; k < counter; k++){
-		INT temp_idx = H__Node_selection[k].node;
+	const INT Threads = fmin(THREADS_P_BLK, nrSelectedNodes);
+	const INT Blocks = floor((nrSelectedNodes - 1) / Threads) + 1;
 
-		AdaptGrid.at(k) = Problem_Domain.Get_node(temp_idx);
-		AdaptPDF .at(k) = H_PDF [temp_idx];
-	}
+	customAssignToGpuArray<<<Threads,Blocks>>> (rpc(AdaptPDF,0), rpc(D__PDF,0), rpc(AdaptGrid,0), 
+													Problem_Domain, rpc(nodeIdxs, 0), nrSelectedNodes);
+
+// 	///////
+// 	// TODO: Try to avoid the GPU-to-CPU memory movement 
+// 	H__Node_selection = D__Node_selection;
+
+// 	UINT counter = 0;
+// 	while(H__Node_selection[counter].AMR_selected == 1){
+// 		counter++;
+// 	}
+
+// 	AdaptGrid.resize(counter);
+// 	AdaptPDF .resize(counter);
+
+// #pragma omp parallel for
+// 	for(INT k = 0; k < counter; k++){
+// 		INT temp_idx = H__Node_selection[k].node;
+
+// 		AdaptGrid.at(k) = Problem_Domain.Get_node(temp_idx);
+// 		AdaptPDF .at(k) = H_PDF [temp_idx];
+// 	}
 
 	return 0;
 }
