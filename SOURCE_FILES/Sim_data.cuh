@@ -4,17 +4,6 @@
 #include "Domain.cuh"
 #include "Probability.cuh"
 
-// Time + impulse: ----------------------------------------------
-class Time_instants {
-public:
-    double 	time;
-    bool 	impulse;
-
-    bool operator < (const Time_instants& other) const {
-        return (time < other.time);
-    }
-};
-
 // Simulation log for further analysis
 class Logger {
 public:

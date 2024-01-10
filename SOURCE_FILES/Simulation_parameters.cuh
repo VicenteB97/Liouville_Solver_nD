@@ -4,6 +4,17 @@
 #include "Constants.cuh"
 #include "Sim_data.cuh"
 
+// Time + impulse: ----------------------------------------------
+class Time_instants {
+public:
+    double 	time;
+    bool 	impulse;
+
+    bool operator < (const Time_instants& other) const {
+        return (time < other.time);
+    }
+};
+
 int16_t BuildTimeVector(std::vector<Time_instants>& time_vector, double& deltaT, INT& ReinitSteps) {
 // MODIFIABLE
 // 1.- Time values for output + impulse vectors

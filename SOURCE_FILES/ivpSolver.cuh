@@ -82,8 +82,6 @@ public:
 
 		errorCheck(BuildTimeVector(time_vector, deltaT, ReinitSteps))
 
-		storeFrames.resize(Problem_Domain.Total_Nodes() * time_vector.size());
-
 		return 0;
 	}
 
@@ -129,6 +127,21 @@ public:
 	
 	// This function contains the most important function of them all: The full numerical method!
 	int16_t evolvePDF(const cudaDeviceProp& D_Properties){
+
+		// Build saving array
+		bool get_answer = true; std::string terminalInput;
+		while (get_answer) {
+
+			std::cout << "Saving steps? (applied to the time vector, not the timestep): ";
+			std::cin >> terminalInput;
+
+			errorCheck(intCheck(get_answer, terminalInput, REINIT_ERR_MSG, 0, 1))
+		}
+		const uint16_t 	savingArraySteps = std::stoi(terminalInput);
+		const UINT 		savingArraySize  = floor(time_vector.size() / savingArraySteps) + 1;
+
+		storeFrames.resize(Problem_Domain.Total_Nodes() * savingArraySize);
+
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -598,13 +611,15 @@ public:
 				simStepCount++;
 			}
 
-			// Store info in cumulative variable
-			thrust::copy(PDF_ProbDomain.begin(), PDF_ProbDomain.end(), &storeFrames[simStepCount * Problem_Domain.Total_Nodes()]);
+			if(simStepCount % savingArraySteps == 0){
+				// Store info in cumulative variable
+				thrust::copy(PDF_ProbDomain.begin(), PDF_ProbDomain.end(), &storeFrames[(simStepCount/savingArraySteps) * Problem_Domain.Total_Nodes()]);
 
-			#if OUTPUT_INFO > 0
-				// Write entire log to a file!
-				SimLog.writeToFile();
-			#endif
+				#if OUTPUT_INFO > 0
+					// Write entire log to a file!
+					SimLog.writeToFile();
+				#endif
+			}
 
 			++statusBar;
 		}
