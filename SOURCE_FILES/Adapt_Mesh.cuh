@@ -3,26 +3,6 @@
 
 #include "Constants.cuh"
 #include "Domain.cuh"
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-class AMR_node_select{
-public:
-	UINT node, AMR_selected;
-
-	__host__ __device__ 
-	bool operator > (const AMR_node_select& other) const { // Note that we have changed order, for simpler work...
-		return (AMR_selected > other.AMR_selected);
-	}
-
-	__host__ __device__ 
-	UINT operator + (const AMR_node_select& other) const { // Note that we have changed order, for simpler work...
-		return {node + other.node};
-	}
-};
-
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -136,17 +116,24 @@ __global__ void D__Wavelet_Transform__F(	TYPE*	PDF,
 	}
 }
 
+template<uint16_t elementsProcessedPerThread>
 __global__ void customAssignToGpuArray(TYPE* outputPDF, const TYPE* inputPDF, Particle* outputNodes, const Mesh inputNodes,
 										 const UINT* nodeIdx, const INT elementNr){
 	const int64_t globalId = blockDim.x * blockIdx.x + threadIdx.x;
 
-	if(globalId >= elementNr){ return; }
+	#pragma unroll
+	for(uint16_t k = 0; k < elementsProcessedPerThread; k++){
 
-	const INT myNodeIdx = nodeIdx[globalId];
+		const UINT myIdx = globalId * elementsProcessedPerThread + k;
 
-	outputPDF[globalId] = inputPDF[myNodeIdx];
-	outputNodes[globalId] = inputNodes.Get_node(myNodeIdx);
+		if(myIdx >= elementNr){ return; }
 
+		const INT myNodeIdx = nodeIdx[myIdx];
+
+		outputPDF[myIdx] = inputPDF[myNodeIdx];
+		outputNodes[myIdx] = inputNodes.Get_node(myNodeIdx);
+
+	}
 }
 
 /// @brief (HOST FUNCTION)
@@ -208,8 +195,10 @@ int16_t setInitialParticles(const thrust::host_vector<TYPE>&	H_PDF,
 		rescaling *= 2;	// our Mesh will now have half the number of points
 	}
 	
+	// Get the number of assigned nodes
 	const UINT nrSelectedNodes = thrust::reduce(thrust::device, isAssignedNode.begin(), isAssignedNode.end());
 	
+	// Set the selected nodes first
 	thrust::sort_by_key(thrust::device, isAssignedNode.begin(), isAssignedNode.end(), nodeIdxs.begin(), thrust::greater<INT>());
 
 	// Reinitialize values to the PDF (we'll need it)
@@ -220,28 +209,10 @@ int16_t setInitialParticles(const thrust::host_vector<TYPE>&	H_PDF,
 	const INT Threads = fmin(THREADS_P_BLK, nrSelectedNodes);
 	const INT Blocks = floor((nrSelectedNodes - 1) / Threads) + 1;
 
-	customAssignToGpuArray<<<Threads,Blocks>>> (rpc(AdaptPDF,0), rpc(D__PDF,0), rpc(AdaptGrid,0), 
-													Problem_Domain, rpc(nodeIdxs, 0), nrSelectedNodes);
+	const uint16_t elementsAtATime = ELEMENTS_AT_A_TIME;
 
-// 	///////
-// 	// TODO: Try to avoid the GPU-to-CPU memory movement 
-// 	H__Node_selection = D__Node_selection;
-
-// 	UINT counter = 0;
-// 	while(H__Node_selection[counter].AMR_selected == 1){
-// 		counter++;
-// 	}
-
-// 	AdaptGrid.resize(counter);
-// 	AdaptPDF .resize(counter);
-
-// #pragma omp parallel for
-// 	for(INT k = 0; k < counter; k++){
-// 		INT temp_idx = H__Node_selection[k].node;
-
-// 		AdaptGrid.at(k) = Problem_Domain.Get_node(temp_idx);
-// 		AdaptPDF .at(k) = H_PDF [temp_idx];
-// 	}
+	customAssignToGpuArray<elementsAtATime><<<Threads,Blocks>>> (rpc(AdaptPDF,0), rpc(D__PDF,0), rpc(AdaptGrid,0), 
+																	Problem_Domain, rpc(nodeIdxs, 0), nrSelectedNodes);
 
 	return 0;
 }

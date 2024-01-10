@@ -25,6 +25,7 @@
 #include "Impulse_transformations.cuh"
 #include "Integrator.cuh"
 
+#include <boost/progress.hpp>
 
 namespace ivpSolver{
 
@@ -226,10 +227,6 @@ public:
 		// The string to be used for printing to the console
 		std::string printCLI;
 
-		// Storing AMR-selected particles
-		std::vector<Particle>	Particle_Locations;
-		std::vector<TYPE>		Particle_Values;
-
 		// Full array storing appended particles for all parameter samples
 		std::vector<Particle>	Full_Particle_Locations;
 		std::vector<TYPE>		Full_Particle_Values;
@@ -239,6 +236,8 @@ public:
 		thrust::device_vector<INT>	D_Mat_Indx;
 		InterpHandle interpVectors;
 		thrust::device_vector<Particle> D_fixedParticles;
+
+		boost::progress_display statusBar (time_vector.size()-1);
 
 		#if OUTPUT_INFO > 0
 		// Simulation logging
@@ -309,13 +308,6 @@ public:
 				// Clear the GPU-stored PDF for better memory availability
 				D_PDF_ProbDomain.clear();
 			#endif
-
-			// // Send adapted values and points to the GPU
-			// D_Particle_Values.resize(AMR_ActiveNodeCount);
-			// D_Particle_Locations.resize(AMR_ActiveNodeCount);
-
-			// D_Particle_Values 	 = Particle_Values;
-			// D_Particle_Locations = Particle_Locations;
 
 			/////////////////////////////////////////////////////////////////////////////////////////
 			/////////////////////////////////////////////////////////////////////////////////////////
@@ -422,9 +414,6 @@ public:
 				SimLog.subFrame_time[5*simStepCount + 1] = durationSeconds.count();
 				#endif
 
-				Particle_Locations.clear();
-				Particle_Values.clear();
-
 				jumpCount++;
 				simStepCount++;
 
@@ -440,9 +429,6 @@ public:
 				/////////////////////////////////////////////////////////////////////////////////////////
 				mode++;
 				std::cout << "Now the vector field is in mode: " << mode % 2 << ".\n";
-
-				Particle_Locations.clear();
-				Particle_Values.clear();
 
 				simStepCount++;
 
@@ -586,10 +572,6 @@ public:
 				/////////////////////////////////////////////////////////////////////////////////////////
 				/////////////////////////////////////////////////////////////////////////////////////////
 
-				// Clean all particle-related variables before continuing to the next time instant 
-				Particle_Locations.clear();
-				Particle_Values.clear();
-
 				// Correction of any possible negative PDF values
 				UINT Threads = fmin(THREADS_P_BLK, Problem_Domain.Total_Nodes() / ELEMENTS_AT_A_TIME);
 				UINT Blocks = floor((Problem_Domain.Total_Nodes()/ ELEMENTS_AT_A_TIME - 1) / Threads) + 1;
@@ -610,7 +592,7 @@ public:
 
 				printCLI.append( "+---------------------------------------------------------------------+\n");
 
-				std::cout << printCLI;
+				//std::cout << printCLI;
 
 				// Upadte simulation step
 				simStepCount++;
@@ -623,6 +605,8 @@ public:
 				// Write entire log to a file!
 				SimLog.writeToFile();
 			#endif
+
+			++statusBar;
 		}
 
 		// Exit current function
@@ -641,7 +625,7 @@ public:
             UINT number_of_files_needed  	= floor((number_of_frames_needed - 1) / max_frames_file) + 1;
             
             char ans;
-            std::cout << "Simulation time: " << simulationDuration << " seconds. ";
+            std::cout << "\nSimulation time: " << simulationDuration << " seconds. ";
             
             if(number_of_files_needed == 0){
                 std::cout << "There has been a problem. No memory written. Exiting simulation.\n";
