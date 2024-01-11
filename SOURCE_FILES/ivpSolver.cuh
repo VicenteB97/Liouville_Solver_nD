@@ -82,6 +82,20 @@ public:
 
 		errorCheck(BuildTimeVector(time_vector, deltaT, ReinitSteps))
 
+		// Build saving array
+		bool get_answer = true; std::string terminalInput;
+		while (get_answer) {
+
+			std::cout << "Saving steps? (applied to the time vector, not the timestep): ";
+			std::cin >> terminalInput;
+
+			errorCheck(intCheck(get_answer, terminalInput, REINIT_ERR_MSG, 0, 1))
+		}
+		const uint16_t 	savingArraySteps = std::stoi(terminalInput);
+		const UINT 		savingArraySize  = floor(time_vector.size() / savingArraySteps);
+
+		storeFrames.resize(Problem_Domain.Total_Nodes() * savingArraySize);
+
 		return 0;
 	}
 
@@ -127,21 +141,6 @@ public:
 	
 	// This function contains the most important function of them all: The full numerical method!
 	int16_t evolvePDF(const cudaDeviceProp& D_Properties){
-
-		// Build saving array
-		bool get_answer = true; std::string terminalInput;
-		while (get_answer) {
-
-			std::cout << "Saving steps? (applied to the time vector, not the timestep): ";
-			std::cin >> terminalInput;
-
-			errorCheck(intCheck(get_answer, terminalInput, REINIT_ERR_MSG, 0, 1))
-		}
-		const uint16_t 	savingArraySteps = std::stoi(terminalInput);
-		const UINT 		savingArraySize  = floor(time_vector.size() / savingArraySteps) + 1;
-
-		storeFrames.resize(Problem_Domain.Total_Nodes() * savingArraySize);
-
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -229,9 +228,11 @@ public:
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// VARIABLES DEFINITION
+
+		const UINT nrNodesPerFrame = Problem_Domain.Total_Nodes();
 		
 		// Max memory to be used (in bytes). 95% just in case
-		const UINT MAX_BYTES_USEABLE = 0.95 * (D_Properties.totalGlobalMem - Problem_Domain.Total_Nodes()*sizeof(TYPE));		
+		const UINT MAX_BYTES_USEABLE = 0.95 * (D_Properties.totalGlobalMem - nrNodesPerFrame*sizeof(TYPE));		
 
 		// The following consts don't need an explanation
 		const UINT	ConjGrad_MaxSteps  = 1000;		 								
@@ -257,6 +258,8 @@ public:
 		SimLog.resize(time_vector.size() - 1);
 		#endif
 
+		const UINT savingArraySteps = (time_vector.size()) / (storeFrames.size() / nrNodesPerFrame);
+
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -269,6 +272,7 @@ public:
 
 		// Simulation steps
 		uint32_t simStepCount = 0;
+		uint32_t saveStepCount = 0;
 		
 		// Aux variable to switch between step functions (Heaviside forcing) 
 		uint32_t mode = 0;	
@@ -549,7 +553,7 @@ public:
 					/////////////////////////////////////////////////////////////////////////////////////////
 
 					#if ERASE_dPDF
-					D_PDF_ProbDomain.resize(Problem_Domain.Total_Nodes(), 0);	// PDF is reset to 0, so that we may use atomic adding at the remeshing step
+					D_PDF_ProbDomain.resize(nrNodesPerFrame, 0);	// PDF is reset to 0, so that we may use atomic adding at the remeshing step
 					#else
 					thrust::fill(thrust::device, D_PDF_ProbDomain.begin(), D_PDF_ProbDomain.end(), 0);
 					#endif
@@ -586,10 +590,10 @@ public:
 				/////////////////////////////////////////////////////////////////////////////////////////
 
 				// Correction of any possible negative PDF values
-				UINT Threads = fmin(THREADS_P_BLK, Problem_Domain.Total_Nodes() / ELEMENTS_AT_A_TIME);
-				UINT Blocks = floor((Problem_Domain.Total_Nodes()/ ELEMENTS_AT_A_TIME - 1) / Threads) + 1;
+				UINT Threads = fmin(THREADS_P_BLK, nrNodesPerFrame / ELEMENTS_AT_A_TIME);
+				UINT Blocks = floor((nrNodesPerFrame/ ELEMENTS_AT_A_TIME - 1) / Threads) + 1;
 
-				CORRECTION<< <Blocks, Threads >> > (rpc(D_PDF_ProbDomain, 0), Problem_Domain.Total_Nodes());
+				CORRECTION<< <Blocks, Threads >> > (rpc(D_PDF_ProbDomain, 0), nrNodesPerFrame);
 				gpuError_Check(cudaDeviceSynchronize());
 
 				// Divide by the sum of the values of the parameter mesh to obtain the weighted mean
@@ -611,9 +615,9 @@ public:
 				simStepCount++;
 			}
 
-			if(simStepCount % savingArraySteps == 0){
+			if(simStepCount % savingArraySteps == 0 && saveStepCount < storeFrames.size()/nrNodesPerFrame - 1){
 				// Store info in cumulative variable
-				thrust::copy(PDF_ProbDomain.begin(), PDF_ProbDomain.end(), &storeFrames[(simStepCount/savingArraySteps) * Problem_Domain.Total_Nodes()]);
+				thrust::copy(PDF_ProbDomain.begin(), PDF_ProbDomain.end(), &storeFrames[++saveStepCount * nrNodesPerFrame]);
 
 				#if OUTPUT_INFO > 0
 					// Write entire log to a file!
@@ -624,6 +628,9 @@ public:
 			++statusBar;
 		}
 
+		const UINT nrFrames = storeFrames.size()/nrNodesPerFrame;
+		storeFrames.resize((nrFrames + 1)*nrNodesPerFrame);
+		thrust::copy(PDF_ProbDomain.begin(), PDF_ProbDomain.end(), &storeFrames[nrFrames * nrNodesPerFrame]);
 		// Exit current function
 		return 0;
 	}
@@ -633,10 +640,12 @@ public:
             bool saving_active = true;		// see if saving is still active
             int16_t error_check = 0;
 
+			const UINT nrNodesPerFrame = Problem_Domain.Total_Nodes();
+
             const uint64_t MEM_2_STORE		= storeFrames.size() * sizeof(float);
             
-            UINT number_of_frames_needed 	= MEM_2_STORE / Problem_Domain.Total_Nodes() / sizeof(float);
-            uint64_t max_frames_file 		= (uint64_t)MAX_FILE_SIZE_B / Problem_Domain.Total_Nodes() / sizeof(float);
+            UINT number_of_frames_needed 	= MEM_2_STORE / nrNodesPerFrame / sizeof(float);
+            uint64_t max_frames_file 		= (uint64_t)MAX_FILE_SIZE_B / nrNodesPerFrame / sizeof(float);
             UINT number_of_files_needed  	= floor((number_of_frames_needed - 1) / max_frames_file) + 1;
             
             char ans;
@@ -707,7 +716,7 @@ public:
                         std::ofstream file1(relavtive_pth, std::ios::out);
                         assert(file1.is_open());
 
-                        file1 << Problem_Domain.Total_Nodes() << "," << Problem_Domain.Nodes_per_Dim << ",";
+                        file1 << nrNodesPerFrame << "," << Problem_Domain.Nodes_per_Dim << ",";
 
                         for (UINT d = 0; d < PHASE_SPACE_DIMENSIONS; d++){
                                   file1 << Problem_Domain.Boundary_inf.dim[d] << "," << Problem_Domain.Boundary_sup.dim[d] << ",";
@@ -735,7 +744,7 @@ public:
                         std::ofstream myfile(relavtive_pth, std::ios::out | std::ios::binary);
                         assert (myfile.is_open());
 
-                        myfile.write((char*)&storeFrames[(k * max_frames_file + frames_init) * Problem_Domain.Total_Nodes()], sizeof(float) * frames_in_file * Problem_Domain.Total_Nodes());
+                        myfile.write((char*)&storeFrames[(k * max_frames_file + frames_init) * nrNodesPerFrame], sizeof(float) * frames_in_file * nrNodesPerFrame);
                         myfile.close();
                         std::cout << "Simulation output file " << k << " completed!\n";
                         
