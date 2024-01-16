@@ -14,6 +14,8 @@
 #include <chrono>       // Timing the execution of functions
 #include <limits>		// To get limits from variables
 
+//#include <boost/progress.hpp>	// For the progress bar
+
 // Headers for the CUDA libraries
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
@@ -32,6 +34,7 @@
 // Include the Simulation definition!
 #include "Case_definition.cuh"			// Here, we read the information of the problem to be simulated!
 #include "config.hpp"
+#include "progressbar.cuh"
 
 // Simulation and logging default output folder
 #define SIM_OUTPUT_relPATH "../../SIMULATION_OUTPUT/"

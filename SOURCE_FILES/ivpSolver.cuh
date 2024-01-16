@@ -25,8 +25,6 @@
 #include "Impulse_transformations.cuh"
 #include "Integrator.cuh"
 
-#include <boost/progress.hpp>
-
 namespace ivpSolver{
 
 class ivpSolver{
@@ -251,7 +249,8 @@ public:
 		InterpHandle interpVectors;
 		thrust::device_vector<Particle> D_fixedParticles;
 
-		boost::progress_display statusBar (time_vector.size()-1);
+		//boost::progress_display statusBar (time_vector.size()-1);
+		progressbar statusBar(time_vector.size() - 1);
 
 		#if OUTPUT_INFO > 0
 		// Simulation logging
@@ -625,7 +624,7 @@ public:
 				#endif
 			}
 
-			++statusBar;
+			statusBar.update();
 		}
 
 		const UINT nrFrames = storeFrames.size()/nrNodesPerFrame;
