@@ -28,8 +28,7 @@ __device__ inline void _1D_WVLET(TYPE& s1, TYPE& s2){
 /// @param Problem_Domain Problem domain
 /// @param rescaling Rescaling value that indicates the level of the wavelet transform
 /// @return 
-__global__ void D__Wavelet_Transform__F(	TYPE*	PDF,
-								//   AMR_node_select* 	Activate_node,
+__global__ void D__Wavelet_Transform__F(TYPE*	PDF,
 								  		UINT* nodeIdxs,
 										UINT* isActiveNode,
 										const Mesh 	BoundingBox,
@@ -149,8 +148,6 @@ int16_t setInitialParticles(const thrust::host_vector<TYPE>&	H_PDF,
 							thrust::device_vector<TYPE>&		D__PDF, 
 							thrust::device_vector<TYPE>&		AdaptPDF, 
 							thrust::device_vector<Particle>& 	AdaptGrid,
-							// std::vector<TYPE>&					AdaptPDF, 
-							// std::vector<Particle>& 				AdaptGrid,
 							const Mesh&							Problem_Domain,
 							const Mesh&							Base_Mesh,
 							Mesh&								Supp_BBox) {
@@ -177,9 +174,6 @@ int16_t setInitialParticles(const thrust::host_vector<TYPE>&	H_PDF,
 			}
 		}
 	}
-
-	// thrust::host_vector<AMR_node_select> 	H__Node_selection(Supp_BBox.Total_Nodes(), { 0,0 });
-	// thrust::device_vector<AMR_node_select>	D__Node_selection = H__Node_selection;
 
 	thrust::device_vector<UINT> nodeIdxs(Supp_BBox.Total_Nodes(), 0);
 	thrust::device_vector<UINT> isAssignedNode(Supp_BBox.Total_Nodes(), 0);
