@@ -207,7 +207,7 @@ int16_t setInitialParticles(const thrust::host_vector<TYPE>&	H_PDF,
 
 	customAssignToGpuArray<elementsAtATime><<<Threads,Blocks>>> (rpc(AdaptPDF,0), rpc(D__PDF,0), rpc(AdaptGrid,0), 
 																	Problem_Domain, rpc(nodeIdxs, 0), nrSelectedNodes);
-
+	gpuError_Check(cudaDeviceSynchronize());
 	return 0;
 }
 
