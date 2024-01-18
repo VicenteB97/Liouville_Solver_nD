@@ -36,6 +36,7 @@ public:
 		}
 	}
 
+public:
 	// Operators and methods
 	__host__ __device__ 
 	Particle operator+(const Particle& other) const {
