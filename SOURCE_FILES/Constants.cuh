@@ -13,8 +13,7 @@
 #include <omp.h>        // For simple use of thread-parallel computations
 #include <chrono>       // Timing the execution of functions
 #include <limits>		// To get limits from variables
-
-//#include <boost/progress.hpp>	// For the progress bar
+#include <thread>		// For multithreading
 
 // Headers for the CUDA libraries
 #include "cuda_runtime.h"
@@ -34,7 +33,10 @@
 // Include the Simulation definition!
 #include "Case_definition.cuh"			// Here, we read the information of the problem to be simulated!
 #include "config.hpp"
-#include "progressbar.cuh"
+
+// To know the current progress of the simulation
+#include "indicators/cursor_control.hpp"
+#include "indicators/progress_bar.hpp"
 
 // Simulation and logging default output folder
 #define SIM_OUTPUT_relPATH "../../SIMULATION_OUTPUT/"

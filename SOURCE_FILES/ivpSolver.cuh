@@ -37,7 +37,7 @@ public:
 	Distributions Parameter_Distributions[PARAM_SPACE_DIMENSIONS];
 	
 	// Time vector, impulse information, timestep and effective timestep
-	std::vector<Time_instants> time_vector;
+	std::vector<Time_instants> reinitInstants;
 	double deltaT;
 	int32_t ReinitSteps;
 
@@ -78,7 +78,7 @@ public:
 	// Use the time information 
 	int16_t buildTimeVec(){
 
-		errorCheck(BuildTimeVector(time_vector, deltaT, ReinitSteps))
+		errorCheck(BuildTimeVector(reinitInstants, deltaT, ReinitSteps))
 
 		// Build saving array
 		bool get_answer = true; std::string terminalInput;
@@ -90,7 +90,7 @@ public:
 			errorCheck(intCheck(get_answer, terminalInput, REINIT_ERR_MSG, 0, 1))
 		}
 		const uint16_t 	savingArraySteps = std::stoi(terminalInput);
-		const UINT 		savingArraySize  = floor(time_vector.size() / savingArraySteps);
+		const UINT 		savingArraySize  = floor(reinitInstants.size() / savingArraySteps);
 
 		storeFrames.resize(Problem_Domain.Total_Nodes() * savingArraySize);
 
@@ -249,15 +249,23 @@ public:
 		InterpHandle interpVectors;
 		thrust::device_vector<Particle> D_fixedParticles;
 
-		//boost::progress_display statusBar (time_vector.size()-1);
-		progressbar statusBar(time_vector.size() - 1);
+		indicators::ProgressBar statusBar{indicators::option::BarWidth{35}, 
+											indicators::option::ForegroundColor{indicators::Color::yellow},
+											indicators::option::ShowElapsedTime{true}, 
+											indicators::option::ShowRemainingTime{false},
+											indicators::option::PrefixText{"Liouville solver: Running..."},
+											indicators::option::Start{"["},
+											indicators::option::Fill{"="},
+											indicators::option::Lead{">"},
+											indicators::option::Remainder{"-"},
+											indicators::option::End{"]"},};
 
 		#if OUTPUT_INFO > 0
 		// Simulation logging
-		SimLog.resize(time_vector.size() - 1);
+		SimLog.resize(reinitInstants.size() - 1);
 		#endif
 
-		const UINT savingArraySteps = (time_vector.size()) / (storeFrames.size() / nrNodesPerFrame);
+		const UINT savingArraySteps = (reinitInstants.size()) / (storeFrames.size() / nrNodesPerFrame);
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -274,7 +282,7 @@ public:
 		uint32_t saveStepCount = 0;
 		
 		// Aux variable to switch between step functions (Heaviside forcing) 
-		uint32_t mode = 0;	
+		uint32_t mode = 0;
 
 		// IF THERE ARE DELTA TERMS
 		#if IMPULSE_TYPE == 1
@@ -291,10 +299,10 @@ public:
 
 
 		// IN THIS LINE WE START WITH THE ACTUAL ITERATIONS OF THE LIOUVILLE EQUATION
-		while (simStepCount < time_vector.size() - 1) {
+		while (simStepCount < reinitInstants.size() - 1) {
 
 			// select the first and last time value of the current iteration
-			double	t0 = time_vector[simStepCount].time, tF = time_vector[simStepCount + 1].time;
+			double	t0 = reinitInstants[simStepCount].time, tF = reinitInstants[simStepCount + 1].time;
 
 			printCLI = "+---------------------------------------------------------------------+\n";
 
@@ -401,7 +409,7 @@ public:
 			D_Particle_Values = D_lambdas;
 
 
-			if (time_vector[simStepCount].impulse) {
+			if (reinitInstants[simStepCount].impulse) {
 				/////////////////////////////////////////////////////////////////////////////////////////
 				/////////////////////////////////////////////////////////////////////////////////////////
 				// -------------------------- DELTA/HEAVISIDE IMPULSE TERMS -------------------------- //
@@ -416,7 +424,7 @@ public:
 				errorCheck(IMPULSE_TRANSFORM_PDF(	D_PDF_ProbDomain,
 													D_Particle_Locations,
 													D_Particle_Values,
-													time_vector[simStepCount],
+													reinitInstants[simStepCount],
 													jumpCount,
 													Problem_Domain,
 													Expanded_Domain,
@@ -623,9 +631,14 @@ public:
 					SimLog.writeToFile();
 				#endif
 			}
-
-			statusBar.update();
+			statusBar.set_option(indicators::option::PostfixText{"Iterations completed: " + std::to_string(simStepCount) + "/" + std::to_string(reinitInstants.size() - 1)});
+			statusBar.set_progress((float) simStepCount/(reinitInstants.size() - 1)*100);
 		}
+
+		std::cout << termcolor::bold << termcolor::green << "Liouville solver: Completed successfully!" << std::endl;
+  		std::cout << termcolor::reset;
+
+		indicators::show_console_cursor(true);
 
 		const UINT nrFrames = storeFrames.size()/nrNodesPerFrame;
 		storeFrames.resize((nrFrames + 1)*nrNodesPerFrame);
@@ -727,9 +740,9 @@ public:
 
                         // #if IMPULSE_TYPE == 0 || IMPULSE_TYPE ==1
                         for (UINT i = k * max_frames_file + frames_init; i < k * max_frames_file + frames_in_file + frames_init - 1; i++) {
-                            file1 << time_vector[i].time << ",";
+                            file1 << reinitInstants[i].time << ",";
                         }
-                        file1 << time_vector[k * max_frames_file + frames_in_file + frames_init - 1].time;
+                        file1 << reinitInstants[k * max_frames_file + frames_in_file + frames_init - 1].time;
 
                         
                         file1.close();
