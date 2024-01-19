@@ -34,7 +34,7 @@
 #include "Case_definition.cuh"			// Here, we read the information of the problem to be simulated!
 #include "config.hpp"
 
-// To know the current progress of the simulation
+// To know the current progress of the simulation. Get from: https://github.com/p-ranav/indicators
 #include "indicators/cursor_control.hpp"
 #include "indicators/progress_bar.hpp"
 
