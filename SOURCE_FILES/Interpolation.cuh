@@ -365,21 +365,18 @@ __device__ TYPE RBF(const TYPE& SuppRBF, const TYPE& inputNormalized){
 
 	#if PHASE_SPACE_DIMENSIONS == 1
 	const double Mass_RBF = 0.333383333333333;
-	return (TYPE)powf(fmaxf(0, 1 - inputNormalized), 4) * (4 * inputNormalized + 1) / (Mass_RBF * SuppRBF);
 
 	#elif PHASE_SPACE_DIMENSIONS == 2
-	const double Mass_RBF = 0.071428571420238; // this is actually the: int_0^1 phi(r)r dr
-	return (TYPE)powf(fmaxf(0, 1 - inputNormalized), 4) * (4 * inputNormalized + 1)
-						 / (Mass_RBF * 2 * M_PI * powf(SuppRBF, PHASE_SPACE_DIMENSIONS));
+	const double Mass_RBF = 0.4487989332761852; // this is actually the: int_0^1 phi(r)r dr
 
 	#elif PHASE_SPACE_DIMENSIONS == 3
+	const double Mass_RBF = 0.2991993007905369;
 
-	return (TYPE)powf(fmaxf(0, 1 - inputNormalized), 4.00f) * (4.00f * inputNormalized + 1.00f); // We multiply by this last factor to get the L1-normalized RBF
-
-	#else
-	return 0;
-
+	#elif PHASE_SPACE_DIMENSIONS == 4
+	const double Mass_RBF = 0.19582548282938347;
 	#endif
+
+	return (TYPE)powf(fmaxf(0, 1 - inputNormalized), 4) * (4 * inputNormalized + 1) / Mass_RBF / powf(SuppRBF, PHASE_SPACE_DIMENSIONS); // We multiply by this last factor to get the L1-normalized RBF
 
 }
 

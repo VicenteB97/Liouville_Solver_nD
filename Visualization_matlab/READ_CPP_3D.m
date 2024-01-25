@@ -54,7 +54,7 @@ if Save_infoFile
 end
 
 %%
-skip = 4;
+skip = 2;
 Integral_vals = zeros(1,floor(timesteps/skip));
 iso_val       = zeros(floor(timesteps/skip),2);
 Marg_X        = zeros(Pts_Per_Dimension,1);
@@ -74,20 +74,20 @@ for l = 1:skip:timesteps
     % COMPUTE THE "HEIGHT" OF THE PDF OVER WHOM WE HAVE "conf_lvl" MASS
     iso_val(l,:)=ComputeRegion(Data(:,l)',conf_lvl*Integral_vals(l),h_X,PHASE_SPACE_DIMENSIONS);
 
-    figure(l)
-    xlim([0,1]);xlabel(Name_var2);
-    ylim([0,1]);ylabel(Name_var1);
-    zlim([0,1]);zlabel(Name_var3);
-    title(['Confidence surface at time ', num2str(Info{2,l})]);
-    isosurface(x,y,z,F_Output(:,:,:,l),iso_val(l,1));view(3);colorbar;grid on; grid minor; lightangle(-45,45); drawnow;
-
-    figure(100+l)
-    subplot(3,1,1)
-    plot(X,Marg_X,'r.-');xlabel(Name_var1);ylabel('Probability Density'); drawnow;
-    subplot(3,1,2)
-    plot(Y,Marg_Y,'r.-');xlabel(Name_var2);ylabel('Probability Density'); drawnow;
-    subplot(3,1,3)
-    plot(Z,Marg_Z,'r.-');xlabel(Name_var3);ylabel('Probability Density'); drawnow;
-    sgtitle(['Marginal PDFs at time ', num2str(Info{2,l})]);
-    pause(0.5);
+%     figure(l)
+%     xlim([0,1]);xlabel(Name_var2);
+%     ylim([0,1]);ylabel(Name_var1);
+%     zlim([0,1]);zlabel(Name_var3);
+%     title(['Confidence surface at time ', num2str(Info{2,l})]);
+%     isosurface(x,y,z,F_Output(:,:,:,l),iso_val(l,1));view(3);colorbar;grid on; grid minor; lightangle(-45,45); drawnow;
+% 
+%     figure(100+l)
+%     subplot(3,1,1)
+%     plot(X,Marg_X,'r.-');xlabel(Name_var1);ylabel('Probability Density'); drawnow;
+%     subplot(3,1,2)
+%     plot(Y,Marg_Y,'r.-');xlabel(Name_var2);ylabel('Probability Density'); drawnow;
+%     subplot(3,1,3)
+%     plot(Z,Marg_Z,'r.-');xlabel(Name_var3);ylabel('Probability Density'); drawnow;
+%     sgtitle(['Marginal PDFs at time ', num2str(Info{2,l})]);
+%     pause(0.5);
 end

@@ -10,8 +10,8 @@ Show_Confidence_Region = true;
 Show_Animation = false;
 Save_Animation = false; % STILL NOT WORKING...I'LL FIND OUT SOON
 
-Name_var1 = 'A_P';
-Name_var2 = 'A_E';
+Name_var1 = 'x';
+Name_var2 = 'Dx';
 
 %% CHANGE FOR YOUR CURRENT COMPUTER
 
