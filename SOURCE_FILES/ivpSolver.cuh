@@ -548,7 +548,7 @@ public:
 					PDF_Support.Update_boundingBox(D_Particle_Locations);
 					
 					// COMPUTE THE SOLUTION "PROJECTION" INTO THE L1 SUBSPACE. THIS WAY, REINITIALIZATION CONSERVES VOLUME (=1)
-					if (PHASE_SPACE_DIMENSIONS < 3) {
+					if (PHASE_SPACE_DIMENSIONS < 5) {
 						TYPE temp = thrust::reduce(thrust::device, D_Particle_Values.begin(), D_Particle_Values.end());
 						thrust::transform(D_Particle_Values.begin(), D_Particle_Values.end(), D_Particle_Values.begin(), Samples_PerBlk / temp * _1);
 					}
