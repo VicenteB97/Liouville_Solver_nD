@@ -28,7 +28,7 @@ int16_t PDF_EVOLUTION() {
 	std::cout << "(REMINDER) You can type \"-1\" to  exit the program while typing this information.\n\n";
 	// Pre-Simulation Data initialization -------------------------------------------------------------------------------
 
-	ivpSolver::ivpSolver Solver;
+	ivpSolver Solver;
 
 	errorCheck(Solver.buildDomain())
 	

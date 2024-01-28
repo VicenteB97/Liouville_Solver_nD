@@ -25,10 +25,15 @@
 #include "Impulse_transformations.cuh"
 #include "Integrator.cuh"
 
-namespace ivpSolver{
+
 
 class ivpSolver{
 public:
+	// Set the default constructor. Parametric constructor won't be needed!
+	ivpSolver(){}
+	~ivpSolver(){}
+
+private:
 	//Domain where the PDF will evolve (positively invariant set)
 	Mesh Problem_Domain;
 	
@@ -48,9 +53,6 @@ public:
 
 	// Final simulation storage
 	std::vector<TYPE> storeFrames;
-
-	// Set the default constructor. Parametric constructor won't be needed!
-	ivpSolver(){}
 
 // Methods:
 public:
@@ -767,6 +769,5 @@ public:
 			return error_check;
 		}
 };
-}
 
 #endif
