@@ -225,27 +225,32 @@ __global__ void RESTART_GRID_FIND_GN(Particle* Particle_Positions,
 
 	if (i >= Adapt_Pts * Block_samples) { return; }
 
-	UINT		Current_sample = offset + floorf(i / Adapt_Pts);
+	UINT Current_sample = offset + floorf(i / Adapt_Pts);
 	Param_vec<PARAM_SPACE_DIMENSIONS>	aux = Gather_Param_Vec<PARAM_SPACE_DIMENSIONS>(Current_sample, Parameter_Mesh, n_Samples);
 
 	TYPE weighted_lambda = lambdas[i] * aux.Joint_PDF;
 
-	Particle	particle = Particle_Positions[i];
+	Particle particle(Particle_Positions[i]);
 
 	// Find the point in the lowest corner of the search box!
-	Particle Lowest_node = Expanded_Domain.Get_node(Expanded_Domain.Get_binIdx(particle, -lround(DISC_RADIUS)));
+	Particle Lowest_node(Expanded_Domain.Get_node(Expanded_Domain.Get_binIdx(particle, -lround(DISC_RADIUS))));
 
-	const INT Neighbors_per_dim = 2 * lround(DISC_RADIUS) + 1;
+	const UINT Neighbors_per_dim = 2 * lround(DISC_RADIUS) + 1;
+	const UINT totalNeighborsToVisit = pow(Neighbors_per_dim, PHASE_SPACE_DIMENSIONS); 
+	const TYPE domainDiscretization = Domain.Discr_length();
 
 	// Go through all the nodes where rewriting will be possible
-	for (uint16_t k = 0; k < pow(Neighbors_per_dim, PHASE_SPACE_DIMENSIONS); k++) {
+	for (uint16_t k = 0; k < totalNeighborsToVisit; k++) {
 
-		Particle visit_node = Lowest_node;
+		Particle visit_node(Lowest_node);
 
 		// Get the node at that point
+		TYPE tempPowerAccumulate = 1;
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-			INT temp_idx = floor(positive_rem(k, pow(Neighbors_per_dim, d + 1)) / pow(Neighbors_per_dim, d));
-			visit_node.dim[d] += temp_idx * Domain.Discr_length();
+			UINT temp_idx = floor(positive_rem(k, Neighbors_per_dim * tempPowerAccumulate) / tempPowerAccumulate);
+
+			visit_node.dim[d] += temp_idx * domainDiscretization;
+			tempPowerAccumulate *= Neighbors_per_dim;
 		}
 
 		// If it is inside our problem mesh...
@@ -291,19 +296,24 @@ __global__ void RESTART_GRID_FIND_GN(Particle*	Particle_Positions,
 	Particle particle(Particle_Positions[i + Current_sample * Adapt_Pts]);
 
 	// Find the point in the lowest corner of the search box!
-	Particle Lowest_node = Expanded_Domain.Get_node(Expanded_Domain.Get_binIdx(particle, -roundf(DISC_RADIUS)));
+	Particle Lowest_node(Expanded_Domain.Get_node(Expanded_Domain.Get_binIdx(particle, -lround(DISC_RADIUS))));
 
-	const INT Neighbors_per_dim = 2 * lround(DISC_RADIUS) + 1;
+	const UINT Neighbors_per_dim = 2 * lround(DISC_RADIUS) + 1;
+	const UINT totalNeighborsToVisit = pow(Neighbors_per_dim, PHASE_SPACE_DIMENSIONS); 
+	const TYPE domainDiscretization = Domain.Discr_length();
 
 	// Go through all the nodes where rewriting will be possible
-	for (uint16_t k = 0; k < pow(Neighbors_per_dim, PHASE_SPACE_DIMENSIONS); k++) {
+	for (uint16_t k = 0; k < totalNeighborsToVisit; k++) {
 
-		Particle visit_node = Lowest_node;
+		Particle visit_node(Lowest_node);
 
 		// Get the node at that point
+		TYPE tempPowerAccumulate = 1;
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-			INT temp_idx = floor(positive_rem(k, pow(Neighbors_per_dim, d + 1)) / pow(Neighbors_per_dim, d));
-			visit_node.dim[d] += temp_idx * Domain.Discr_length();
+			INT temp_idx = floor(positive_rem(k, Neighbors_per_dim * tempPowerAccumulate) / tempPowerAccumulate);
+
+			visit_node.dim[d] += temp_idx * domainDiscretization;
+			tempPowerAccumulate *= Neighbors_per_dim;
 		}
 
 		// If it is inside our problem mesh...

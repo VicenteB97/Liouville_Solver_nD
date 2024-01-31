@@ -51,7 +51,7 @@ __global__ void D__Wavelet_Transform__F(TYPE*		PDF,
 	TYPE multCounter = 1;	// auxiliary counter: => pow(BoundingBox.Nodes_per_Dim / rescaling, d)
 	TYPE multCounter_2 = 1;	// For the BoundingBox: => pow(BoundingBox.Nodes_per_Dim, d)
 	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-		INT temp_idx = floor(positive_rem(globalID, multCounter * (BoundingBox.Nodes_per_Dim / rescaling)) / multCounter) * rescaling;
+		INT temp_idx = floorf(positive_rem(globalID, multCounter * (BoundingBox.Nodes_per_Dim / rescaling)) / multCounter) * rescaling;
 
 		cube_app_IDX += temp_idx * multCounter_2;
 		multCounter *= BoundingBox.Nodes_per_Dim / rescaling;
@@ -65,13 +65,13 @@ __global__ void D__Wavelet_Transform__F(TYPE*		PDF,
 	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
 
 		// Go through all the vertices that are defined by the main cube approximation vertex
-		for (INT k = 0; k < miniSquareNodes; k++) {
+		for (UINT k = 0; k < miniSquareNodes; k++) {
 
 			// If we are at the current approximation vertex:
-			if (floor(positive_rem(k, 2 * multCounter) / multCounter) == 0) {		// here, multCounter == pow(2, d)
+			if (floorf(positive_rem(k, 2 * multCounter) / multCounter) == 0.00f) {		// here, multCounter == pow(2, d)
 
 				// Copmute approximation node
-				INT app_IDX_at_BBox = cube_app_IDX;
+				UINT app_IDX_at_BBox = cube_app_IDX;
 
 				UINT multCounter_3 = 1;	// => pow(2, j)
 				UINT multCounter_4 = 1;	// => pow(BoundingBox.Nodes_per_Dim, j)
@@ -87,15 +87,15 @@ __global__ void D__Wavelet_Transform__F(TYPE*		PDF,
 				// Compute corresponding detail node
 				INT det_IDX_at_BBox = app_IDX_at_BBox + multCounter_2 * rescaling / 2;
 
-				Particle app_node = BoundingBox.Get_node(app_IDX_at_BBox);
-				Particle det_node = BoundingBox.Get_node(det_IDX_at_BBox);
+				Particle app_node(BoundingBox.Get_node(app_IDX_at_BBox));
+				Particle det_node(BoundingBox.Get_node(det_IDX_at_BBox));
 
 				// Check which ones are in the problem domain!
 				if (Problem_Domain.Contains_particle(app_node) && Problem_Domain.Contains_particle(det_node)) {
 
 					// Calculate the indeces for the problem domain
-					INT app_node_at_PD = Problem_Domain.Get_binIdx(app_node);
-					INT det_node_at_PD = Problem_Domain.Get_binIdx(det_node);
+					INT app_node_at_PD(Problem_Domain.Get_binIdx(app_node));
+					INT det_node_at_PD(Problem_Domain.Get_binIdx(det_node));
 
 					_1D_WVLET(PDF[app_node_at_PD], PDF[det_node_at_PD]);
 				}
@@ -110,7 +110,7 @@ __global__ void D__Wavelet_Transform__F(TYPE*		PDF,
 
 	for (UINT k = 1; k < miniSquareNodes; k++) {
 
-		Particle visit_node = BoundingBox.Get_node(cube_app_IDX);
+		Particle visit_node(BoundingBox.Get_node(cube_app_IDX));
 
 		multCounter = 1;	// restart the counter
 
@@ -136,6 +136,8 @@ __global__ void D__Wavelet_Transform__F(TYPE*		PDF,
 	}
 }
 
+
+
 template<uint16_t elementsProcessedPerThread>
 __global__ void customAssignToGpuArray(TYPE* outputPDF, const TYPE* inputPDF, Particle* outputNodes, const Mesh inputNodes,
 										 const UINT* nodeIdx, const INT elementNr){
@@ -146,13 +148,12 @@ __global__ void customAssignToGpuArray(TYPE* outputPDF, const TYPE* inputPDF, Pa
 
 		const UINT myIdx = globalId * elementsProcessedPerThread + k;
 
-		if(myIdx >= elementNr){ return; }
+		if(myIdx < elementNr){
+			const INT myNodeIdx = nodeIdx[myIdx];
 
-		const INT myNodeIdx = nodeIdx[myIdx];
-
-		outputPDF[myIdx] = inputPDF[myNodeIdx];
-		outputNodes[myIdx] = inputNodes.Get_node(myNodeIdx);
-
+			outputPDF[myIdx] = inputPDF[myNodeIdx];
+			outputNodes[myIdx] = inputNodes.Get_node(myNodeIdx);
+		}
 	}
 }
 

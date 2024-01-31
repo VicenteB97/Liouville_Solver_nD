@@ -44,8 +44,9 @@ private:
 	// Time vector, impulse information, timestep and effective timestep
 	std::vector<Time_instants> reinitInstants;
 	double deltaT;
-	int32_t ReinitSteps;
+	int32_t ReinitSteps, savingArraySteps;
 
+	// Only when we want logging
 	#if OUTPUT_INFO > 0
 	// Logging
 	Logger SimLog;
@@ -91,7 +92,8 @@ public:
 
 			errorCheck(intCheck(get_answer, terminalInput, REINIT_ERR_MSG, 0, 1))
 		}
-		const uint16_t 	savingArraySteps = std::stoi(terminalInput);
+		
+		savingArraySteps = std::stoi(terminalInput);
 		const UINT 		savingArraySize  = floor(reinitInstants.size() / savingArraySteps);
 
 		storeFrames.resize(Problem_Domain.Total_Nodes() * savingArraySize);
@@ -740,13 +742,11 @@ public:
                         }
                         file1 << simulationDuration << "\n";
 
-                        // #if IMPULSE_TYPE == 0 || IMPULSE_TYPE ==1
                         for (UINT i = k * max_frames_file + frames_init; i < k * max_frames_file + frames_in_file + frames_init - 1; i++) {
-                            file1 << reinitInstants[i].time << ",";
+                            file1 << reinitInstants[i * savingArraySteps].time << ",";
                         }
-                        file1 << reinitInstants[k * max_frames_file + frames_in_file + frames_init - 1].time;
+                        file1 << reinitInstants[(k * max_frames_file + frames_in_file + frames_init - 1) * savingArraySteps].time;
 
-                        
                         file1.close();
 
                     	// SIMULATION OUTPUT

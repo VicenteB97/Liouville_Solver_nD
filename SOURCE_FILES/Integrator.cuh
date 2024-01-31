@@ -5,6 +5,32 @@
 #include "Probability.cuh"
 #include "Domain.cuh"
 
+
+// The following functions are not to be modified
+__device__ 
+inline Particle VECTOR_FIELD(Particle X, 
+                            double      t, 
+                            const Param_vec<PARAM_SPACE_DIMENSIONS> parameter, 
+                            const UINT      mode, 
+                            const double    extra_param[]) {
+
+	return { VEC_FIELD };
+}
+//-------------------------------------------------------------------------
+
+//-------------------------------------------------------------------------
+__device__
+inline TYPE DIVERGENCE_FIELD (Particle X,
+                            double      t, 
+                            const Param_vec<PARAM_SPACE_DIMENSIONS> parameter, 
+                            const UINT   mode, 
+                            const double extra_param[]) {
+
+	return DIVERGENCE;
+}
+
+
+
 using namespace thrust::placeholders; // this is useful for the multiplication of a device vector by a constant
 
 /// @brief This function computes the advection of the particles created by AMR.

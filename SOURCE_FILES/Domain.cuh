@@ -44,9 +44,7 @@ public:
 		Particle out;
 
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-			TYPE aux = dim[d];
-			aux += other.dim[d];
-			out.dim[d] = aux;
+			out.dim[d] = dim[d] + other.dim[d];
 		}
 
 		return out;
@@ -56,20 +54,17 @@ public:
 		Particle out;
 
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-			TYPE aux = dim[d];
-			aux -= other.dim[d];
-			out.dim[d] = aux;
+			out.dim[d] = dim[d] - other.dim[d];
 		}
 
 		return out;
 	}
 	__host__ __device__ 
 	bool operator==(const Particle& other) const {
-		bool out = true;
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-			if (dim[d] != other.dim[d]) { out = false; }
+			if (dim[d] != other.dim[d]) { return false; }
 		}
-		return out;
+		return true;
 	}
 
 	__host__ __device__ 
@@ -85,7 +80,6 @@ public:
 	__host__ __device__ 
 	inline Particle Mult_by_Scalar(TYPE scalar) const {
 		Particle out;
-
 		
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
 			out.dim[d] = scalar * dim[d];
@@ -104,7 +98,7 @@ public:
 
 // This function is defined aside because CUDA does not allow defining __global__ functions inside class definitions! (At least not statically)
  
-__global__ void findProjection(const Particle* particles, TYPE* projections, UINT totalParticles, UINT dimension) {
+__global__ void findProjection(const Particle* particles, TYPE* projections, INT totalParticles, INT dimension) {
 	
 	const uint64_t globalID = blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -120,7 +114,7 @@ __global__ void findProjection(const Particle* particles, TYPE* projections, UIN
 class Mesh{
 public:
 	Particle 	Boundary_inf, Boundary_sup;
-	UINT		Nodes_per_Dim;
+	INT		Nodes_per_Dim;
 
 	// Parametric constructors:
 	/// @brief Create a Mesh knowing the nodes per dimension
@@ -140,7 +134,7 @@ public:
 
 		Boundary_inf = Particle(DOMAIN_INF);
 		Boundary_sup = Particle(DOMAIN_SUP);
-		Nodes_per_Dim = roundf((Boundary_sup.dim[0] - Boundary_inf.dim[0]) / Discretization_length);
+		Nodes_per_Dim = roundf((TYPE)(Boundary_sup.dim[0] - Boundary_inf.dim[0]) / Discretization_length);
 	}
 
 	/// @brief Create a Mesh specifying all the parameters
@@ -170,7 +164,7 @@ public:
 // Methods/functions
 public:
 	/// @brief Compute the total number of nodes
-	__host__ __device__	inline UINT Total_Nodes() const {
+	__host__ __device__	inline INT Total_Nodes() const {
 		return pow(Nodes_per_Dim, PHASE_SPACE_DIMENSIONS);
 	}
 
@@ -197,12 +191,13 @@ public:
 	__host__ __device__	inline Particle Get_node(INT globalIdx) const {
 
 		Particle out(Boundary_inf);
-		UINT temp = 1;
+		INT temp = 1;
+		TYPE discretizationLength = this->Discr_length();
 
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-			INT j = floorf( positive_rem(globalIdx, temp * Nodes_per_Dim) / temp );	// This line gives the index at each dimension
+			INT j = floorf((TYPE) positive_rem(globalIdx, temp * Nodes_per_Dim) / temp );	// This line gives the index at each dimension
 
-			out.dim[d] += j * this->Discr_length(); temp *= Nodes_per_Dim;			// This line gives the Mesh node per se
+			out.dim[d] += j * discretizationLength; temp *= Nodes_per_Dim;			// This line gives the Mesh node per se
 		}
 		return out;
 	}
@@ -218,11 +213,12 @@ public:
 	}
 	
 	// Returns the bin (or ID of the closest node) where Particle belongs to, adding bin_offset.
-	__host__ __device__ inline UINT Get_binIdx(const Particle& Particle, INT bin_offset = 0) const {
-		UINT bin_idx = 0, accPower = 1;
+	__host__ __device__ inline INT Get_binIdx(const Particle& Particle, INT bin_offset = 0) const {
+		INT bin_idx = 0, accPower = 1;
+		TYPE discretizationLength = this->Discr_length();
  
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-			INT temp_idx = roundf((Particle.dim[d] - Boundary_inf.dim[d]) / this->Discr_length()) + bin_offset;
+			INT temp_idx = roundf((TYPE)(Particle.dim[d] - Boundary_inf.dim[d]) / discretizationLength) + bin_offset;
 
 			bin_idx  += temp_idx * accPower;
 			accPower *= Nodes_per_Dim;
@@ -231,14 +227,14 @@ public:
 	};
 
 	// Compute the global index at your mesh, given the global index in "other" mesh.
-	__host__ inline UINT Indx_here(UINT indx_at_other, const Mesh& other) const {
+	__host__ inline INT Indx_here(INT indx_at_other, const Mesh& other) const {
 		return this->Get_binIdx(other.Get_node(indx_at_other));
 	}
 
 	/// @brief This function expands a fixed Mesh "Other" by a length of  "expansion_length" in each direction/dimension
 	/// @param Other The base Mesh from which we will expand
 	/// @param expansion_nodes Number of nodes we will expand in every direction
-	__host__ __device__	inline void Expand_From(const Mesh& Other, UINT expansion_nodes) {
+	__host__ __device__	inline void Expand_From(const Mesh& Other, INT expansion_nodes) {
 		
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
 			// To make sure that the points fall into the Mesh nodes
@@ -255,7 +251,7 @@ public:
 		TYPE max_dist = Boundary_sup.dim[0] - Boundary_inf.dim[0];
 
 		for (uint16_t d = 1; d < PHASE_SPACE_DIMENSIONS; d++) {
-			max_dist = fmaxf(max_dist, Boundary_sup.dim[d] - Boundary_inf.dim[d]);
+			max_dist = fmaxf((TYPE)max_dist, Boundary_sup.dim[d] - Boundary_inf.dim[d]);
 		}
 
 		// Now that we know the max dist, let's expand the edges!
@@ -269,8 +265,8 @@ public:
 	/// @returns Nothing
 	inline void Update_boundingBox(const thrust::device_vector<Particle>& D_Particle_Locations){
 		
-		UINT Threads = fmin(THREADS_P_BLK, D_Particle_Locations.size());
-		UINT Blocks	 = floor((D_Particle_Locations.size() - 1) / Threads) + 1;
+		INT Threads = fmin(THREADS_P_BLK, D_Particle_Locations.size());
+		INT Blocks	 = floor((D_Particle_Locations.size() - 1) / Threads) + 1;
 
 		// Temporary vector storing the particles' projections in each dimension 
 		thrust::device_vector<TYPE> projection(D_Particle_Locations.size(),(TYPE)0);
@@ -281,8 +277,8 @@ public:
 			TYPE temp_1 = *(thrust::min_element(thrust::device, projection.begin(), projection.end())); // min element from the projection in that direction
 			TYPE temp_2 = *(thrust::max_element(thrust::device, projection.begin(), projection.end()));
 			
-			Boundary_inf.dim[d] = temp_1 - ceil(DISC_RADIUS) * this->Discr_length();
-			Boundary_sup.dim[d] = temp_2 + ceil(DISC_RADIUS) * this->Discr_length();
+			Boundary_inf.dim[d] = temp_1 - ceilf(DISC_RADIUS) * this->Discr_length();
+			Boundary_sup.dim[d] = temp_2 + ceilf(DISC_RADIUS) * this->Discr_length();
 		}
 		projection.clear();
 	}
