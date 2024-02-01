@@ -48,8 +48,8 @@ __global__ void D__Wavelet_Transform__F(TYPE*		PDF,
 
 	// Compute the index and the node per se
 
-	TYPE multCounter = 1;	// auxiliary counter: => pow(BoundingBox.Nodes_per_Dim / rescaling, d)
-	TYPE multCounter_2 = 1;	// For the BoundingBox: => pow(BoundingBox.Nodes_per_Dim, d)
+	UINT multCounter = 1;	// auxiliary counter: => pow(BoundingBox.Nodes_per_Dim / rescaling, d)
+	UINT multCounter_2 = 1;	// For the BoundingBox: => pow(BoundingBox.Nodes_per_Dim, d)
 	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
 		INT temp_idx = floorf(positive_rem(globalID, multCounter * (BoundingBox.Nodes_per_Dim / rescaling)) / multCounter) * rescaling;
 
@@ -68,7 +68,7 @@ __global__ void D__Wavelet_Transform__F(TYPE*		PDF,
 		for (UINT k = 0; k < miniSquareNodes; k++) {
 
 			// If we are at the current approximation vertex:
-			if (floorf(positive_rem(k, 2 * multCounter) / multCounter) == 0.00f) {		// here, multCounter == pow(2, d)
+			if (floorf(positive_rem(k, 2 * multCounter) / multCounter) == 0) {		// here, multCounter == pow(2, d)
 
 				// Copmute approximation node
 				UINT app_IDX_at_BBox = cube_app_IDX;

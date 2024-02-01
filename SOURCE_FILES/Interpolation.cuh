@@ -245,9 +245,9 @@ __global__ void RESTART_GRID_FIND_GN(Particle* Particle_Positions,
 		Particle visit_node(Lowest_node);
 
 		// Get the node at that point
-		TYPE tempPowerAccumulate = 1;
+		UINT tempPowerAccumulate = 1;
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-			UINT temp_idx = floor(positive_rem(k, Neighbors_per_dim * tempPowerAccumulate) / tempPowerAccumulate);
+			UINT temp_idx = floorf(positive_rem(k, Neighbors_per_dim * tempPowerAccumulate) / tempPowerAccumulate);
 
 			visit_node.dim[d] += temp_idx * domainDiscretization;
 			tempPowerAccumulate *= Neighbors_per_dim;
@@ -308,9 +308,9 @@ __global__ void RESTART_GRID_FIND_GN(Particle*	Particle_Positions,
 		Particle visit_node(Lowest_node);
 
 		// Get the node at that point
-		TYPE tempPowerAccumulate = 1;
+		UINT tempPowerAccumulate = 1;
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-			INT temp_idx = floor(positive_rem(k, Neighbors_per_dim * tempPowerAccumulate) / tempPowerAccumulate);
+			UINT temp_idx = floorf(positive_rem(k, Neighbors_per_dim * tempPowerAccumulate) / tempPowerAccumulate);
 
 			visit_node.dim[d] += temp_idx * domainDiscretization;
 			tempPowerAccumulate *= Neighbors_per_dim;
