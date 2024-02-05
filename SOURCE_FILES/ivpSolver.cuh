@@ -278,12 +278,10 @@ public:
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// START OF SIMULATION STEPS AS SUCH
 
-		// Store the 1st PDF (Init. Cond.)
-		thrust::copy(PDF_ProbDomain.begin(), PDF_ProbDomain.end(), &storeFrames[0]);
-
 		// Simulation steps
 		uint32_t simStepCount = 0;
 		uint32_t saveStepCount = 0;
+		std::atomic<bool> increaseFrameCount{false};
 		
 		// Aux variable to switch between step functions (Heaviside forcing) 
 		uint32_t mode = 0;
@@ -302,8 +300,21 @@ public:
 		#endif
 
 
+		// Define concurrent saving lambda function
+		auto concurrentSaving = [&increaseFrameCount](const thrust::host_vector<TYPE> vSrc, std::vector<TYPE>& vDst, const UINT simStepCount, const UINT saveStepCount, const UINT savingArraySteps, const UINT nrNodesPerFrame) {
+			if (simStepCount % savingArraySteps == 0 && saveStepCount < vDst.size() / nrNodesPerFrame - 1) {
+				// Store info in cumulative variable
+				thrust::copy(vSrc.begin(), vSrc.end(), &vDst[saveStepCount * nrNodesPerFrame]);
+				increaseFrameCount = true;
+			}
+		};
+
 		// IN THIS LINE WE START WITH THE ACTUAL ITERATIONS OF THE LIOUVILLE EQUATION
 		while (simStepCount < reinitInstants.size() - 1) {
+
+			// Save previous frame concurrently, so no time is used for this
+			std::thread storeFrame_worker (concurrentSaving, PDF_ProbDomain, std::ref(storeFrames), simStepCount, saveStepCount, savingArraySteps, nrNodesPerFrame);
+			if(increaseFrameCount){	increaseFrameCount = false;	saveStepCount++;}
 
 			// select the first and last time value of the current iteration
 			double	t0 = reinitInstants[simStepCount].time, tF = reinitInstants[simStepCount + 1].time;
@@ -625,16 +636,9 @@ public:
 				// Upadte simulation step
 				simStepCount++;
 			}
+			
+			storeFrame_worker.join();
 
-			if(simStepCount % savingArraySteps == 0 && saveStepCount < storeFrames.size()/nrNodesPerFrame - 1){
-				// Store info in cumulative variable
-				thrust::copy(PDF_ProbDomain.begin(), PDF_ProbDomain.end(), &storeFrames[++saveStepCount * nrNodesPerFrame]);
-
-				#if OUTPUT_INFO > 0
-					// Write entire log to a file!
-					SimLog.writeToFile();
-				#endif
-			}
 			statusBar.set_option(indicators::option::PostfixText{"Iterations completed: " + std::to_string(simStepCount) + "/" + std::to_string(reinitInstants.size() - 1)});
 			statusBar.set_progress((float) simStepCount/(reinitInstants.size() - 1)*100);
 		}
@@ -642,7 +646,7 @@ public:
 		std::cout << termcolor::bold << termcolor::green << "Liouville solver: Completed successfully!" << std::endl;
   		std::cout << termcolor::reset;
 
-		indicators::show_console_cursor(true);
+		//indicators::show_console_cursor(true);
 
 		const UINT nrFrames = storeFrames.size()/nrNodesPerFrame;
 		storeFrames.resize((nrFrames + 1)*nrNodesPerFrame);

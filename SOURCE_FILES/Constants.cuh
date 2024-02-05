@@ -14,6 +14,7 @@
 #include <chrono>       // Timing the execution of functions
 #include <limits>		// To get limits from variables
 #include <thread>		// For multithreading
+#include <atomic>		// For multithreading atomic functions
 
 // Headers for the CUDA libraries
 #include "cuda_runtime.h"
@@ -29,6 +30,7 @@
 #include <thrust/fill.h>                // Explicitly fill host/device functions with a value
 #include <thrust/sort.h>                // GPU-based sorting
 #include <thrust/extrema.h>             // Compute max. and min. of GPU arrays
+#include <thrust/inner_product.h>		// To compute the inner product of GPU arrays
 
 // Include the Simulation definition!
 #include "Case_definition.cuh"			// Here, we read the information of the problem to be simulated!

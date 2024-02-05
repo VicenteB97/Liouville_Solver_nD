@@ -236,5 +236,4 @@ int16_t setInitialParticles(const thrust::host_vector<TYPE>&	H_PDF,
 	return 0;
 }
 
-
 #endif
