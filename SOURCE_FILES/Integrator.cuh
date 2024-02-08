@@ -9,19 +9,19 @@
 // The following functions are not to be modified
 __device__ 
 inline Particle VECTOR_FIELD(Particle X, 
-                            double      t, 
+                            TYPE      t, 
                             const Param_vec<PARAM_SPACE_DIMENSIONS> parameter, 
                             const UINT      mode, 
                             const double    extra_param[]) {
 
-	return { VEC_FIELD };
+	return {VEC_FIELD};
 }
 //-------------------------------------------------------------------------
 
 //-------------------------------------------------------------------------
 __device__
 inline TYPE DIVERGENCE_FIELD (Particle X,
-                            double      t, 
+                            TYPE      t, 
                             const Param_vec<PARAM_SPACE_DIMENSIONS> parameter, 
                             const UINT   mode, 
                             const double extra_param[]) {

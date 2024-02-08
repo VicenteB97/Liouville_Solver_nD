@@ -237,9 +237,6 @@ public:
 		const UINT	ConjGrad_MaxSteps  = 1000;		 								
 		const TYPE	RBF_SupportRadius  = DISC_RADIUS * Problem_Domain.Discr_length();
 
-		// The string to be used for printing to the console
-		std::string printCLI;
-
 		// Full array storing appended particles for all parameter samples
 		std::vector<Particle>	Full_Particle_Locations;
 		std::vector<TYPE>		Full_Particle_Values;
@@ -268,7 +265,8 @@ public:
 
 		const UINT savingArraySteps = (reinitInstants.size()) / (storeFrames.size() / nrNodesPerFrame);
 
-		SimLog.resize(reinitInstants.size());
+		// Resize the simulation logger
+		SimLog.resize(reinitInstants.size()-1);
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -319,10 +317,11 @@ public:
 			std::thread storeFrame_worker (concurrentSaving, std::ref(PDF_ProbDomain), std::ref(storeFrames), simStepCount, saveStepCount, savingArraySteps, nrNodesPerFrame);
 			if(increaseFrameCount){	increaseFrameCount = false;	saveStepCount++;}
 
+			SimLog.LogFrames[simStepCount].simIteration = simStepCount;
+			SimLog.LogFrames[simStepCount].simTime 		= reinitInstants[simStepCount].time;
+
 			// select the first and last time value of the current iteration
 			double	t0 = reinitInstants[simStepCount].time, tF = reinitInstants[simStepCount + 1].time;
-
-			printCLI = "+---------------------------------------------------------------------+\n";
 
 			/////////////////////////////////////////////////////////////////////////////////////////
 			/////////////////////////////////////////////////////////////////////////////////////////

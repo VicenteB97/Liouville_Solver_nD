@@ -63,7 +63,7 @@ public:
 
 
 
-// The better class
+// The wrapper class
 class LogSimulation {
 public:
     std::vector<LogFrames> LogFrames;
@@ -97,7 +97,7 @@ public:
 
         // We follow the following order: Timings >> Iterations/Particles
 
-        logFile << "Time in Sim, Iteration in Sim, Time [s]: AMR, Time [s]: Interpolation, Time[s]: Advection, Time[s]: Reinitialization, , Relevant Particles (AMR), Conj.Grad. Iterations, Total particles (Advection)\n"; 
+        logFile << "Time in Sim, Iteration index in Sim, Time [s]: AMR, Time [s]: Interpolation, Time[s]: Advection, Time[s]: Reinitialization, , Relevant Particles (AMR), Conj.Grad. Iterations, Total particles (Advection)\n"; 
 
         for(auto &LogFrame : LogFrames){
 
