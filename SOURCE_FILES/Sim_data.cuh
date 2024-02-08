@@ -5,119 +5,118 @@
 #include "Probability.cuh"
 
 // Simulation log for further analysis
-class Logger {
+class LogFrames {
 public:
-    std::vector<double> subFrame_time;
-    std::vector<int32_t> ConvergenceIterations;
+    // Attributes:
+    double simTime;
+    UINT simIteration;
 
-    // default constructor
-    Logger(const uint32_t& size = 1) {
-        subFrame_time.resize(5 * size, (double)0);
-        ConvergenceIterations.resize(size, (int32_t)0);
-    }
+    double log_AMR_Time;
+    UINT log_AMR_RelevantParticles;
+    std::string log_AMR_Message;
+
+    double log_Interpolation_Time;
+    uint16_t log_Interpolation_Iterations;
+    std::string log_Interpolation_Message;
+
+    double log_Advection_Time;
+    UINT log_Advection_TotalParticles;
+    std::string log_Advection_Message;
+
+    double log_Reinitialization_Time;
+    std::string log_Reinitialization_Message;
+
+    uint64_t log_MemoryUsage;
+
+    double log_TotalFrameTime;
+    std::string log_TotalFrameTime_Message;
+
+    uint16_t log_MessageLevel; // 0 for info, 1 for warning, 2 for error
 
 public:
-    inline void resize(const int32_t& size) {
-        subFrame_time.resize(5 * size);
-        ConvergenceIterations.resize(size);
+    // Constructor
+    LogFrames(){
+        log_AMR_Time = 0;
+        log_AMR_RelevantParticles = 0;
+        log_AMR_Message = "";
+
+        log_Interpolation_Time = 0;
+        log_Interpolation_Iterations = 0;
+        log_Interpolation_Message = "";
+
+        log_Advection_Time = 0;
+        log_Advection_TotalParticles = 0;
+        log_Advection_Message = "";
+
+        log_MemoryUsage = 0;
+
+        log_Reinitialization_Time = 0;
+        log_Reinitialization_Message = "";
+
+        log_MessageLevel = 0;
+    }
+    
+    // Destructor
+    ~LogFrames(){};
+
+};
+
+
+
+// The better class
+class LogSimulation {
+public:
+    std::vector<LogFrames> LogFrames;
+
+public:
+    LogSimulation(UINT size = 1){
+        LogFrames.resize(size);
+    };
+
+    ~LogSimulation(){}
+
+public:
+
+    void resize(UINT size = 1){
+        LogFrames.resize(size);
     }
 
-    // Get the total frame time:
-    inline double FrameTime(const uint32_t& timeStep) const {
-        return (subFrame_time[5 *  timeStep] + subFrame_time[5 *  timeStep + 1] + subFrame_time[5 *  timeStep + 2] + subFrame_time[5 *  timeStep + 3] + subFrame_time[5 *  timeStep + 4]);
-    }
 
-    // Write to Command Line
-    void writeToCLI(const uint16_t& Log_Lvl, const uint32_t& time_step) const {
+    int16_t writeSimulationLog_toFile(const std::string& fileName = "Simulation Log File", const std::string fileExtension = ".csv", const std::string fileRelativePath = LOG_OUTPUT_relPATH){
 
-        switch(Log_Lvl){
-            case 1:
-                // Just show the total timestep + memory information (@ the GPU)
-                std::cout << "Total frame time: " << this->FrameTime(time_step) << "s.\n";
-                break;
+        const std::string fileCompleteInfo = fileRelativePath + fileName + fileExtension;
 
-            case 2:
-                // Show timing information
-                std::cout << "AMR timing: " << subFrame_time[5 *  time_step] << " s.\n";
-                std::cout << "Point search timing: " << subFrame_time[5 *  time_step + 2] << " s.\n";
-                std::cout << "Interpolation timing: " << subFrame_time[5 *  time_step + 3] << " s. CG Iterations: " << ConvergenceIterations[time_step] << ".\n";
-                std::cout << "Advection timing: " << subFrame_time[5 *  time_step + 1] << " s.\n";
-                std::cout << "Reinitialization timing: " << subFrame_time[5 *  time_step + 4] << " s.\n";
-                std::cout << "Total frame time: " << this->FrameTime(time_step) << " s.\n";
-                break;
+        std::cout << "[INFO]: Saving log file into " + fileCompleteInfo << std::endl;
 
-            default:
-                break;
-        }
-    }
-
-    void writeToFile() const {
-        // Complete function to write into a log file!
-        std::string Log_fileName = LOG_OUTPUT_relPATH;
-        Log_fileName.append("LogFile.csv");	// default filename
-
-        std::ofstream log_file(Log_fileName, std::ios::out);
-        assert(log_file.is_open());
-
-        std::string temp = "AMR, Advection, Point search, Interpolation, CG Iterations, Reinitialization, Total";
-
-        log_file << temp << "\n";
-
-        for (uint32_t i = 0; i < ConvergenceIterations.size(); i++) {
-
-            temp = std::to_string(subFrame_time[5 * i + 0]);
-            temp.append(",");
-            temp.append(std::to_string(subFrame_time[5 * i + 1]));
-            temp.append(",");
-            temp.append(std::to_string(subFrame_time[5 * i + 2]));
-            temp.append(",");
-            temp.append(std::to_string(subFrame_time[5 * i + 3]));
-            temp.append(",");
-            temp.append(std::to_string(ConvergenceIterations[i]));
-            temp.append(",");
-            temp.append(std::to_string(subFrame_time[5 * i + 4]));
-            temp.append(",");
-            temp.append(std::to_string(this->FrameTime(i)));
-                        
-            log_file << temp << "\n";
+        std::ofstream logFile(fileCompleteInfo, std::ios::out);
+        if(!logFile.is_open()){
+            std::cout << termcolor::bold << termcolor::yellow << "[WARNING] Log file cannot be opened. Log information will not be written." << std::endl;
+            std::cout << termcolor::reset;
+            return -1;
         }
 
-        log_file.close();
-    }
+        // We follow the following order: Timings >> Iterations/Particles
 
-    void writeToFile(const std::string& File_name) const {
-        // Complete function to write into a log file!
-        std::string Log_fileName = LOG_OUTPUT_relPATH;
-        Log_fileName.append(File_name);
+        logFile << "Time in Sim, Iteration in Sim, Time [s]: AMR, Time [s]: Interpolation, Time[s]: Advection, Time[s]: Reinitialization, , Relevant Particles (AMR), Conj.Grad. Iterations, Total particles (Advection)\n"; 
 
-        std::ofstream log_file(Log_fileName, std::ios::out);
-        assert(log_file.is_open());
+        for(auto &LogFrame : LogFrames){
 
-        std::string temp = "AMR, Advection, Point search, Interpolation, CG Iterations, Reinitialization, Total";
+            std::string inputRow = "";
 
-        log_file << temp << "\n";
+            inputRow = std::to_string(LogFrame.simTime) + "," + std::to_string(LogFrame.simIteration) + ","
+                        + std::to_string(LogFrame.log_AMR_Time) + "," + std::to_string(LogFrame.log_Interpolation_Time) + ","
+                        + std::to_string(LogFrame.log_Advection_Time) + "," + std::to_string(LogFrame.log_Reinitialization_Time) + ","
+                        + " ," + std::to_string(LogFrame.log_AMR_RelevantParticles) + "," + std::to_string(LogFrame.log_Interpolation_Iterations) + ","
+                        + std::to_string(LogFrame.log_Advection_TotalParticles) + "\n";
 
-        for (uint32_t i = 0; i < ConvergenceIterations.size(); i++) {
-
-            temp = std::to_string(subFrame_time[5 * i + 0]);
-            temp.append(",");
-            temp.append(std::to_string(subFrame_time[5 * i + 1]));
-            temp.append(",");
-            temp.append(std::to_string(subFrame_time[5 * i + 2]));
-            temp.append(",");
-            temp.append(std::to_string(subFrame_time[5 * i + 3]));
-            temp.append(",");
-            temp.append(std::to_string(ConvergenceIterations[i]));
-            temp.append(",");
-            temp.append(std::to_string(subFrame_time[5 * i + 4]));
-            temp.append(",");
-            temp.append(std::to_string(this->FrameTime(i)));
-
-            log_file << temp << "\n";
+            logFile << inputRow;
         }
 
-        log_file.close();
+        logFile.close();
+        return 0;
     }
+
+
 };
 
 #endif

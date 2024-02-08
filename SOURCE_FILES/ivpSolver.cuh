@@ -24,6 +24,7 @@
 #include "PointSearch.cuh"
 #include "Impulse_transformations.cuh"
 #include "Integrator.cuh"
+#include "Sim_data.cuh"
 
 
 
@@ -46,11 +47,7 @@ private:
 	double deltaT;
 	int32_t ReinitSteps, savingArraySteps;
 
-	// Only when we want logging
-	#if OUTPUT_INFO > 0
-	// Logging
-	Logger SimLog;
-	#endif
+	LogSimulation SimLog;
 
 	// Final simulation storage
 	std::vector<TYPE> storeFrames;
@@ -271,6 +268,8 @@ public:
 
 		const UINT savingArraySteps = (reinitInstants.size()) / (storeFrames.size() / nrNodesPerFrame);
 
+		SimLog.resize(reinitInstants.size());
+
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -301,7 +300,7 @@ public:
 
 
 		// Define concurrent saving lambda function
-		auto concurrentSaving = [&increaseFrameCount](const thrust::host_vector<TYPE> vSrc, std::vector<TYPE>& vDst, const UINT simStepCount, const UINT saveStepCount, const UINT savingArraySteps, const UINT nrNodesPerFrame) {
+		auto concurrentSaving = [&increaseFrameCount](const thrust::host_vector<TYPE>& vSrc, std::vector<TYPE>& vDst, const UINT simStepCount, const UINT saveStepCount, const UINT savingArraySteps, const UINT nrNodesPerFrame) {
 			if (simStepCount % savingArraySteps == 0 && saveStepCount < vDst.size() / nrNodesPerFrame - 1) {
 				// Store info in cumulative variable
 				thrust::copy(vSrc.begin(), vSrc.end(), &vDst[saveStepCount * nrNodesPerFrame]);
@@ -309,11 +308,15 @@ public:
 			}
 		};
 
+		// auto concurrentLogging = [](LogFrames& LogFrame, const auto input){
+		// 	SimLog.writeSimulationLog_toFile();
+		// };
+
 		// IN THIS LINE WE START WITH THE ACTUAL ITERATIONS OF THE LIOUVILLE EQUATION
 		while (simStepCount < reinitInstants.size() - 1) {
 
 			// Save previous frame concurrently, so no time is used for this
-			std::thread storeFrame_worker (concurrentSaving, PDF_ProbDomain, std::ref(storeFrames), simStepCount, saveStepCount, savingArraySteps, nrNodesPerFrame);
+			std::thread storeFrame_worker (concurrentSaving, std::ref(PDF_ProbDomain), std::ref(storeFrames), simStepCount, saveStepCount, savingArraySteps, nrNodesPerFrame);
 			if(increaseFrameCount){	increaseFrameCount = false;	saveStepCount++;}
 
 			// select the first and last time value of the current iteration
@@ -334,14 +337,13 @@ public:
 
 			auto endTimeSeconds = std::chrono::high_resolution_clock::now();
 			std::chrono::duration<float> durationSeconds = endTimeSeconds - startTimeSeconds;
-
-			#if OUTPUT_INFO > 0
-				// Enter the information into the log information
-				SimLog.subFrame_time[5*simStepCount] = durationSeconds.count();
-			#endif
 			
 			// Number of particles to advect
 			UINT AMR_ActiveNodeCount = D_Particle_Locations.size();
+
+				// To the Log file
+				SimLog.LogFrames[simStepCount].log_AMR_Time = durationSeconds.count();
+				SimLog.LogFrames[simStepCount].log_AMR_RelevantParticles = AMR_ActiveNodeCount;
 
 			#if ERASE_dPDF
 				// Clear the GPU-stored PDF for better memory availability
@@ -379,11 +381,6 @@ public:
 			endTimeSeconds = std::chrono::high_resolution_clock::now();
 			durationSeconds = endTimeSeconds - startTimeSeconds;
 
-			#if OUTPUT_INFO > 0		
-				// Enter the information into the log information
-				SimLog.subFrame_time[5*simStepCount + 2] = durationSeconds.count();
-			#endif
-
 			/////////////////////////////////////////////////////////////////////////////////////////
 			/////////////////////////////////////////////////////////////////////////////////////////
 			// -------------------------- INTERPOLATION ------------------------------------------ //
@@ -409,11 +406,10 @@ public:
 			endTimeSeconds = std::chrono::high_resolution_clock::now();
 			durationSeconds = endTimeSeconds - startTimeSeconds;
 			
-			#if OUTPUT_INFO > 0
-				// Enter the information into the log information
-				SimLog.subFrame_time[5*simStepCount + 3] = durationSeconds.count();
-				SimLog.ConvergenceIterations[simStepCount] = iterations;
-			#endif
+			
+			// To the Log file
+			SimLog.LogFrames[simStepCount].log_Interpolation_Time = durationSeconds.count();
+			SimLog.LogFrames[simStepCount].log_Interpolation_Iterations = iterations;
 
 			#if ERASE_auxVectors == true
 			// Clear the vectors to save memory
@@ -490,7 +486,6 @@ public:
 				// -------------------------- SMOOTH PARTICLE INTEGRATION ---------------------------- //
 				/////////////////////////////////////////////////////////////////////////////////////////
 				/////////////////////////////////////////////////////////////////////////////////////////
-				printCLI.append( "Simulation time: " + std::to_string(t0) + " to " + std::to_string(tF) + "\n");
 
 				// Max. memory requirements for next step
 				const UINT Bytes_per_sample = AMR_ActiveNodeCount * (sizeof(TYPE) * 2 + sizeof(Particle));
@@ -527,9 +522,6 @@ public:
 								&D_Particle_Values[k * AMR_ActiveNodeCount]);
 					}
 
-					// Print the active nodes in the current step
-					printCLI.append( "Number of active particles: " + std::to_string(AMR_ActiveNodeCount) + "\n" );
-
 					/////////////////////////////////////////////////////////////////////////////////////////
 					/////////////////////////////////////////////////////////////////////////////////////////
 					// -------------------------- POINT ADVECTION ---------------------------------------- //
@@ -555,10 +547,9 @@ public:
 					endTimeSeconds = std::chrono::high_resolution_clock::now();
 					durationSeconds = endTimeSeconds - startTimeSeconds;
 
-					#if OUTPUT_INFO > 0
-						// To the Log
-						SimLog.subFrame_time[5*simStepCount + 1] = durationSeconds.count();
-					#endif
+					// To the Log file
+					SimLog.LogFrames[simStepCount].log_Advection_Time = durationSeconds.count();
+					SimLog.LogFrames[simStepCount].log_Advection_TotalParticles = ActiveNodes_PerBlk;
 
 					PDF_Support.Update_boundingBox(D_Particle_Locations);
 					
@@ -599,10 +590,8 @@ public:
 					endTimeSeconds = std::chrono::high_resolution_clock::now();
 					durationSeconds = endTimeSeconds - startTimeSeconds;
 
-					#if OUTPUT_INFO > 0
-						// Enter the information into the log information
-						SimLog.subFrame_time[5 * simStepCount + 4] = durationSeconds.count();
-					#endif
+					// To the Log file
+					SimLog.LogFrames[simStepCount].log_Reinitialization_Time = durationSeconds.count();
 				}
 
 				/////////////////////////////////////////////////////////////////////////////////////////
@@ -624,15 +613,6 @@ public:
 				// Send back to CPU
 				PDF_ProbDomain = D_PDF_ProbDomain;
 
-				#if OUTPUT_INFO > 0
-				// Write some log info to the command line
-				SimLog.writeToCLI(OUTPUT_INFO, simStepCount);
-				#endif
-
-				printCLI.append( "+---------------------------------------------------------------------+\n");
-
-				//std::cout << printCLI;
-
 				// Upadte simulation step
 				simStepCount++;
 			}
@@ -646,7 +626,7 @@ public:
 		std::cout << termcolor::bold << termcolor::green << "Liouville solver: Completed successfully!" << std::endl;
   		std::cout << termcolor::reset;
 
-		//indicators::show_console_cursor(true);
+		SimLog.writeSimulationLog_toFile();
 
 		const UINT nrFrames = storeFrames.size()/nrNodesPerFrame;
 		storeFrames.resize((nrFrames + 1)*nrNodesPerFrame);
