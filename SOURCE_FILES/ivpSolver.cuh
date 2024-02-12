@@ -258,11 +258,6 @@ public:
 											indicators::option::Remainder{"-"},
 											indicators::option::End{"]"},};
 
-		#if OUTPUT_INFO > 0
-		// Simulation logging
-		SimLog.resize(reinitInstants.size() - 1);
-		#endif
-
 		const UINT savingArraySteps = (reinitInstants.size()) / (storeFrames.size() / nrNodesPerFrame);
 
 		// Resize the simulation logger
@@ -306,10 +301,6 @@ public:
 			}
 		};
 
-		// auto concurrentLogging = [](LogFrames& LogFrame, const auto input){
-		// 	SimLog.writeSimulationLog_toFile();
-		// };
-
 		// IN THIS LINE WE START WITH THE ACTUAL ITERATIONS OF THE LIOUVILLE EQUATION
 		while (simStepCount < reinitInstants.size() - 1) {
 
@@ -317,8 +308,8 @@ public:
 			std::thread storeFrame_worker (concurrentSaving, std::ref(PDF_ProbDomain), std::ref(storeFrames), simStepCount, saveStepCount, savingArraySteps, nrNodesPerFrame);
 			if(increaseFrameCount){	increaseFrameCount = false;	saveStepCount++;}
 
-			SimLog.LogFrames[simStepCount].simIteration = simStepCount;
-			SimLog.LogFrames[simStepCount].simTime 		= reinitInstants[simStepCount].time;
+				SimLog.LogFrames[simStepCount].simIteration = simStepCount;
+				SimLog.LogFrames[simStepCount].simTime 		= reinitInstants[simStepCount].time;
 
 			// select the first and last time value of the current iteration
 			double	t0 = reinitInstants[simStepCount].time, tF = reinitInstants[simStepCount + 1].time;
