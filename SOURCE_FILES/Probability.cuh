@@ -90,7 +90,7 @@ int16_t PDF_INITIAL_CONDITION(const Mesh& Mesh, thrust::host_vector<TYPE>& PDF_v
 				rescale_CDF = boost::math::cdf(dist, xF) - boost::math::cdf(dist, x0);
 			}
 
-		#pragma omp parallel for
+			#pragma omp parallel for
 			for (INT k = Mesh.Nodes_per_Dim * d; k < Mesh.Nodes_per_Dim * (d + 1); k++) {
 				temp_val[k] = boost::math::pdf(dist, Mesh.Get_node((k - Mesh.Nodes_per_Dim * d) * pow(Mesh.Nodes_per_Dim, d)).dim[d]) / rescale_CDF;
 			}
@@ -99,7 +99,7 @@ int16_t PDF_INITIAL_CONDITION(const Mesh& Mesh, thrust::host_vector<TYPE>& PDF_v
 
 	std::cout << "Filling initial density...\n";
 
-#pragma omp parallel for
+	#pragma omp parallel for
 	for (INT k = 0; k < Mesh.Total_Nodes(); k++) {
 		TYPE val = 1;
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {

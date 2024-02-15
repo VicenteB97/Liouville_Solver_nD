@@ -102,6 +102,7 @@ public:
 	int16_t buildDistributions(){
 
 		// Read initial probability distribution information from the Case_definition file
+		// Inform about the case when truncation intervals are incorrectly chosen!
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
 			IC_Distributions[d].Name 				= IC_NAMES[d];
 			IC_Distributions[d].isTruncated 		= IC_isTRUNC[d];
@@ -251,10 +252,10 @@ public:
 											indicators::option::ForegroundColor{indicators::Color::yellow},
 											indicators::option::ShowElapsedTime{true}, 
 											indicators::option::ShowRemainingTime{false},
-											indicators::option::PrefixText{"Liouville solver: Running..."},
+											indicators::option::PrefixText{"[Solver] Running..."},
 											indicators::option::Start{"["},
-											indicators::option::Fill{"="},
-											indicators::option::Lead{">"},
+											indicators::option::Fill{"*"},
+											indicators::option::Lead{"*"},
 											indicators::option::Remainder{"-"},
 											indicators::option::End{"]"},};
 
@@ -272,8 +273,8 @@ public:
 
 		// Simulation steps
 		uint32_t simStepCount = 0;
-		uint32_t saveStepCount = 0;
-		std::atomic<bool> increaseFrameCount{false};
+		std::atomic<uint32_t> saveStepCount = 0;
+		double t0, tF;
 		
 		// Aux variable to switch between step functions (Heaviside forcing) 
 		uint32_t mode = 0;
@@ -293,26 +294,25 @@ public:
 
 
 		// Define concurrent saving lambda function
-		auto concurrentSaving = [&increaseFrameCount](const thrust::host_vector<TYPE>& vSrc, std::vector<TYPE>& vDst, const UINT simStepCount, const UINT saveStepCount, const UINT savingArraySteps, const UINT nrNodesPerFrame) {
-			if (simStepCount % savingArraySteps == 0 && saveStepCount < vDst.size() / nrNodesPerFrame - 1) {
+		auto concurrentSaving = [&saveStepCount](const thrust::host_vector<TYPE>& vSrc, std::vector<TYPE>& vDst, const UINT simStepCount, const UINT savingArraySteps, const UINT nrNodesPerFrame) {
+			if ((simStepCount == 0 || simStepCount % savingArraySteps == 0) && saveStepCount < vDst.size() / nrNodesPerFrame - 1) {
 				// Store info in cumulative variable
 				thrust::copy(vSrc.begin(), vSrc.end(), &vDst[saveStepCount * nrNodesPerFrame]);
-				increaseFrameCount = true;
+				saveStepCount++;
 			}
 		};
 
 		// IN THIS LINE WE START WITH THE ACTUAL ITERATIONS OF THE LIOUVILLE EQUATION
-		while (simStepCount < reinitInstants.size() - 1) {
+		while(simStepCount < reinitInstants.size() - 1){
 
 			// Save previous frame concurrently, so no time is used for this
-			std::thread storeFrame_worker (concurrentSaving, std::ref(PDF_ProbDomain), std::ref(storeFrames), simStepCount, saveStepCount, savingArraySteps, nrNodesPerFrame);
-			if(increaseFrameCount){	increaseFrameCount = false;	saveStepCount++;}
+			std::thread storeFrame_worker (concurrentSaving, std::ref(PDF_ProbDomain), std::ref(storeFrames), simStepCount, savingArraySteps, nrNodesPerFrame);
 
-				SimLog.LogFrames[simStepCount].simIteration = simStepCount;
-				SimLog.LogFrames[simStepCount].simTime 		= reinitInstants[simStepCount].time;
+			SimLog.LogFrames[simStepCount].simIteration = simStepCount;
+			SimLog.LogFrames[simStepCount].simTime 		= reinitInstants[simStepCount].time;
 
 			// select the first and last time value of the current iteration
-			double	t0 = reinitInstants[simStepCount].time, tF = reinitInstants[simStepCount + 1].time;
+			t0 = reinitInstants[simStepCount].time; tF = reinitInstants[simStepCount + 1].time;
 
 			/////////////////////////////////////////////////////////////////////////////////////////
 			/////////////////////////////////////////////////////////////////////////////////////////
@@ -322,7 +322,7 @@ public:
 			auto startTimeSeconds = std::chrono::high_resolution_clock::now();
 
 				errorCheck(setInitialParticles(	PDF_ProbDomain, D_PDF_ProbDomain,				// Initial, gridded PDF
-												D_Particle_Values, D_Particle_Locations, 			// Output vectors that will give the relevant nodes
+												D_Particle_Values, D_Particle_Locations, 		// Output vectors that will give the relevant nodes
 												Problem_Domain, Expanded_Domain, PDF_Support));	// Domain information
 
 			auto endTimeSeconds = std::chrono::high_resolution_clock::now();
@@ -440,7 +440,6 @@ public:
 				#endif
 
 				jumpCount++;
-				simStepCount++;
 
 				// Send back to CPU
 				PDF_ProbDomain = D_PDF_ProbDomain;
@@ -454,8 +453,6 @@ public:
 				/////////////////////////////////////////////////////////////////////////////////////////
 				mode++;
 				std::cout << "Now the vector field is in mode: " << mode % 2 << ".\n";
-
-				simStepCount++;
 
 
 				#elif(IMPULSE_TYPE != 0)
@@ -603,24 +600,23 @@ public:
 				// Send back to CPU
 				PDF_ProbDomain = D_PDF_ProbDomain;
 
-				// Upadte simulation step
-				simStepCount++;
 			}
+			
+			// Upadte simulation step
+			simStepCount++;
 			
 			storeFrame_worker.join();
 
-			statusBar.set_option(indicators::option::PostfixText{"Iterations completed: " + std::to_string(simStepCount) + "/" + std::to_string(reinitInstants.size() - 1)});
+			statusBar.set_option(indicators::option::PostfixText{"[Solver] Iterations: " + std::to_string(simStepCount) + "/" + std::to_string(reinitInstants.size() - 1)});
 			statusBar.set_progress((float) simStepCount/(reinitInstants.size() - 1)*100);
 		}
 
-		std::cout << termcolor::bold << termcolor::green << "Liouville solver: Completed successfully!" << std::endl;
+		thrust::copy(PDF_ProbDomain.begin(), PDF_ProbDomain.end(), &storeFrames[saveStepCount * nrNodesPerFrame]);
+
+		std::cout << termcolor::bold << termcolor::green << "[Solver] Completed successfully!" << std::endl;
   		std::cout << termcolor::reset;
 
 		SimLog.writeSimulationLog_toFile();
-
-		const UINT nrFrames = storeFrames.size()/nrNodesPerFrame;
-		storeFrames.resize((nrFrames + 1)*nrNodesPerFrame);
-		thrust::copy(PDF_ProbDomain.begin(), PDF_ProbDomain.end(), &storeFrames[nrFrames * nrNodesPerFrame]);
 		// Exit current function
 		return 0;
 	}
@@ -732,7 +728,7 @@ public:
                         std::ofstream myfile(relavtive_pth, std::ios::out | std::ios::binary);
                         assert (myfile.is_open());
 
-                        myfile.write((char*)&storeFrames[(k * max_frames_file + frames_init) * nrNodesPerFrame], sizeof(float) * frames_in_file * nrNodesPerFrame);
+                        myfile.write((char*)&storeFrames[(k * max_frames_file + frames_init) * nrNodesPerFrame], sizeof(TYPE) * frames_in_file * nrNodesPerFrame);
                         myfile.close();
                         std::cout << "Simulation output file " << k << " completed!\n";
                         

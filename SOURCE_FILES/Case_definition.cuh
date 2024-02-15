@@ -43,14 +43,14 @@
 
 static const char   IC_NAMES[PHASE_SPACE_DIMENSIONS] = { 'N','N' };
 static const bool   IC_isTRUNC[PHASE_SPACE_DIMENSIONS] = { false, false };
-static const TYPE   IC_InfTVAL[PHASE_SPACE_DIMENSIONS] = { 0, 0 };
-static const TYPE   IC_SupTVAL[PHASE_SPACE_DIMENSIONS] = { 2, 2 };
+static const TYPE   IC_InfTVAL[PHASE_SPACE_DIMENSIONS] = { -1.5, -2.5};
+static const TYPE   IC_SupTVAL[PHASE_SPACE_DIMENSIONS] = { 1.5, 0.5 };
 static const TYPE	IC_MEAN[PHASE_SPACE_DIMENSIONS] = {0, -1};
-static const TYPE	IC_STD[PHASE_SPACE_DIMENSIONS] = { sqrtf(0.075),sqrtf(0.075) };
+static const TYPE	IC_STD[PHASE_SPACE_DIMENSIONS] = { sqrt((TYPE)0.01),sqrt((TYPE)0.01) };
 
 // Vector field definition (see the end of 'Classes.cuh' for the definition)
 // explanation: p0 = a, p1 = q
-#define VEC_FIELD_1    -X.dim[1]
+#define VEC_FIELD_1    X.dim[1]
 #define DIVERGENCE_1   0
 
 #define VEC_FIELD_2    -(parameter.sample_vec[0]-2*parameter.sample_vec[1]*cos(2*t))*X.dim[0]
@@ -63,10 +63,10 @@ static const TYPE	IC_STD[PHASE_SPACE_DIMENSIONS] = { sqrtf(0.075),sqrtf(0.075) }
 #define PARAM_SPACE_DIMENSIONS 2
 static const char   _DIST_NAMES[PARAM_SPACE_DIMENSIONS] = { 'U','U'};
 static const bool   _DIST_isTRUNC[PARAM_SPACE_DIMENSIONS] = { false, false };
-static const TYPE   _DIST_InfTVAL[PARAM_SPACE_DIMENSIONS] = { 0,0 };
-static const TYPE   _DIST_SupTVAL[PARAM_SPACE_DIMENSIONS] = { 1,1 };
+static const TYPE   _DIST_InfTVAL[PARAM_SPACE_DIMENSIONS] = { 3,-2 };
+static const TYPE   _DIST_SupTVAL[PARAM_SPACE_DIMENSIONS] = { 5,0 };
 static TYPE 		_DIST_MEAN[PARAM_SPACE_DIMENSIONS] = { 4,-1 };
-static TYPE 		_DIST_STD[PARAM_SPACE_DIMENSIONS] = { sqrtf(0.005), sqrtf(0.05) };
+static TYPE 		_DIST_STD[PARAM_SPACE_DIMENSIONS] = { sqrt((TYPE)0.05), sqrt((TYPE)0.005) };
 
 // Impulse parameter information (only delta or heaviside)
 #define IMPULSE_TYPE 0

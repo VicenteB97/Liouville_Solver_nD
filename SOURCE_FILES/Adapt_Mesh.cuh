@@ -216,6 +216,7 @@ int16_t setInitialParticles(const thrust::host_vector<TYPE>&	H_PDF,
 	
 	// Get the number of assigned nodes
 	const UINT nrSelectedNodes = thrust::reduce(thrust::device, isAssignedNode.begin(), isAssignedNode.end());
+	if (nrSelectedNodes == 0) { std::cout << "\nError: AMR-selected points is 0...cannot continue\n"; return -1; }
 	
 	// Set the selected nodes first
 	thrust::sort_by_key(thrust::device, isAssignedNode.begin(), isAssignedNode.end(), nodeIdxs.begin(), thrust::greater<INT>());
