@@ -252,7 +252,7 @@ public:
 											indicators::option::ForegroundColor{indicators::Color::yellow},
 											indicators::option::ShowElapsedTime{true}, 
 											indicators::option::ShowRemainingTime{false},
-											indicators::option::PrefixText{"[Solver] Running..."},
+											indicators::option::PrefixText{"[INFO] Running..."},
 											indicators::option::Start{"["},
 											indicators::option::Fill{"*"},
 											indicators::option::Lead{"*"},
@@ -607,13 +607,13 @@ public:
 			
 			storeFrame_worker.join();
 
-			statusBar.set_option(indicators::option::PostfixText{"[Solver] Iterations: " + std::to_string(simStepCount) + "/" + std::to_string(reinitInstants.size() - 1)});
+			statusBar.set_option(indicators::option::PostfixText{"Iterations: " + std::to_string(simStepCount) + "/" + std::to_string(reinitInstants.size() - 1)});
 			statusBar.set_progress((float) simStepCount/(reinitInstants.size() - 1)*100);
 		}
 
 		thrust::copy(PDF_ProbDomain.begin(), PDF_ProbDomain.end(), &storeFrames[saveStepCount * nrNodesPerFrame]);
 
-		std::cout << termcolor::bold << termcolor::green << "[Solver] Completed successfully!" << std::endl;
+		std::cout << termcolor::bold << termcolor::green << "[INFO] Completed successfully!" << std::endl;
   		std::cout << termcolor::reset;
 
 		SimLog.writeSimulationLog_toFile();

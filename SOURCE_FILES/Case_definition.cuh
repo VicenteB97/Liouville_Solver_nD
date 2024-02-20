@@ -32,21 +32,21 @@
 
 
 // AMR tolerance, Conjugate Gradient tolerance and number of discretization size for the radius of the RBFs
-#define TOLERANCE_AMR       0.00001
-#define TOLERANCE_ConjGrad  powf(10,-8)     // RECOMMENDED: This appears to give good results...no need to change it
-#define DISC_RADIUS         3.49
+#define TOLERANCE_AMR       1.0E-7
+#define TOLERANCE_ConjGrad  powf(10,-6)     // RECOMMENDED: This appears to give good results...no need to change it
+#define DISC_RADIUS         4.49
 
 // State variables information
 #define PHASE_SPACE_DIMENSIONS   2
-#define DOMAIN_INF {-3,-3}
-#define DOMAIN_SUP {3,3}
+#define DOMAIN_INF {-7,-7}
+#define DOMAIN_SUP {7,7}
 
 static const char   IC_NAMES[PHASE_SPACE_DIMENSIONS] = { 'N','N' };
 static const bool   IC_isTRUNC[PHASE_SPACE_DIMENSIONS] = { false, false };
-static const TYPE   IC_InfTVAL[PHASE_SPACE_DIMENSIONS] = { -1.5, -2.5};
-static const TYPE   IC_SupTVAL[PHASE_SPACE_DIMENSIONS] = { 1.5, 0.5 };
+static const TYPE   IC_InfTVAL[PHASE_SPACE_DIMENSIONS] = { -3, -3};
+static const TYPE   IC_SupTVAL[PHASE_SPACE_DIMENSIONS] = { 3, 3 };
 static const TYPE	IC_MEAN[PHASE_SPACE_DIMENSIONS] = {0, -1};
-static const TYPE	IC_STD[PHASE_SPACE_DIMENSIONS] = { sqrt((TYPE)0.01),sqrt((TYPE)0.01) };
+static const TYPE	IC_STD[PHASE_SPACE_DIMENSIONS] = { sqrt((TYPE)0.005),sqrt((TYPE)0.005) };
 
 // Vector field definition (see the end of 'Classes.cuh' for the definition)
 // explanation: p0 = a, p1 = q
@@ -65,7 +65,7 @@ static const char   _DIST_NAMES[PARAM_SPACE_DIMENSIONS] = { 'U','U'};
 static const bool   _DIST_isTRUNC[PARAM_SPACE_DIMENSIONS] = { false, false };
 static const TYPE   _DIST_InfTVAL[PARAM_SPACE_DIMENSIONS] = { 3,-2 };
 static const TYPE   _DIST_SupTVAL[PARAM_SPACE_DIMENSIONS] = { 5,0 };
-static TYPE 		_DIST_MEAN[PARAM_SPACE_DIMENSIONS] = { 4,-1 };
+static TYPE 		_DIST_MEAN[PARAM_SPACE_DIMENSIONS] = { 4,-3 };
 static TYPE 		_DIST_STD[PARAM_SPACE_DIMENSIONS] = { sqrt((TYPE)0.05), sqrt((TYPE)0.005) };
 
 // Impulse parameter information (only delta or heaviside)
