@@ -86,7 +86,7 @@ public:
 
         const std::string fileCompleteInfo = fileRelativePath + fileName + fileExtension;
 
-        std::cout << "[INFO]: Saving log file into " + fileCompleteInfo << std::endl;
+        std::cout << "[INFO] Saving log file into " + fileCompleteInfo << std::endl;
 
         std::ofstream logFile(fileCompleteInfo, std::ios::out);
         if(!logFile.is_open()){

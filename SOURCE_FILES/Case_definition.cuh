@@ -32,7 +32,7 @@
 
 
 // AMR tolerance, Conjugate Gradient tolerance and number of discretization size for the radius of the RBFs
-#define TOLERANCE_AMR       1.0E-7
+#define TOLERANCE_AMR       1.0E-6
 #define TOLERANCE_ConjGrad  powf(10,-6)     // RECOMMENDED: This appears to give good results...no need to change it
 #define DISC_RADIUS         4.49
 

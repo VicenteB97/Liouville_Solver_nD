@@ -102,7 +102,7 @@ if (code != cudaSuccess) {
 /// @param b This is the denominator
 /// @return Returns mod(a,b)
 __host__ __device__
-inline UINT positive_rem(const INT a, const INT b) {
+inline UINT positive_rem(const UINT a, const UINT b) {
 	return (a % b + b) % b;
 }
 

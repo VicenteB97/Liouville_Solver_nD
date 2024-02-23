@@ -104,11 +104,13 @@ __global__ void ODE_INTEGRATE(Particle* Particles,
 			// Reinit step
 			x0 = temp;
 			t0 += deltaT;
-
-			if (!D_Mesh.Contains_particle(temp)) { Int_PDF = 0; break; }	// This condition is equivalent to the homogeneous Neumann condition
 		}
 
+		// Output results
 		Particles[i] = temp;
+
+		if (!D_Mesh.Contains_particle(temp)){ Int_PDF = 0; } // This condition is equivalent to the homogeneous Neumann condition (FOR PDFs ONLY)
+
 		PDF[i] = Int_PDF;
 	}
 }
