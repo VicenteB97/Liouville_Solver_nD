@@ -44,9 +44,6 @@
 #define SIM_OUTPUT_relPATH "../../SIMULATION_OUTPUT/"
 #define LOG_OUTPUT_relPATH "../../SIMULATION_OUTPUT/"
 
-// Compute + storage type
-#define TYPE float
-
 // Maximum simulation file size
 #define MAX_FILE_SIZE_B (uint64_t) 4*1024*1024*1024
 

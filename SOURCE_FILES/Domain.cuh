@@ -114,7 +114,7 @@ __global__ void findProjection(const Particle* particles, TYPE* projections, INT
 class Mesh{
 public:
 	Particle 	Boundary_inf, Boundary_sup;
-	INT		Nodes_per_Dim;
+	INT			Nodes_per_Dim;
 
 	// Parametric constructors:
 	/// @brief Create a Mesh knowing the nodes per dimension

@@ -23,52 +23,55 @@
 // -------------------- MODIFY!!! ----------------------------------------//
 // -----------------------------------------------------------------------//
 // Name of the case being simulated
-#define CASE "Mathieu equation"
+#define CASE "SIR System"
 
 // Choosing whether showing full or simplified timing information
 #define OUTPUT_INFO 0
 
 #define TYPE float     // only supported values are 'float' and 'double'
 
-
 // AMR tolerance, Conjugate Gradient tolerance and number of discretization size for the radius of the RBFs
-#define TOLERANCE_AMR       1.0E-6
-#define TOLERANCE_ConjGrad  powf(10,-6)     // RECOMMENDED: This appears to give good results...no need to change it
-#define DISC_RADIUS         4.49
+#define TOLERANCE_AMR       0.005           
+#define TOLERANCE_ConjGrad  pow(10,-8)     // RECOMMENDED: This appears to give good results...no need to change it
+#define DISC_RADIUS         3.49
+
 
 // State variables information
-#define PHASE_SPACE_DIMENSIONS   2
-#define DOMAIN_INF {-7,-7}
-#define DOMAIN_SUP {7,7}
+#define PHASE_SPACE_DIMENSIONS  3
+#define DOMAIN_INF {0, 0, 0}
+#define DOMAIN_SUP {1, 1, 1}
 
-static const char   IC_NAMES[PHASE_SPACE_DIMENSIONS] = { 'N','N' };
-static const bool   IC_isTRUNC[PHASE_SPACE_DIMENSIONS] = { false, false };
-static const TYPE   IC_InfTVAL[PHASE_SPACE_DIMENSIONS] = { -3, -3};
-static const TYPE   IC_SupTVAL[PHASE_SPACE_DIMENSIONS] = { 3, 3 };
-static const TYPE	IC_MEAN[PHASE_SPACE_DIMENSIONS] = {0, -1};
-static const TYPE	IC_STD[PHASE_SPACE_DIMENSIONS] = { sqrt((TYPE)0.005),sqrt((TYPE)0.005) };
+static const char   IC_NAMES[PHASE_SPACE_DIMENSIONS] = { 'N','N','N' };
+static const bool   IC_isTRUNC[PHASE_SPACE_DIMENSIONS] = { true, true, true };
+static const TYPE   IC_InfTVAL[PHASE_SPACE_DIMENSIONS] = { 0.5,0,0 };
+static const TYPE   IC_SupTVAL[PHASE_SPACE_DIMENSIONS] = { 1,0.3,0.25 };
+static const TYPE	IC_MEAN[PHASE_SPACE_DIMENSIONS] = { 0.75, 0.15, 0.1 };
+static const TYPE	IC_STD[PHASE_SPACE_DIMENSIONS] = { (TYPE)sqrt(0.0001), (TYPE)sqrt(0.0001), (TYPE)sqrt(0.0001) };
 
-// Vector field definition (see the end of 'Classes.cuh' for the definition)
-// explanation: p0 = a, p1 = q
-#define VEC_FIELD_1    X.dim[1]
-#define DIVERGENCE_1   0
+// Vector field definition
+    // explanation: p0 = \Delta (birth rate), p1 = \mu (death rate), p2 = \beta (S to I transmission), p3 = \gamma (I to R transmission)
+#define VEC_FIELD_1     parameter.sample_vec[0] - (parameter.sample_vec[1] + parameter.sample_vec[2]*X.dim[1])*X.dim[0]
+#define DIVERGENCE_1   -parameter.sample_vec[1] - parameter.sample_vec[2]*X.dim[1]
 
-#define VEC_FIELD_2    -(parameter.sample_vec[0]-2*parameter.sample_vec[1]*cos(2*t))*X.dim[0]
-#define DIVERGENCE_2   0
+#define VEC_FIELD_2    (parameter.sample_vec[2]*X.dim[0] - parameter.sample_vec[1] - parameter.sample_vec[3]*X.dim[2])*X.dim[1]
+#define DIVERGENCE_2    parameter.sample_vec[2]*X.dim[0] - parameter.sample_vec[1] - parameter.sample_vec[3]*X.dim[2]
 
-#define VEC_FIELD      {VEC_FIELD_1, VEC_FIELD_2}
-#define DIVERGENCE      DIVERGENCE_1 + DIVERGENCE_2
+#define VEC_FIELD_3    (parameter.sample_vec[3]*X.dim[1] - parameter.sample_vec[1])*X.dim[2]
+#define DIVERGENCE_3    parameter.sample_vec[3]*X.dim[1] - parameter.sample_vec[1]
+
+#define VEC_FIELD      {VEC_FIELD_1, VEC_FIELD_2, VEC_FIELD_3}
+#define DIVERGENCE      DIVERGENCE_1 + DIVERGENCE_2 + DIVERGENCE_3
 
 // Parameter information
-#define PARAM_SPACE_DIMENSIONS 2
-static const char   _DIST_NAMES[PARAM_SPACE_DIMENSIONS] = { 'U','U'};
-static const bool   _DIST_isTRUNC[PARAM_SPACE_DIMENSIONS] = { false, false };
-static const TYPE   _DIST_InfTVAL[PARAM_SPACE_DIMENSIONS] = { 3,-2 };
-static const TYPE   _DIST_SupTVAL[PARAM_SPACE_DIMENSIONS] = { 5,0 };
-static TYPE 		_DIST_MEAN[PARAM_SPACE_DIMENSIONS] = { 4,-3 };
-static TYPE 		_DIST_STD[PARAM_SPACE_DIMENSIONS] = { sqrt((TYPE)0.05), sqrt((TYPE)0.005) };
+#define PARAM_SPACE_DIMENSIONS 4
+static const char   _DIST_NAMES[PARAM_SPACE_DIMENSIONS] = { 'U','U','N','G' };
+static const bool   _DIST_isTRUNC[PARAM_SPACE_DIMENSIONS] = { false, false, true, true };
+static const TYPE   _DIST_InfTVAL[PARAM_SPACE_DIMENSIONS] = { 0,0,0,0 };
+static const TYPE   _DIST_SupTVAL[PARAM_SPACE_DIMENSIONS] = { 1,1,1,1 };
+static TYPE 		_DIST_MEAN[PARAM_SPACE_DIMENSIONS] = { 0.025,0.025,0.3,0.2 };
+static TYPE 		_DIST_STD[PARAM_SPACE_DIMENSIONS] = { (TYPE)sqrt(0.0005),(TYPE)sqrt(0.0005),(TYPE)sqrt(0.0001),(TYPE)sqrt(0.0001) };
 
-// Impulse parameter information (only delta or heaviside)
+// Impulse parameter information
 #define IMPULSE_TYPE 0
 
 #define INCLUDE_XTRA_PARAMS false
