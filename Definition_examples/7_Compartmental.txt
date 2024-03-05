@@ -26,15 +26,15 @@
 #define CASE "Compartmental model"
 
 // Choosing whether showing full or simplified timing information
-#define OUTPUT_INFO false
+#define OUTPUT_INFO 0
 
 #define TYPE float     // only supported values are 'float' and 'double'
 
 
 
 // AMR tolerance, Conjugate Gradient tolerance and number of discretization size for the radius of the RBFs
-#define TOLERANCE_AMR       0.0005
-#define TOLERANCE_ConjGrad  powf(10,-6)     // RECOMMENDED: This appears to give good results...no need to change it
+#define TOLERANCE_AMR       0.00005
+#define TOLERANCE_ConjGrad  powf(10,-8)     // RECOMMENDED: This appears to give good results...no need to change it
 #define DISC_RADIUS         3.49
 
 // State variables information
