@@ -58,10 +58,10 @@ __global__ void MATRIX_VECTOR_MULTIPLICATION(TYPE* X, const TYPE* x0, const INT*
 
 	TYPE a = 0;					// auxiliary value for sum (the diagonal is always 1 in our case)
 	UINT j = i0;
-	while(Matrix_idxs[j] != -1){
+	while(Matrix_idxs[j] != -1 && j < total_length * Max_Neighbors){
 		INT p = Matrix_idxs[j];
 
-		a += Matrix_entries[j] * x0[p]; 		// < n calls to global memory
+		a += Matrix_entries[j] * x0[p]; 	// < n calls to global memory
 		j++;
 	}
 
@@ -167,7 +167,6 @@ __host__ INT CONJUGATE_GRADIENT_SOLVE(	thrust::device_vector<TYPE>&		GPU_lambdas
 		gpuError_Check(cudaDeviceSynchronize());
 
 		// Compute residual l_2 norm
-		// r_norm = sqrt(thrust::inner_product(thrust::device, interpVectors.GPU_R.begin(), interpVectors.GPU_R.end(), interpVectors.GPU_R.begin(), 0.0f));
 		r_squaredNorm = thrust::inner_product(thrust::device, interpVectors.GPU_R.begin(), interpVectors.GPU_R.end(), interpVectors.GPU_R.begin(), 0.0f);
 
 		if ((double) r_squaredNorm / (Total_Particles * Total_Particles) < squaredTolerance) {
@@ -283,9 +282,11 @@ __global__ void RESTART_GRID_FIND_GN(Particle*	Particle_Positions,
 
 	if (i >= Adapt_Pts) { return; }
 
-	TYPE weighted_lambda = lambdas[i + Current_sample * Adapt_Pts] * Impulse_weights[Current_sample].Joint_PDF;				// the specific sample weight
+	UINT global_id = i + Current_sample * Adapt_Pts
 
-	Particle particle(Particle_Positions[i + Current_sample * Adapt_Pts]);
+	TYPE weighted_lambda = lambdas[global_id] * Impulse_weights[Current_sample].Joint_PDF;				// the specific sample weight
+
+	Particle particle(Particle_Positions[global_id]);
 
 	// Find the point in the lowest corner of the search box!
 	Particle Lowest_node(Expanded_Domain.Get_node(Expanded_Domain.Get_binIdx(particle, -lround(DISC_RADIUS))));
