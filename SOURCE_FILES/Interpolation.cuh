@@ -37,7 +37,6 @@ __global__ void UPDATE_VEC(TYPE* x, const TYPE* x0, const TYPE scalar, const TYP
 		if ((i + k) < Max_Length) { x[i + k] = x0[i + k] + scalar * v[i + k]; }
 		else{ return; }
 	}
-
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -75,29 +74,29 @@ __global__ void MATRIX_VECTOR_MULTIPLICATION(TYPE* X, const TYPE* x0, const INT*
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class InterpHandle{
-// Attributes
-public:
-thrust::device_vector<TYPE> GPU_R;
-thrust::device_vector<TYPE> GPU_temp;
-thrust::device_vector<TYPE> GPU_AP;
-thrust::device_vector<TYPE> GPU_P;
+	// Attributes
+	public:
+	thrust::device_vector<TYPE> GPU_R;
+	thrust::device_vector<TYPE> GPU_temp;
+	thrust::device_vector<TYPE> GPU_AP;
+	thrust::device_vector<TYPE> GPU_P;
 
-// Constructor
-__host__ InterpHandle(UINT size = 1){
-	GPU_R.resize(size);
-	GPU_temp.resize(size);
-	GPU_AP.resize(size);
-	GPU_P.resize(size);
-}
+	// Constructor
+	__host__ InterpHandle(UINT size = 1){
+		GPU_R.resize(size);
+		GPU_temp.resize(size);
+		GPU_AP.resize(size);
+		GPU_P.resize(size);
+	}
 
-// Methods
-public:
-void resize(UINT size){
-	GPU_R.resize(size);
-	GPU_temp.resize(size);
-	GPU_AP.resize(size);
-	GPU_P.resize(size);
-};
+	// Methods
+	public:
+	void resize(UINT size){
+		GPU_R.resize(size);
+		GPU_temp.resize(size);
+		GPU_AP.resize(size);
+		GPU_P.resize(size);
+	};
 
 };
 
@@ -282,7 +281,7 @@ __global__ void RESTART_GRID_FIND_GN(Particle*	Particle_Positions,
 
 	if (i >= Adapt_Pts) { return; }
 
-	UINT global_id = i + Current_sample * Adapt_Pts
+	UINT global_id = i + Current_sample * Adapt_Pts;
 
 	TYPE weighted_lambda = lambdas[global_id] * Impulse_weights[Current_sample].Joint_PDF;				// the specific sample weight
 
