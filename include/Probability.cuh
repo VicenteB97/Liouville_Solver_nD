@@ -10,7 +10,9 @@
 #ifndef __PROBABILITY_CUH__
 #define __PROBABILITY_CUH__
 
-#include "Constants.cuh"
+#include "headers.cuh"
+#include "Domain.cuh"
+#include "utils/numeric_defs.cuh"
 
 // These are ONLY used here
 #include <boost/math/distributions/gamma.hpp>

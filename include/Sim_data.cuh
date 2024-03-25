@@ -1,8 +1,11 @@
 #ifndef __SIM_DATA_CUH__
 #define __SIM_DATA_CUH__
 
-#include "Domain.cuh"
-#include "Probability.cuh"
+#include "utils/paths.cuh"
+#include "utils/numeric_defs.cuh"
+#include "headers.cuh"
+#include "indicators/cursor_control.hpp"
+#include "indicators/progress_bar.hpp"
 
 // Simulation log for further analysis
 class LogFrames {

@@ -1,9 +1,10 @@
 #ifndef __INTEGRATOR_CUH__
 #define __INTEGRATOR_CUH__
 
-#include "Constants.cuh"
+#include "headers.cuh"
 #include "Probability.cuh"
 #include "Domain.cuh"
+#include "utils/numeric_defs.cuh"
 
 using namespace thrust::placeholders; // this is useful for the multiplication of a device vector by a constant
 

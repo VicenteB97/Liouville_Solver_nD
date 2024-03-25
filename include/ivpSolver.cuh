@@ -14,7 +14,9 @@
 #ifndef __IVPSOLVER_CUH__
 #define __IVPSOLVER_CUH__
 
-#include "Constants.cuh"
+#include "headers.cuh"
+#include "utils/others.cuh"
+#include "utils/paths.cuh"
 #include "Adapt_Mesh.cuh"
 #include "Domain.cuh"
 #include "Sim_data.cuh"
@@ -25,8 +27,6 @@
 #include "Impulse_transformations.cuh"
 #include "Integrator.cuh"
 #include "Sim_data.cuh"
-
-
 
 class ivpSolver{
 public:

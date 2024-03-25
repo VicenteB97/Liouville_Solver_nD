@@ -14,7 +14,13 @@
 #ifndef __MAT_OPS_CUH__
 #define __MAT_OPS_CUH__
 
-#include "Constants.cuh"
+#include "headers.cuh"
+#include "Case_definition.cuh"
+#include "utils/numeric_defs.cuh"
+#include "utils/error_functs.cuh"
+#include "utils/others.cuh"
+#include "utils/window.cuh"
+
 #include "Probability.cuh"
 #include "Domain.cuh"
 

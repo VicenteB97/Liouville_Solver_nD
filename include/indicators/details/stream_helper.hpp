@@ -2,9 +2,9 @@
 #ifndef INDICATORS_STREAM_HELPER
 #define INDICATORS_STREAM_HELPER
 
-#include <indicators/display_width.hpp>
-#include <indicators/setting.hpp>
-#include <indicators/termcolor.hpp>
+#include "../display_width.hpp"
+#include "../setting.hpp"
+#include "../termcolor.hpp"
 
 #include <algorithm>
 #include <chrono>

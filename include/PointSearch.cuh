@@ -2,7 +2,11 @@
 #define __POINTSEARCH_CUH__
 
 #include "Case_definition.cuh"
-#include "Constants.cuh"
+#include "headers.cuh"
+#include "utils/error_functs.cuh"
+#include "utils/others.cuh"
+#include "utils/numeric_defs.cuh"
+#include "Domain.cuh"
 
 /// @brief 
 /// @param Bin_locations 
