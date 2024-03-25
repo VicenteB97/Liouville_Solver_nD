@@ -76,8 +76,8 @@ for k=1:aux(2)
 
         % Function with the confidence region curve
         subplot(1,2,1)
-%         contour(X,Y,F_Output(:,:),25);view(0,90); grid on; grid minor;
-        mesh(X,Y,F_Output(:,:));view(0,90); grid on; grid minor;colormap('jet')
+%         contour(X,Y,F_Output(:,:),25);view(0,90); Mesh on; Mesh minor;
+        mesh(X,Y,F_Output(:,:));view(0,90); Mesh on; Mesh minor;colormap('jet')
         title(['Current time: ',num2str(t(k))]); colorbar;
         ylabel(Name_var1);xlabel(Name_var2);
         
@@ -103,7 +103,7 @@ for k=1:aux(2)
         
         f.Position(3:4) = [1000,400]; % the correct form is 5:2 ( = 10:4 ...with 1.2 scaling in this case)
     else
-        mesh(X,Y,F_Output(:,:));view(0,90); grid on; grid minor;colormap('jet')
+        mesh(X,Y,F_Output(:,:));view(0,90); Mesh on; Mesh minor;colormap('jet')
         title(['Current time: ',num2str(t(k))]); colorbar;
         ylabel(Name_var1);xlabel(Name_var2);
         
@@ -204,7 +204,7 @@ ylabel('Time (t)')
 zlabel('Probability Density')
 xlim([0,0.1])
 ylim([0,time(end)])
-grid off
+Mesh off
 hold on;
 
 p1=plot3(Stats_1D_Y(:,2),t,zeros(1,length(t)),'r.-');

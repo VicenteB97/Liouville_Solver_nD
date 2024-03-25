@@ -1,7 +1,7 @@
 function [MeshId] = MultiLevelWvlt(f0,FineLvl,CoarseLvl,tol)
 
 % We pass the PDF and the level and tolerance info. We return the ID; that
-% is, (i,j), of the grid points selected
+% is, (i,j), of the Mesh points selected
 
 %% Initialization of loop
 [SS,SD,DS,DD]=TwoDimWavelet(f0);
@@ -79,7 +79,7 @@ for k=2:FineLvl-CoarseLvl
     end
 end
 
-%% Add the grid points at the coarsest level
+%% Add the Mesh points at the coarsest level
 for i=1:m
     for j=1:n
         MeshId=vertcat(MeshId,[2^k*i-2^(k-1),2^k*j-2^(k-1),k]);

@@ -116,7 +116,7 @@ LInf_test = max(temp_diff_LInf);
 
 %%
 figure(1)
-plot(t, temp_diff_L1,t,temp_diff_L2); legend('L_1','L_2','L_{Inf}'); grid minor
+plot(t_1, temp_diff_L1,t_1,temp_diff_L2); legend('L_1','L_2','L_{Inf}'); Mesh minor
 
 figure(10)
 title('Error comparison')
@@ -137,4 +137,46 @@ if 1
 end
 
 
+% Compute errors in test errors 1-3
+for k = 1:temp_steps
+    temp_diff_L1(k) = sum(abs(F_Test_1(:,:,k) - F_Test_3(:,:,k)),[1,2])*(X(2)-X(1))*(Y(2)-Y(1));
+    temp_diff_L2(k) = sqrt(sum((F_Test_1(:,:,k) - F_Test_3(:,:,k)).^2,[1,2]))*(X(2)-X(1))*(Y(2)-Y(1));
+    temp_diff_LInf(k) = max(abs(F_Test_1(:,:,k) - F_Test_3(:,:,k)),[],'all');
+
+    Error_PDFs(:,:) = F_Test_1(:,:,k) - F_Test_3(:,:,k);
+    if Show_error_sheet
+        figure(2)
+        imagesc(X,Y,Error_PDFs); colorbar
+        pause(0.2)
+    end
 end
+
+L1_Test_13 = sum(temp_diff_L1) * (t_1(2)-t_1(1));
+L2_Test_13 = sum(temp_diff_L2) * (t_1(2)-t_1(1));
+LInf_Test_13 = max(temp_diff_LInf);
+
+figure(3)
+plot(t_1, temp_diff_L1,t_1,temp_diff_L2,t_1, temp_diff_LInf); legend('L_1','L_2','L_{Inf}');Mesh minor
+
+% Compute errors in test errors 2-3
+for k = 1:temp_steps
+    temp_diff_L1(k) = sum(abs(F_Test_2(:,:,k) - F_Test_3(:,:,k)),[1,2])*(X(2)-X(1))*(Y(2)-Y(1));
+    temp_diff_L2(k) = sqrt(sum((F_Test_2(:,:,k) - F_Test_3(:,:,k)).^2,[1,2]))*(X(2)-X(1))*(Y(2)-Y(1));
+    temp_diff_LInf(k) = max(abs(F_Test_2(:,:,k) - F_Test_3(:,:,k)),[],'all');
+
+    Error_PDFs(:,:) = F_Test_2(:,:,k) - F_Test_3(:,:,k);
+    if Show_error_sheet
+        figure(2)
+        imagesc(X,Y,Error_PDFs); colorbar
+        pause(0.2)
+    end
+end
+
+L1_Test_23 = sum(temp_diff_L1) * (t_1(2)-t_1(1));
+L2_Test_23 = sum(temp_diff_L2) * (t_1(2)-t_1(1));
+LInf_Test_23 = max(temp_diff_LInf);
+
+figure(5)
+plot(t_1, temp_diff_L1,t_1,temp_diff_L2,t_1, temp_diff_LInf); legend('L_1','L_2','L_{Inf}');Mesh minor
+
+%% Generate graphics in PDF

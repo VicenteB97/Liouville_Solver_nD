@@ -1,4 +1,4 @@
-function [FinalRegion_bound,Int_output] = ComputeRegion(PDF,confidenceLvl,h,DIMENSIONS)
+function [FinalRegion_bound,Int_output] = ComputeRegion(PDF,confidenceLvl,h,PHASE_SPACE_DIMENSIONS)
 if confidenceLvl==1
     FinalRegion_bound=1e-9;
     Int_output = 1;
@@ -40,7 +40,7 @@ else
             end
         end
     
-        IntegralC=IntegralB+h^DIMENSIONS*sum(f_disc_gpu(i_new:i_new2));
+        IntegralC=IntegralB+h^PHASE_SPACE_DIMENSIONS*sum(f_disc_gpu(i_new:i_new2));
     
         error=IntegralC-confidenceLvl;
     
