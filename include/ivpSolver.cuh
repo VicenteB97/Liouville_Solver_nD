@@ -17,6 +17,9 @@
 #include "headers.cuh"
 #include "utils/others.cuh"
 #include "utils/paths.cuh"
+#include "utils/error_functs.cuh"
+#include "utils/numeric_defs.cuh"
+
 #include "Adapt_Mesh.cuh"
 #include "Domain.cuh"
 #include "Sim_data.cuh"

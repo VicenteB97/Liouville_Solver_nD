@@ -4,7 +4,10 @@
 #define __IMPULSE_TRANSFORMATIONS_CUH__
 
 #if IMPULSE_TYPE == 1
-#include "Constants.cuh"
+#include "headers.cuh"
+#include "utils/numeric_defs.cuh"
+#include "utils/others.cuh"
+#include "Probability.cuh"
 #include "Interpolation.cuh"
 
 using namespace thrust::placeholders; // this is useful for the multiplication of a device vector by a constant

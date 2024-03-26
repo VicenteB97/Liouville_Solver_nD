@@ -19,7 +19,7 @@ find_package(OpenMP)
 option(CMAKE_BUILD_TYPE    "RELEASE")
 option(COMPILE_EXECUTABLE  "Include executable compiling" ON)
 
-add_library(${LIB_NAME} STATIC IVP_SOLVER.cu)
+add_library(${LIB_NAME} STATIC ivpSolver.cu)
 
 target_include_directories(${LIB_NAME} PUBLIC
     "./"
