@@ -39,21 +39,21 @@ public:
 
 private:
 	//Domain where the PDF will evolve (positively invariant set)
-	Mesh Problem_Domain;
+	Mesh __problem_domain;
 	
 	// Distributions for the model parameters
-	Distributions IC_Distributions[PHASE_SPACE_DIMENSIONS];
-	Distributions Parameter_Distributions[PARAM_SPACE_DIMENSIONS];
+	Distributions __initial_condition_distributions[PHASE_SPACE_DIMENSIONS];
+	Distributions __parameter_distributions[PARAM_SPACE_DIMENSIONS];
 	
 	// Time vector, impulse information, timestep and effective timestep
-	std::vector<Time_instants> reinitInstants;
-	double deltaT;
-	int32_t ReinitSteps, savingArraySteps;
+	std::vector<Time_instants> __reinitialization_info;
+	double __delta_t;
+	int32_t __reinitialization_steps, __storage_steps;
 
-	LogSimulation SimLog;
+	LogSimulation __simulation_log;
 
 	// Final simulation storage
-	std::vector<TYPE> storeFrames;
+	std::vector<TYPE> __simulation_storage;
 
 // Methods:
 public:
@@ -73,7 +73,7 @@ public:
 		int16_t LvlFine = std::stoi(inputTerminal);
 
 		// This variable represents the problem domain, which is NOT going to be the one used for computations
-		Problem_Domain.Nodes_per_Dim = pow(2, LvlFine);
+		__problem_domain.Nodes_per_Dim = pow(2, LvlFine);
 
 		return 0;
 	}
@@ -81,7 +81,7 @@ public:
 	// Use the time information 
 	int16_t buildTimeVec(){
 
-		errorCheck(BuildTimeVector(reinitInstants, deltaT, ReinitSteps))
+		errorCheck(BuildTimeVector(__reinitialization_info, __delta_t, __reinitialization_steps))
 
 		// Build saving array
 		bool get_answer = true; std::string terminalInput;
@@ -93,10 +93,10 @@ public:
 			errorCheck(intCheck(get_answer, terminalInput, REINIT_ERR_MSG, 0, 1))
 		}
 		
-		savingArraySteps = std::stoi(terminalInput);
-		const UINT 		savingArraySize  = floor(reinitInstants.size() / savingArraySteps);
+		__storage_steps = std::stoi(terminalInput);
+		const UINT 		savingArraySize  = floor(__reinitialization_info.size() / __storage_steps);
 
-		storeFrames.resize(Problem_Domain.Total_Nodes() * savingArraySize);
+		__simulation_storage.resize(__problem_domain.Total_Nodes() * savingArraySize);
 
 		return 0;
 	}
@@ -107,23 +107,23 @@ public:
 		// Read initial probability distribution information from the Case_definition file
 		// Inform about the case when truncation intervals are incorrectly chosen!
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-			IC_Distributions[d].Name 				= IC_NAMES[d];
-			IC_Distributions[d].isTruncated 		= IC_isTRUNC[d];
-			IC_Distributions[d].trunc_interval[0] 	= IC_InfTVAL[d];
-			IC_Distributions[d].trunc_interval[1] 	= IC_SupTVAL[d];
-			IC_Distributions[d].params[0] 			= IC_MEAN[d];
-			IC_Distributions[d].params[1] 			= IC_STD[d];
-			IC_Distributions[d].num_Samples 		= -1;		// This value is just for information. Samples are not chosen here
+			__initial_condition_distributions[d].Name 				= IC_NAMES[d];
+			__initial_condition_distributions[d].isTruncated 		= IC_isTRUNC[d];
+			__initial_condition_distributions[d].trunc_interval[0] 	= IC_InfTVAL[d];
+			__initial_condition_distributions[d].trunc_interval[1] 	= IC_SupTVAL[d];
+			__initial_condition_distributions[d].params[0] 			= IC_MEAN[d];
+			__initial_condition_distributions[d].params[1] 			= IC_STD[d];
+			__initial_condition_distributions[d].num_Samples 		= -1;		// This value is just for information. Samples are not chosen here
 		}
 
 		// Read parameter's probability distribution information from the Case_definition file
 		for (uint16_t p = 0; p < PARAM_SPACE_DIMENSIONS; p++){
-			Parameter_Distributions[p].Name  			 = _DIST_NAMES[p];		// N, G or U distributions
-			Parameter_Distributions[p].isTruncated  	 = _DIST_isTRUNC[p];	// TRUNCATED?
-			Parameter_Distributions[p].trunc_interval[0] = _DIST_InfTVAL[p];	// min of trunc. interval
-			Parameter_Distributions[p].trunc_interval[1] = _DIST_SupTVAL[p]; 	// max. of trunc. interval (if chosen large enough, automatically bounds to 6 std. deviations)
-			Parameter_Distributions[p].params[0] 		 = _DIST_MEAN[p];		// mean
-			Parameter_Distributions[p].params[1] 		 = _DIST_STD[p];		// std
+			__parameter_distributions[p].Name  			 	= _DIST_NAMES[p];		// N, G or U distributions
+			__parameter_distributions[p].isTruncated  	 	= _DIST_isTRUNC[p];		// TRUNCATED?
+			__parameter_distributions[p].trunc_interval[0] 	= _DIST_InfTVAL[p];		// min of trunc. interval
+			__parameter_distributions[p].trunc_interval[1] 	= _DIST_SupTVAL[p]; 	// max. of trunc. interval (if chosen large enough, automatically bounds to 6 std. deviations)
+			__parameter_distributions[p].params[0] 		 	= _DIST_MEAN[p];		// mean
+			__parameter_distributions[p].params[1] 		 	= _DIST_STD[p];			// std
 
 			// Read number of samples from terminal
 			bool get_answer = true;
@@ -136,7 +136,7 @@ public:
 
 				errorCheck(intCheck(get_answer, inputTerminal, DISTR_ERR_MSG, 0, 1))
 			}
-			Parameter_Distributions[p].num_Samples = std::stoi(inputTerminal);
+			__parameter_distributions[p].num_Samples = std::stoi(inputTerminal);
 		}
 
 		return 0;
@@ -153,7 +153,7 @@ public:
 		INT Samples_per_Param[PARAM_SPACE_DIMENSIONS];
 
 		for (UINT i = 0; i < PARAM_SPACE_DIMENSIONS; i++) {
-			UINT temp = Parameter_Distributions[i].num_Samples;
+			UINT temp = __parameter_distributions[i].num_Samples;
 
 			// Total samples from the parameter space discretization
 			totalSampleCount 	 *= temp;
@@ -169,12 +169,12 @@ public:
 		Param_pair*	Parameter_Mesh = new Param_pair[sum_sampleNum];
 
 		// Build the parameter mesh from previous info
-		if(RANDOMIZE<PARAM_SPACE_DIMENSIONS>(Parameter_Mesh, Parameter_Distributions) == -1) {delete[] Parameter_Mesh; return -1;}
+		if(RANDOMIZE<PARAM_SPACE_DIMENSIONS>(Parameter_Mesh, __parameter_distributions) == -1) {delete[] Parameter_Mesh; return -1;}
 
 		// Small vector containing the number of samples per parameter
 		thrust::device_vector<INT>	D_sampVec(Samples_per_Param, Samples_per_Param + PARAM_SPACE_DIMENSIONS);	
 		
-		// Parameter Problem_Domain array (for the GPU)
+		// Parameter __problem_domain array (for the GPU)
 		thrust::device_vector<Param_pair> D_Parameter_Mesh(Parameter_Mesh, Parameter_Mesh + sum_sampleNum);		
 
 		// auxiliary variable that will be used for ensemble mean computation
@@ -202,13 +202,13 @@ public:
 		PDF_Support.Squarify();
 
 		// Update the number of pts per dimension
-		PDF_Support.Nodes_per_Dim = round((IC_SupTVAL[0] - IC_InfTVAL[0]) / Problem_Domain.Discr_length());
+		PDF_Support.Nodes_per_Dim = round((IC_SupTVAL[0] - IC_InfTVAL[0]) / __problem_domain.Discr_length());
 
 		// PDF values at the fixed, high-res Mesh (CPU)
-		thrust::host_vector<TYPE> PDF_ProbDomain(Problem_Domain.Total_Nodes(), 0);	 			
+		thrust::host_vector<TYPE> PDF_ProbDomain(__problem_domain.Total_Nodes(), 0);	 			
 
 		// initialize the Mesh and the PDF at the Mesh nodes (change so as to change the parameters as well)
-		errorCheck(PDF_INITIAL_CONDITION(Problem_Domain, PDF_ProbDomain, IC_Distributions)); 	
+		errorCheck(PDF_INITIAL_CONDITION(__problem_domain, PDF_ProbDomain, __initial_condition_distributions)); 	
 
 		// PDF values at fixed Grid Nodes (for the GPU)
 		thrust::device_vector<TYPE> D_PDF_ProbDomain = PDF_ProbDomain;
@@ -224,7 +224,7 @@ public:
 
 		// Expand 40 nodes appears to be just fine (MAKE IT BETTER)
 		const uint16_t expansion_nodes = 40;
-		Expanded_Domain.Expand_From(Problem_Domain, expansion_nodes);
+		Expanded_Domain.Expand_From(__problem_domain, expansion_nodes);
 
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -232,14 +232,14 @@ public:
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// VARIABLES DEFINITION
 
-		const UINT nrNodesPerFrame = Problem_Domain.Total_Nodes();
+		const UINT nrNodesPerFrame = __problem_domain.Total_Nodes();
 		
 		// Max memory to be used (in bytes). 95% just in case
 		const UINT MAX_BYTES_USEABLE = 0.95 * (D_Properties.totalGlobalMem - nrNodesPerFrame*sizeof(TYPE));		
 
 		// The following consts don't need an explanation
 		const UINT	ConjGrad_MaxSteps  = 1000;		 								
-		const TYPE	RBF_SupportRadius  = DISC_RADIUS * Problem_Domain.Discr_length();
+		const TYPE	RBF_SupportRadius  = DISC_RADIUS * __problem_domain.Discr_length();
 
 		// Full array storing appended particles for all parameter samples
 		std::vector<Particle>	Full_Particle_Locations;
@@ -262,10 +262,10 @@ public:
 											indicators::option::Remainder{"-"},
 											indicators::option::End{"]"},};
 
-		const UINT savingArraySteps = (reinitInstants.size()) / (storeFrames.size() / nrNodesPerFrame);
+		const UINT __storage_steps = (__reinitialization_info.size()) / (__simulation_storage.size() / nrNodesPerFrame);
 
 		// Resize the simulation logger
-		SimLog.resize(reinitInstants.size()-1);
+		__simulation_log.resize(__reinitialization_info.size()-1);
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -297,8 +297,8 @@ public:
 
 
 		// Define concurrent saving lambda function
-		auto concurrentSaving = [&saveStepCount](const thrust::host_vector<TYPE>& vSrc, std::vector<TYPE>& vDst, const UINT simStepCount, const UINT savingArraySteps, const UINT nrNodesPerFrame) {
-			if ((simStepCount == 0 || simStepCount % savingArraySteps == 0) && saveStepCount < vDst.size() / nrNodesPerFrame - 1) {
+		auto concurrentSaving = [&saveStepCount](const thrust::host_vector<TYPE>& vSrc, std::vector<TYPE>& vDst, const UINT simStepCount, const UINT __storage_steps, const UINT nrNodesPerFrame) {
+			if ((simStepCount == 0 || simStepCount % __storage_steps == 0) && saveStepCount < vDst.size() / nrNodesPerFrame - 1) {
 				// Store info in cumulative variable
 				thrust::copy(vSrc.begin(), vSrc.end(), &vDst[saveStepCount * nrNodesPerFrame]);
 				saveStepCount++;
@@ -306,16 +306,16 @@ public:
 		};
 
 		// IN THIS LINE WE START WITH THE ACTUAL ITERATIONS OF THE LIOUVILLE EQUATION
-		while(simStepCount < reinitInstants.size() - 1){
+		while(simStepCount < __reinitialization_info.size() - 1){
 
 			// Save previous frame concurrently, so no time is used for this
-			std::thread storeFrame_worker (concurrentSaving, std::ref(PDF_ProbDomain), std::ref(storeFrames), simStepCount, savingArraySteps, nrNodesPerFrame);
+			std::thread storeFrame_worker (concurrentSaving, std::ref(PDF_ProbDomain), std::ref(__simulation_storage), simStepCount, __storage_steps, nrNodesPerFrame);
 
-			SimLog.LogFrames[simStepCount].simIteration = simStepCount;
-			SimLog.LogFrames[simStepCount].simTime 		= reinitInstants[simStepCount].time;
+			__simulation_log.LogFrames[simStepCount].simIteration = simStepCount;
+			__simulation_log.LogFrames[simStepCount].simTime 		= __reinitialization_info[simStepCount].time;
 
 			// select the first and last time value of the current iteration
-			t0 = reinitInstants[simStepCount].time; tF = reinitInstants[simStepCount + 1].time;
+			t0 = __reinitialization_info[simStepCount].time; tF = __reinitialization_info[simStepCount + 1].time;
 
 			/////////////////////////////////////////////////////////////////////////////////////////
 			/////////////////////////////////////////////////////////////////////////////////////////
@@ -326,7 +326,7 @@ public:
 
 				errorCheck(setInitialParticles(	PDF_ProbDomain, D_PDF_ProbDomain,				// Initial, gridded PDF
 												D_Particle_Values, D_Particle_Locations, 		// Output vectors that will give the relevant nodes
-												Problem_Domain, Expanded_Domain, PDF_Support));	// Domain information
+												__problem_domain, Expanded_Domain, PDF_Support));	// Domain information
 
 			auto endTimeSeconds = std::chrono::high_resolution_clock::now();
 			std::chrono::duration<float> durationSeconds = endTimeSeconds - startTimeSeconds;
@@ -335,8 +335,8 @@ public:
 			UINT AMR_ActiveNodeCount = D_Particle_Locations.size();
 
 				// To the Log file
-				SimLog.LogFrames[simStepCount].log_AMR_Time = durationSeconds.count();
-				SimLog.LogFrames[simStepCount].log_AMR_RelevantParticles = AMR_ActiveNodeCount;
+				__simulation_log.LogFrames[simStepCount].log_AMR_Time = durationSeconds.count();
+				__simulation_log.LogFrames[simStepCount].log_AMR_RelevantParticles = AMR_ActiveNodeCount;
 
 			#if ERASE_dPDF
 				// Clear the GPU-stored PDF for better memory availability
@@ -401,8 +401,8 @@ public:
 			
 			
 			// To the Log file
-			SimLog.LogFrames[simStepCount].log_Interpolation_Time = durationSeconds.count();
-			SimLog.LogFrames[simStepCount].log_Interpolation_Iterations = iterations;
+			__simulation_log.LogFrames[simStepCount].log_Interpolation_Time = durationSeconds.count();
+			__simulation_log.LogFrames[simStepCount].log_Interpolation_Iterations = iterations;
 
 			#if ERASE_auxVectors == true
 			// Clear the vectors to save memory
@@ -413,7 +413,7 @@ public:
 			D_Particle_Values = D_lambdas;
 
 
-			if (reinitInstants[simStepCount].impulse) {
+			if (__reinitialization_info[simStepCount].impulse) {
 				/////////////////////////////////////////////////////////////////////////////////////////
 				/////////////////////////////////////////////////////////////////////////////////////////
 				// -------------------------- DELTA/HEAVISIDE IMPULSE TERMS -------------------------- //
@@ -428,9 +428,9 @@ public:
 				errorCheck(IMPULSE_TRANSFORM_PDF(	D_PDF_ProbDomain,
 													D_Particle_Locations,
 													D_Particle_Values,
-													reinitInstants[simStepCount],
+													__reinitialization_info[simStepCount],
 													jumpCount,
-													Problem_Domain,
+													__problem_domain,
 													Expanded_Domain,
 													PDF_Support));
 
@@ -439,7 +439,7 @@ public:
 
 				#if OUTPUT_INFO > 0
 				// Enter the information into the log information
-				SimLog.subFrame_time[5*simStepCount + 1] = durationSeconds.count();
+				__simulation_log.subFrame_time[5*simStepCount + 1] = durationSeconds.count();
 				#endif
 
 				jumpCount++;
@@ -526,20 +526,20 @@ public:
 																rpc(D_Parameter_Mesh, Sample_idx_offset_init),
 																rpc(D_sampVec, 0),
 																t0,
-																deltaT,
+																__delta_t,
 																tF,
 																AMR_ActiveNodeCount,
 																Samples_PerBlk,
 																mode,
 																rpc(Extra_Parameter, 0),
-																Problem_Domain);
+																__problem_domain);
 						gpuError_Check(cudaDeviceSynchronize());
 					endTimeSeconds = std::chrono::high_resolution_clock::now();
 					durationSeconds = endTimeSeconds - startTimeSeconds;
 
 					// To the Log file
-					SimLog.LogFrames[simStepCount].log_Advection_Time = durationSeconds.count();
-					SimLog.LogFrames[simStepCount].log_Advection_TotalParticles = ActiveNodes_PerBlk;
+					__simulation_log.LogFrames[simStepCount].log_Advection_Time = durationSeconds.count();
+					__simulation_log.LogFrames[simStepCount].log_Advection_TotalParticles = ActiveNodes_PerBlk;
 
 					PDF_Support.Update_boundingBox(D_Particle_Locations);
 					
@@ -574,14 +574,14 @@ public:
 																	AMR_ActiveNodeCount,
 																	Samples_PerBlk,
 																	Sample_idx_offset_init,
-																	Problem_Domain,
+																	__problem_domain,
 																	Expanded_Domain);
 					gpuError_Check(cudaDeviceSynchronize());
 					endTimeSeconds = std::chrono::high_resolution_clock::now();
 					durationSeconds = endTimeSeconds - startTimeSeconds;
 
 					// To the Log file
-					SimLog.LogFrames[simStepCount].log_Reinitialization_Time = durationSeconds.count();
+					__simulation_log.LogFrames[simStepCount].log_Reinitialization_Time = durationSeconds.count();
 				}
 
 				/////////////////////////////////////////////////////////////////////////////////////////
@@ -610,16 +610,16 @@ public:
 			
 			storeFrame_worker.join();
 
-			statusBar.set_option(indicators::option::PostfixText{"Iterations: " + std::to_string(simStepCount) + "/" + std::to_string(reinitInstants.size() - 1)});
-			statusBar.set_progress((float) simStepCount/(reinitInstants.size() - 1)*100);
+			statusBar.set_option(indicators::option::PostfixText{"Iterations: " + std::to_string(simStepCount) + "/" + std::to_string(__reinitialization_info.size() - 1)});
+			statusBar.set_progress((float) simStepCount/(__reinitialization_info.size() - 1)*100);
 		}
 
-		thrust::copy(PDF_ProbDomain.begin(), PDF_ProbDomain.end(), &storeFrames[saveStepCount * nrNodesPerFrame]);
+		thrust::copy(PDF_ProbDomain.begin(), PDF_ProbDomain.end(), &__simulation_storage[saveStepCount * nrNodesPerFrame]);
 
 		std::cout << termcolor::bold << termcolor::green << "[INFO] Completed successfully!" << std::endl;
   		std::cout << termcolor::reset;
 
-		SimLog.writeSimulationLog_toFile();
+		__simulation_log.writeSimulationLog_toFile();
 		// Exit current function
 		return 0;
 	}
@@ -629,9 +629,9 @@ public:
             bool saving_active = true;		// see if saving is still active
             int16_t error_check = 0;
 
-			const UINT nrNodesPerFrame = Problem_Domain.Total_Nodes();
+			const UINT nrNodesPerFrame = __problem_domain.Total_Nodes();
 
-            const uint64_t MEM_2_STORE		= storeFrames.size() * sizeof(float);
+            const uint64_t MEM_2_STORE		= __simulation_storage.size() * sizeof(float);
             
             UINT number_of_frames_needed 	= MEM_2_STORE / nrNodesPerFrame / sizeof(float);
             uint64_t max_frames_file 		= (uint64_t)MAX_FILE_SIZE_B / nrNodesPerFrame / sizeof(float);
@@ -705,20 +705,20 @@ public:
                         std::ofstream file1(relavtive_pth, std::ios::out);
                         assert(file1.is_open());
 
-                        file1 << nrNodesPerFrame << "," << Problem_Domain.Nodes_per_Dim << ",";
+                        file1 << nrNodesPerFrame << "," << __problem_domain.Nodes_per_Dim << ",";
 
                         for (UINT d = 0; d < PHASE_SPACE_DIMENSIONS; d++){
-                                  file1 << Problem_Domain.Boundary_inf.dim[d] << "," << Problem_Domain.Boundary_sup.dim[d] << ",";
+                                  file1 << __problem_domain.Boundary_inf.dim[d] << "," << __problem_domain.Boundary_sup.dim[d] << ",";
                         }
                         for (uint16_t d = 0; d < PARAM_SPACE_DIMENSIONS; d++) {
-                            file1 << Parameter_Distributions[d].num_Samples << ",";
+                            file1 << __parameter_distributions[d].num_Samples << ",";
                         }
                         file1 << simulationDuration << "\n";
 
                         for (UINT i = k * max_frames_file + frames_init; i < k * max_frames_file + frames_in_file + frames_init - 1; i++) {
-                            file1 << reinitInstants[i * savingArraySteps].time << ",";
+                            file1 << __reinitialization_info[i * __storage_steps].time << ",";
                         }
-                        file1 << reinitInstants[(k * max_frames_file + frames_in_file + frames_init - 1) * savingArraySteps].time;
+                        file1 << __reinitialization_info[(k * max_frames_file + frames_in_file + frames_init - 1) * __storage_steps].time;
 
                         file1.close();
 
@@ -731,7 +731,7 @@ public:
                         std::ofstream myfile(relavtive_pth, std::ios::out | std::ios::binary);
                         assert (myfile.is_open());
 
-                        myfile.write((char*)&storeFrames[(k * max_frames_file + frames_init) * nrNodesPerFrame], sizeof(TYPE) * frames_in_file * nrNodesPerFrame);
+                        myfile.write((char*)&__simulation_storage[(k * max_frames_file + frames_init) * nrNodesPerFrame], sizeof(TYPE) * frames_in_file * nrNodesPerFrame);
                         myfile.close();
                         std::cout << "Simulation output file " << k << " completed!\n";
                         

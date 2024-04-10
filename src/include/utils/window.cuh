@@ -2,6 +2,7 @@
 
 #include "../headers.cuh"
 #include "numeric_defs.cuh"
+#include "../../build/configured_files/include/config.hpp"
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -74,8 +75,9 @@ int16_t IntroDisplay(cudaDeviceProp& prop){
 	std::cout << border <<"\n";
 	std::cout << border_mid <<"\n";
 	const uint32_t border_length = windowLength;
+	const std::string str_project_version{project_version};
 
-	std::string temp = "|	Wecome to the Liouville Eq. simulator. You are using version number "; temp.append(project_version);
+	std::string temp = "|	Wecome to the Liouville Eq. simulator. You are using version number "; temp += str_project_version;
 	Intro_square_filler(temp, border_length, 1, 0);
 	std::cout << temp;
 	std::cout << border_mid <<"\n";
