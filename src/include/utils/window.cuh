@@ -14,7 +14,7 @@
 #define border_mid "|==========================================================================================|"
 #define windowLength 92
 
-void Intro_square_filler(std::string& message, const uint32_t border_length, const uint32_t number_of_tabs, const uint32_t offset){
+inline void Intro_square_filler(std::string& message, const uint32_t border_length, const uint32_t number_of_tabs, const uint32_t offset){
 
 	uint32_t msg_length = message.size() + number_of_tabs*8 - 1 - offset;
 	for (uint32_t k = 0; k < border_length - msg_length; k++){
@@ -23,7 +23,7 @@ void Intro_square_filler(std::string& message, const uint32_t border_length, con
 	message.append("|\n");
 }
 
-int16_t SetGPU(int16_t& ChosenOne, const uint32_t& border_length){
+inline int16_t SetGPU(int16_t& ChosenOne, const uint32_t& border_length){
 
 	int deviceCount = 0;
 	cudaGetDeviceCount(&deviceCount);
@@ -71,7 +71,7 @@ int16_t SetGPU(int16_t& ChosenOne, const uint32_t& border_length){
 	return 0;
 }
 
-int16_t IntroDisplay(cudaDeviceProp& prop){
+inline int16_t IntroDisplay(cudaDeviceProp& prop){
 	std::cout << border <<"\n";
 	std::cout << border_mid <<"\n";
 	const uint32_t border_length = windowLength;

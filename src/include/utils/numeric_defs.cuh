@@ -5,13 +5,13 @@
 
 // Check the dimensionality of the simulations to use "optimal" data types
 #if PHASE_SPACE_DIM < 4
-	#define INT int32_t
-	#define UINT uint32_t
+	#define intType int32_t
+	#define uintType uint32_t
 	#define ERASE_dPDF false
 	#define ERASE_auxVectors false
 #else
-	#define INT int64_t
-	#define UINT uint64_t
+	#define intType int64_t
+	#define uintType uint64_t
 	#define ERASE_dPDF true
 	#define ERASE_auxVectors false
 #endif

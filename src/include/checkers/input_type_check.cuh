@@ -42,13 +42,13 @@ inline bool isNumeric(const std::string& inputTerminal){
 
 }
 
-inline int16_t intCheck(bool& getAnswer, const std::string& inputTerminal, const std::string& errMessage = "Undefined error occured.\n", const INT non_accepted = 0, const INT minArg = std::numeric_limits<INT>::lowest(), 
-						const INT maxArg = std::numeric_limits<INT>::max()) {
+inline int16_t intCheck(bool& getAnswer, const std::string& inputTerminal, const std::string& errMessage = "Undefined error occured.\n", const intType non_accepted = 0, const intType minArg = std::numeric_limits<intType>::lowest(), 
+						const intType maxArg = std::numeric_limits<intType>::max()) {
 	
 	if (!isNumeric(inputTerminal)) { std::cout << "Error: Non-numerical inputs not allowed. "; }
 	else {
 
-		INT temp = std::stoi(inputTerminal);
+		intType temp = std::stoi(inputTerminal);
 
 		if (temp == -1) {
 			std::cout << "Definition error in file: " << __FILE__ << "\nLine: " << __LINE__ << "\nExiting simulation.\n";

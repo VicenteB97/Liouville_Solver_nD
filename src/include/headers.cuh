@@ -30,3 +30,9 @@
 #include <thrust/sort.h>                // GPU-based sorting
 #include <thrust/extrema.h>             // Compute max. and min. of GPU arrays
 #include <thrust/inner_product.h>		// To compute the inner product of GPU arrays
+
+#include "Case_definition.cuh"
+#include "utils/others.cuh"
+#include "utils/numeric_defs.cuh"
+#include "utils/error_functs.cuh"
+#include "utils/error_msgs.cuh"

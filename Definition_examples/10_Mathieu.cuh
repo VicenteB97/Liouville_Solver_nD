@@ -11,9 +11,6 @@
 //////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////
 
-#ifndef __CASE_DEFINITION_CUH__
-#define __CASE_DEFINITION_CUH__
-
 // -------------------------------------------------------------------------------- //
 //  HERE ARE THE DEFINITIONS THAT CAN BE CHANGED ACCORDING TO THE PROBLEM TO STUDY  //
 //  Remember that you must also change the host system in the CMakeLists.txt file   //
@@ -28,7 +25,7 @@
 // Choosing whether showing full or simplified timing information
 #define OUTPUT_INFO 0
 
-#define TYPE float     // only supported values are 'float' and 'double'
+#define floatType float     // only supported values are 'float' and 'double'
 
 
 // AMR tolerance, Conjugate Gradient tolerance and number of discretization size for the radius of the RBFs
@@ -43,10 +40,10 @@
 
 static const char   IC_NAMES[PHASE_SPACE_DIMENSIONS] = { 'N','N' };
 static const bool   IC_isTRUNC[PHASE_SPACE_DIMENSIONS] = { false, false };
-static const TYPE   IC_InfTVAL[PHASE_SPACE_DIMENSIONS] = { -3, -3};
-static const TYPE   IC_SupTVAL[PHASE_SPACE_DIMENSIONS] = { 3, 3 };
-static const TYPE	IC_MEAN[PHASE_SPACE_DIMENSIONS] = {0, -1};
-static const TYPE	IC_STD[PHASE_SPACE_DIMENSIONS] = { sqrt((TYPE)0.005),sqrt((TYPE)0.005) };
+static const floatType   IC_InfTVAL[PHASE_SPACE_DIMENSIONS] = { -3, -3};
+static const floatType   IC_SupTVAL[PHASE_SPACE_DIMENSIONS] = { 3, 3 };
+static const floatType	IC_MEAN[PHASE_SPACE_DIMENSIONS] = {0, -1};
+static const floatType	IC_STD[PHASE_SPACE_DIMENSIONS] = { sqrt((floatType)0.005),sqrt((floatType)0.005) };
 
 // Vector field definition (see the end of 'Classes.cuh' for the definition)
 // explanation: p0 = a, p1 = q
@@ -63,14 +60,12 @@ static const TYPE	IC_STD[PHASE_SPACE_DIMENSIONS] = { sqrt((TYPE)0.005),sqrt((TYP
 #define PARAM_SPACE_DIMENSIONS 2
 static const char   _DIST_NAMES[PARAM_SPACE_DIMENSIONS] = { 'U','U'};
 static const bool   _DIST_isTRUNC[PARAM_SPACE_DIMENSIONS] = { false, false };
-static const TYPE   _DIST_InfTVAL[PARAM_SPACE_DIMENSIONS] = { 3,-2 };
-static const TYPE   _DIST_SupTVAL[PARAM_SPACE_DIMENSIONS] = { 5,0 };
-static TYPE 		_DIST_MEAN[PARAM_SPACE_DIMENSIONS] = { 4,-3 };
-static TYPE 		_DIST_STD[PARAM_SPACE_DIMENSIONS] = { sqrt((TYPE)0.05), sqrt((TYPE)0.005) };
+static const floatType   _DIST_InfTVAL[PARAM_SPACE_DIMENSIONS] = { 3,-2 };
+static const floatType   _DIST_SupTVAL[PARAM_SPACE_DIMENSIONS] = { 5,0 };
+static floatType 		_DIST_MEAN[PARAM_SPACE_DIMENSIONS] = { 4,-3 };
+static floatType 		_DIST_STD[PARAM_SPACE_DIMENSIONS] = { sqrt((floatType)0.05), sqrt((floatType)0.005) };
 
 // Impulse parameter information (only delta or heaviside)
 #define IMPULSE_TYPE 0
 
 #define INCLUDE_XTRA_PARAMS false
-
-#endif

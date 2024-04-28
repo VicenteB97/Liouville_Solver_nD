@@ -12,22 +12,22 @@
 
 using namespace thrust::placeholders; // this is useful for the multiplication of a device vector by a constant
 
-int16_t RANDOMIZE_II(	const INT* 					n_samples, 
-						const INT 						totalSampleCount, 
+int16_t RANDOMIZE_II(	const intType* 					n_samples, 
+						const intType 						totalSampleCount, 
 						std::vector<Param_vec<PHASE_SPACE_DIMENSIONS>>* Parameter_Mesh, 
 						const Distributions* 			Dist_Parameters);
 
 
 __global__ void TRANSFORM_PARTICLES(Particle*					Particle_Locations,
 									const Param_vec<PHASE_SPACE_DIMENSIONS>*	impulse_strengths,
-									const INT					Num_Particles_per_sample,
-									const INT					Total_Particles) {
+									const intType					Num_Particles_per_sample,
+									const intType					Total_Particles) {
 
-	const INT i = blockDim.x * blockIdx.x + threadIdx.x;
+	const intType i = blockDim.x * blockIdx.x + threadIdx.x;
 
 	if (i < Total_Particles){
 
-		const INT j =(INT) floorf((float)i / Num_Particles_per_sample);		// current sample
+		const intType j =(intType) floorf((float)i / Num_Particles_per_sample);		// current sample
 		Param_vec<PHASE_SPACE_DIMENSIONS> aux = impulse_strengths[j];
 
 		 
@@ -37,21 +37,21 @@ __global__ void TRANSFORM_PARTICLES(Particle*					Particle_Locations,
 	}
 }
 
-int16_t IMPULSE_TRANSFORM_PDF(thrust::device_vector<TYPE>&		GPU_PDF,				// PDF in Mesh
+int16_t IMPULSE_TRANSFORM_PDF(thrust::device_vector<floatType>&		GPU_PDF,				// PDF in Mesh
 							thrust::device_vector<Particle>& 	D_Particle_Locations,	// Particle positions
-							thrust::device_vector<TYPE>&		D_Particle_Values,		// PDF in AMR-selected points
+							thrust::device_vector<floatType>&		D_Particle_Values,		// PDF in AMR-selected points
 							const Time_instants					time,					// time-impulse information 
-							const INT							jumpCount,				// current jumpCount 
+							const intType							jumpCount,				// current jumpCount 
 							const Mesh&							Problem_Domain,
 							const Mesh&							Expanded_Domain,
 							Mesh&								Supp_BBox){	 
 
 // 0.- Create the impulse samples
 
-		UINT AMR_ActiveNodeCount = D_Particle_Locations.size();
+		uintType AMR_ActiveNodeCount = D_Particle_Locations.size();
 
 		Distributions* Imp_Param_Dist = new Distributions[PHASE_SPACE_DIMENSIONS];
-		INT n_samples[PHASE_SPACE_DIMENSIONS];
+		intType n_samples[PHASE_SPACE_DIMENSIONS];
 
 		 
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++){
@@ -65,9 +65,9 @@ int16_t IMPULSE_TRANSFORM_PDF(thrust::device_vector<TYPE>&		GPU_PDF,				// PDF i
 				n_samples[d]						= deltaImpulse_distribution_SAMPLES[jumpCount * PHASE_SPACE_DIMENSIONS + d];		// no. of samples
 		}
 
-		INT Random_Samples = 1;
+		intType Random_Samples = 1;
 		 
-		for (UINT i = 0; i < PHASE_SPACE_DIMENSIONS; i++){
+		for (uintType i = 0; i < PHASE_SPACE_DIMENSIONS; i++){
 			Random_Samples *= n_samples[i];
 		}
 
@@ -76,11 +76,11 @@ int16_t IMPULSE_TRANSFORM_PDF(thrust::device_vector<TYPE>&		GPU_PDF,				// PDF i
 		errorCheck(RANDOMIZE_II(n_samples, Random_Samples, &Impulse_Parameter_Mesh, Imp_Param_Dist))
 
 		float Sum_Rand_Params = 0;
-		for (INT i = 0; i < Random_Samples; i++) {
+		for (intType i = 0; i < Random_Samples; i++) {
 			Sum_Rand_Params += Impulse_Parameter_Mesh[i].Joint_PDF;
 		}		
 
-		const INT Total_Particles = AMR_ActiveNodeCount * Random_Samples;
+		const intType Total_Particles = AMR_ActiveNodeCount * Random_Samples;
 
 		D_Particle_Locations.resize(Total_Particles);
 		D_Particle_Values.resize(Total_Particles);
@@ -93,8 +93,8 @@ int16_t IMPULSE_TRANSFORM_PDF(thrust::device_vector<TYPE>&		GPU_PDF,				// PDF i
 // 1.- Do the transformation of the points according to the info given by the time-impulse vector
 		thrust::device_vector<Param_vec<PHASE_SPACE_DIMENSIONS>> 	Impulses = Impulse_Parameter_Mesh;
 
-		INT Threads = (INT)fmin(THREADS_P_BLK, Total_Particles);
-		INT Blocks  = (INT)floor(Total_Particles / Threads) + 1;
+		intType Threads = (intType)fmin(THREADS_P_BLK, Total_Particles);
+		intType Blocks  = (intType)floor(Total_Particles / Threads) + 1;
 
 	// FOR SOME REASON, I'M ONLY WRITING IN SOME VALUES...NOT ALL OF THEM
 
@@ -112,9 +112,9 @@ int16_t IMPULSE_TRANSFORM_PDF(thrust::device_vector<TYPE>&		GPU_PDF,				// PDF i
 	thrust::fill(thrust::device, GPU_PDF.begin(), GPU_PDF.end(), 0);
 	#endif
 
-	TYPE search_radius = DISC_RADIUS * Problem_Domain.Discr_length();
+	floatType search_radius = DISC_RADIUS * Problem_Domain.Discr_length();
 
-for (UINT s = 0; s < Random_Samples; s++){
+for (uintType s = 0; s < Random_Samples; s++){
 	Threads = fmin(THREADS_P_BLK, AMR_ActiveNodeCount);
 	Blocks = floor((AMR_ActiveNodeCount - 1) / Threads) + 1;		// To compute the interpolation results at the GPU
 
@@ -148,8 +148,8 @@ for (UINT s = 0; s < Random_Samples; s++){
 }
 
 // This function is for the Delta-impulsive case!
-int16_t RANDOMIZE_II(const INT* 								n_samples, 
-					const INT 									totalSampleCount, 
+int16_t RANDOMIZE_II(const intType* 								n_samples, 
+					const intType 									totalSampleCount, 
 					std::vector<Param_vec<PHASE_SPACE_DIMENSIONS>>* Parameter_Mesh,
 					const Distributions* 						Dist_Parameters) {
 
@@ -159,7 +159,7 @@ int16_t RANDOMIZE_II(const INT* 								n_samples,
 		// call the parameter pair vec. function
 		Param_pair* PP = new Param_pair[n_samples[d]];
 
-		INT err_check = PARAMETER_VEC_BUILD(n_samples[d], PP, Dist_Parameters[d]);
+		intType err_check = PARAMETER_VEC_BUILD(n_samples[d], PP, Dist_Parameters[d]);
 		if (err_check == -1){ return -1; }
 
 		// append to the output array
@@ -167,12 +167,12 @@ int16_t RANDOMIZE_II(const INT* 								n_samples,
 		delete[] PP;
 	}
 
-	for (UINT k = 0; k < totalSampleCount; k++){
+	for (uintType k = 0; k < totalSampleCount; k++){
 		// 1st, find the parameter components
-		INT aux_num 	=  n_samples[0];
-		INT aux_num_2 	=  n_samples[0];
+		intType aux_num 	=  n_samples[0];
+		intType aux_num_2 	=  n_samples[0];
 
-		INT aux_idx = positive_rem(k, aux_num);
+		intType aux_idx = positive_rem(k, aux_num);
 
 		Parameter_Mesh->at(k).sample_vec[0] = aux_PM[aux_idx].sample;
 		Parameter_Mesh->at(k).Joint_PDF 	= aux_PM[aux_idx].PDF;

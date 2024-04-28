@@ -12,6 +12,6 @@
 /// @param b This is the denominator
 /// @return Returns mod(a,b)
 __host__ __device__
-inline UINT positive_rem(const UINT a, const UINT b) {
+inline uintType positive_rem(const uintType a, const uintType b) {
 	return (a % b + b) % b;
 }
