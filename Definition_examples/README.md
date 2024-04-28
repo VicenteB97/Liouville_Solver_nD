@@ -40,6 +40,8 @@ NOTE 1: Only independent parameter distributions are considered. You CAN use cor
 
 For a complete example: 
     1D RDE: see '1_Linear_Eq.txt'
-    With no jumpCounts: see '4_VanDerPol_System.txt'
-    With delta jumpCounts: see '2_Duffing_System.txt'.
-    With Heaviside jumpCounts: see '3_Allelochemicals_System.txt'.
+    With no jumps: see '4_VanDerPol_System.txt'
+    With delta jumps: see '2_Duffing_System.txt'.
+    With Heaviside jumps: see '3_Allelochemicals_System.txt'.
+
+**IMPORTANT**: Currently (version 3.2.0 beta) does not support delta/heaviside impulses. Currently working on it.

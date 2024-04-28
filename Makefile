@@ -12,19 +12,19 @@ compile_release:
 	rm -rf ./output
 	mkdir ./output
 	cmake -S . -B ./build/Release -DCMAKE_BUILD_TYPE=Release
-	cmake --build ./build/Release
+	cmake --build ./build/Release --parallel 12
 
-Total_debug:
+total_debug:
 	make compile_debug && cd ./build/Debug && clear && ./Simulation
 
-Total_release:
+total_release:
 	make compile_release && cd ./build/Release && clear && ./Simulation
 
 update_debug:
 	cmake --build ./build/Debug && clear && cd ./build/Debug && ./Simulation
 	
 update_release:
-	cmake --build ./build/Release && clear && cd ./build/Release && ./Simulation
+	cmake --build ./build/Release --parallel 12 && clear && cd ./build/Release && ./Simulation
 
 cleanup:
 	rm -rf ./build
