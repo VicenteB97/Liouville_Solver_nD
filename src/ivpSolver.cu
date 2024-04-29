@@ -653,7 +653,7 @@ int16_t ivpSolver::writeFramesToFile(const double& simulationDuration) {
 			}
 
 #pragma omp parallel for
-			for (int16_t k = 0; k < number_of_files_needed; k++) {
+			for (int16_t k = 0; k < (int16_t)number_of_files_needed; k++) {
 
 				uintType frames_in_file = fmin(max_frames_file, number_of_frames_needed - k * max_frames_file);
 
