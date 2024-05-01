@@ -193,7 +193,7 @@ __global__ void RESTART_GRID_FIND_GN(Particle* Particle_Positions,
 
 	if (i >= Adapt_Pts * Block_samples) { return; }
 
-	uintType Current_sample = offset + floorf(i / Adapt_Pts);
+	uintType Current_sample = offset + (uintType)floorf((float)i / Adapt_Pts);
 	Param_vec<PARAM_SPACE_DIMENSIONS>	aux = Gather_Param_Vec<PARAM_SPACE_DIMENSIONS>(Current_sample, Parameter_Mesh, n_Samples);
 
 	floatType weighted_lambda = lambdas[i] * aux.Joint_PDF;
@@ -217,7 +217,7 @@ __global__ void RESTART_GRID_FIND_GN(Particle* Particle_Positions,
 
 #pragma unroll
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-			uintType temp_idx = floorf(positive_rem(k, Neighbors_per_dim * tempPowerAccumulate) / tempPowerAccumulate);
+			uintType temp_idx = floorf((float) positive_rem(k, Neighbors_per_dim * tempPowerAccumulate) / tempPowerAccumulate);
 
 			visit_node.dim[d] += temp_idx * domainDiscretization;
 			tempPowerAccumulate *= Neighbors_per_dim;

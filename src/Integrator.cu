@@ -5,11 +5,13 @@ using namespace thrust::placeholders; // this is useful for the multiplication o
 // Dynamics functions:
 // The following functions are not to be modified
 __device__
-inline Particle VECTOR_FIELD(Particle X,
+inline Particle VECTOR_FIELD(
+	Particle X,
 	floatType      t,
 	const Param_vec<PARAM_SPACE_DIMENSIONS> parameter,
 	const uintType      mode,
-	const double    extra_param[]) {
+	const double    extra_param[]
+) {
 
 	return { VEC_FIELD };
 }
@@ -28,9 +30,17 @@ inline floatType DIVERGENCE_FIELD(Particle X,
 
 
 // Output the final point
-__device__ void runge_kutta_45(Particle& position, floatType& value, double t0, const double tF, const double time_step,
-	Param_vec<PARAM_SPACE_DIMENSIONS> parameter_realization, const double* extra_param, const uintType mode,
-	const Mesh domain_mesh) {
+__device__ void runge_kutta_45(
+	Particle& position, 
+	floatType& value, 
+	double t0, 
+	const double tF, 
+	const double time_step,
+	Param_vec<PARAM_SPACE_DIMENSIONS> parameter_realization, 
+	const double* extra_param, 
+	const uintType mode,
+	const Mesh domain_mesh
+) {
 
 	Particle k0, k1, k2, k3, k_final, temp;	// register storing the initial particle location;
 	floatType	 Int1, Int2, Int3;				// register storing the initial particle value;
@@ -85,7 +95,8 @@ __device__ void runge_kutta_45(Particle& position, floatType& value, double t0, 
 /// @param Adapt_Points Number of particles as computed by the AMR scheme
 /// @param Random_Samples Number of random parameter_realization samples
 /// @return 
-__global__ void ODE_INTEGRATE(Particle* Particles,
+__global__ void ODE_INTEGRATE(
+	Particle* Particles,
 	floatType* PDF,
 	const Param_pair* parameters,
 	const intType* n_Samples,
@@ -104,7 +115,7 @@ __global__ void ODE_INTEGRATE(Particle* Particles,
 
 		// AUXILIARY DATA TO RUN THE ITERATIONS
 		// So, the total amount of advections are going to be: (no. particles x no. of samples)
-		const uintType  i_sample = floor((double)i / Adapt_Points);
+		const uintType  i_sample = (uintType) floorf((float)i / Adapt_Points);
 
 		const Param_vec<PARAM_SPACE_DIMENSIONS> parameter_realization = Gather_Param_Vec<PARAM_SPACE_DIMENSIONS>(i_sample, parameters, n_Samples);
 

@@ -69,14 +69,15 @@ int16_t PDF_INITIAL_CONDITION(const Mesh& Mesh, thrust::host_vector<floatType>& 
 // ----------------------------------------------------------------------------------- //
 
 /// @brief 
-/// @param n_Samples 
+/// @param random_var_sample_vec 
 /// @param PP 
 /// @param Dist_params 
-int16_t PARAMETER_VEC_BUILD(const int n_Samples, Param_pair* PP, const Distributions Dist_params);
+int16_t PARAMETER_VEC_BUILD(const int random_var_sample_vec, Param_pair* PP, const Distributions Dist_params);
 
 
 template<uint16_t DIM>
-__host__ __device__ Param_vec<DIM> Gather_Param_Vec(const uintType index, const Param_pair* Parameter_Array, const intType* n_Samples) {
+__host__ __device__ 
+Param_vec<DIM> Gather_Param_Vec(const uintType index, const Param_pair* Parameter_Array, const intType* random_var_sample_vec) {
 
 	Param_vec<DIM> Output;
 
@@ -87,8 +88,8 @@ __host__ __device__ Param_vec<DIM> Gather_Param_Vec(const uintType index, const 
 
 
 	for (uint16_t d = 0; d < DIM; d++) {
-		uintType aux3 = n_Samples[d];
-		uintType aux = floorf(positive_rem(index, aux3 * aux_samples_mult) / aux_samples_mult);
+		uintType aux3 = random_var_sample_vec[d];
+		uintType aux = floor((double) positive_rem(index, aux3 * aux_samples_mult) / aux_samples_mult);
 
 		Output.sample_vec[d] = Parameter_Array[aux + aux_samples_sum].sample;
 		Output.Joint_PDF *= Parameter_Array[aux + aux_samples_sum].PDF;
@@ -96,6 +97,7 @@ __host__ __device__ Param_vec<DIM> Gather_Param_Vec(const uintType index, const 
 		aux_samples_mult *= aux3;
 		aux_samples_sum += aux3;
 	}
+
 	return Output;
 }
 

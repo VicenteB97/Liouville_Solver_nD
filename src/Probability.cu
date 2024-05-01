@@ -89,14 +89,14 @@ int16_t PDF_INITIAL_CONDITION(const Mesh& Mesh, thrust::host_vector<floatType>& 
 // ----------------------------------------------------------------------------------- //
 
 /// @brief 
-/// @param n_Samples 
+/// @param random_var_sample_count 
 /// @param PP 
 /// @param Dist_params 
-int16_t PARAMETER_VEC_BUILD(const int n_Samples, Param_pair* PP, const Distributions Dist_params) {
+int16_t PARAMETER_VEC_BUILD(const int random_var_sample_count, Param_pair* PP, const Distributions Dist_params) {
 
 	floatType expectation = Dist_params.params[0], std_dev = Dist_params.params[1];
 
-	if (n_Samples == 1) {
+	if (random_var_sample_count == 1) {
 		*PP = { expectation, 1 };
 		return 0;
 	}
@@ -120,20 +120,18 @@ int16_t PARAMETER_VEC_BUILD(const int n_Samples, Param_pair* PP, const Distribut
 			floatType rescale_cdf = boost::math::cdf(dist, xF) - boost::math::cdf(dist, x0);
 
 			// Mesh discretization
-			dx = (xF - x0) / (n_Samples - 1);
+			dx = (xF - x0) / (random_var_sample_count - 1);
 
-#pragma omp parallel for
-			for (int i = 0; i < n_Samples; i++) {
+			for (int i = 0; i < random_var_sample_count; i++) {
 				floatType x = x0 + i * dx;
 				PP[i] = { x, boost::math::pdf(dist, x) / rescale_cdf }; // other distributions could be used
 			}
 			return 0;
 		}
 
-		dx = (xF - x0) / (n_Samples - 1);
+		dx = (xF - x0) / (random_var_sample_count - 1);
 
-#pragma omp parallel for
-		for (int i = 0; i < n_Samples; i++) {
+		for (int i = 0; i < random_var_sample_count; i++) {
 			floatType x = x0 + i * dx;
 			PP[i] = { x, boost::math::pdf(dist, x) }; // other distributions could be used
 		}
@@ -143,18 +141,14 @@ int16_t PARAMETER_VEC_BUILD(const int n_Samples, Param_pair* PP, const Distribut
 	// Uniform case
 	if (Dist_params.Name == 'U' || Dist_params.Name == 'u') {
 
-		x0 = expectation - sqrtf(3) * std_dev;
-		xF = expectation + sqrtf(3) * std_dev;
+		x0 = expectation - sqrt(3) * std_dev;
+		xF = expectation + sqrt(3) * std_dev;
 
-		auto dist = boost::math::uniform_distribution(x0, xF);
-
-		dx = (xF - x0) / (n_Samples - 1);
-
-#pragma omp parallel for
-		for (int i = 0; i < n_Samples; i++) {
+		for (int i = 0; i < random_var_sample_count; i++) {
 			floatType x = x0 + i * dx;
-			PP[i] = { x , boost::math::pdf(dist, x) }; // other distributions could be used
+			PP[i] = { x , 1/(xF-x0)}; // other distributions could be used
 		}
+
 		return 0;
 	}
 
@@ -178,20 +172,18 @@ int16_t PARAMETER_VEC_BUILD(const int n_Samples, Param_pair* PP, const Distribut
 			floatType rescale_cdf = boost::math::cdf(dist, xF) - boost::math::cdf(dist, x0);
 
 			// Mesh discretization
-			dx = (xF - x0) / (n_Samples - 1);
+			dx = (xF - x0) / (random_var_sample_count - 1);
 
-#pragma omp parallel for
-			for (int i = 0; i < n_Samples; i++) {
+			for (int i = 0; i < random_var_sample_count; i++) {
 				floatType x = x0 + i * dx;
 				PP[i] = { x, boost::math::pdf(dist, x) / rescale_cdf }; // other distributions could be used
 			}
 			return 0;
 		}
 
-		dx = (xF - x0) / (n_Samples - 1);
+		dx = (xF - x0) / (random_var_sample_count - 1);
 
-#pragma omp parallel for
-		for (int i = 0; i < n_Samples; i++) {
+		for (int i = 0; i < random_var_sample_count; i++) {
 			floatType x = x0 + i * dx;
 			PP[i] = { x, boost::math::pdf(dist, x) }; // other distributions could be used
 		}
@@ -218,20 +210,18 @@ int16_t PARAMETER_VEC_BUILD(const int n_Samples, Param_pair* PP, const Distribut
 			floatType rescale_cdf = boost::math::cdf(dist, xF) - boost::math::cdf(dist, x0);
 
 			// Mesh discretization
-			dx = (xF - x0) / (n_Samples - 1);
+			dx = (xF - x0) / (random_var_sample_count - 1);
 
-#pragma omp parallel for
-			for (int i = 0; i < n_Samples; i++) {
+			for (int i = 0; i < random_var_sample_count; i++) {
 				floatType x = x0 + i * dx;
 				PP[i] = { x, boost::math::pdf(dist, x) / rescale_cdf }; // other distributions could be used
 			}
 			return 0;
 		}
 
-		dx = (xF - x0) / (n_Samples - 1);
+		dx = (xF - x0) / (random_var_sample_count - 1);
 
-#pragma omp parallel for
-		for (int i = 0; i < n_Samples; i++) {
+		for (int i = 0; i < random_var_sample_count; i++) {
 			floatType x = x0 + i * dx;
 			PP[i] = { x, boost::math::pdf(dist, x) }; // other distributions could be used
 		}
