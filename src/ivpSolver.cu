@@ -449,7 +449,7 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 			uintType Samples_PerBlk = fmin((uintType)totalSampleCount, MAX_BYTES_USEABLE / Bytes_per_sample);
 
 			// Number of blocks to simulate
-			uintType total_simulation_blocks = (uintType)ceil((double)totalSampleCount / Samples_PerBlk);
+			uintType total_simulation_blocks = ceil((double)totalSampleCount / Samples_PerBlk);
 
 			// For correct reinitialization
 			D_fixedParticles = D_Particle_Locations;
@@ -483,7 +483,7 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 				/////////////////////////////////////////////////////////////////////////////////////////
 				/////////////////////////////////////////////////////////////////////////////////////////
 				uint16_t Threads = fmin(THREADS_P_BLK, ActiveNodes_PerBlk);
-				uintType Blocks = floor((ActiveNodes_PerBlk - 1) / Threads) + 1;
+				uintType Blocks = floor((double)(ActiveNodes_PerBlk - 1) / Threads) + 1;
 
 				startTimeSeconds = std::chrono::high_resolution_clock::now();
 				ODE_INTEGRATE << <Blocks, Threads >> > (
@@ -528,7 +528,7 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 #endif
 
 				Threads = fmin(THREADS_P_BLK, ActiveNodes_PerBlk);
-				Blocks = floor((ActiveNodes_PerBlk - 1) / Threads) + 1;
+				Blocks = (uintType) floor((double)(ActiveNodes_PerBlk - 1) / Threads) + 1;
 
 				startTimeSeconds = std::chrono::high_resolution_clock::now();
 				RESTART_GRID_FIND_GN << < Blocks, Threads >> > (rpc(D_Particle_Locations, 0),
@@ -558,7 +558,7 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 
 			// Correction of any possible negative PDF values
 			uintType Threads = fmin(THREADS_P_BLK, nrNodesPerFrame / ELEMENTS_AT_A_TIME);
-			uintType Blocks = floor((nrNodesPerFrame / ELEMENTS_AT_A_TIME - 1) / Threads) + 1;
+			uintType Blocks = (uintType) floor((double)(nrNodesPerFrame / ELEMENTS_AT_A_TIME - 1) / Threads) + 1;
 
 			CORRECTION << <Blocks, Threads >> > (rpc(D_PDF_ProbDomain, 0), nrNodesPerFrame);
 			gpuError_Check(cudaDeviceSynchronize());
@@ -601,7 +601,7 @@ int16_t ivpSolver::writeFramesToFile(const double& simulationDuration) {
 
 	uintType number_of_frames_needed = MEM_2_STORE / nrNodesPerFrame / sizeof(float);
 	uint64_t max_frames_file = (uint64_t)MAX_FILE_SIZE_B / nrNodesPerFrame / sizeof(float);
-	uintType number_of_files_needed = floor((number_of_frames_needed - 1) / max_frames_file) + 1;
+	uintType number_of_files_needed = (uintType)floor((double)(number_of_frames_needed - 1) / max_frames_file) + 1;
 
 	char ans;
 	std::cout << "\nSimulation time: " << simulationDuration << " seconds. ";
@@ -647,7 +647,7 @@ int16_t ivpSolver::writeFramesToFile(const double& simulationDuration) {
 					else {
 						condition = true;
 						number_of_frames_needed = frames_end - frames_init + 1;
-						number_of_files_needed = floor((number_of_frames_needed - 1) / max_frames_file) + 1;
+						number_of_files_needed = (uintType) floor((double)(number_of_frames_needed - 1) / max_frames_file) + 1;
 					}
 				}
 			}

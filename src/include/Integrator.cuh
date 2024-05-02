@@ -11,7 +11,7 @@
 __device__
 inline Particle VECTOR_FIELD(
 	Particle X,
-	floatType      t,
+	double      t,
 	const Param_vec<PARAM_SPACE_DIMENSIONS> parameter,
 	const uintType      mode,
 	const double    extra_param[]);
@@ -21,7 +21,7 @@ inline Particle VECTOR_FIELD(
 __device__
 inline floatType DIVERGENCE_FIELD(
 	Particle X,
-	floatType      t,
+	double      t,
 	const Param_vec<PARAM_SPACE_DIMENSIONS> parameter,
 	const uintType   mode,
 	const double extra_param[]);

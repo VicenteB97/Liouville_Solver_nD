@@ -144,6 +144,8 @@ int16_t PARAMETER_VEC_BUILD(const int random_var_sample_count, Param_pair* PP, c
 		x0 = expectation - sqrt(3) * std_dev;
 		xF = expectation + sqrt(3) * std_dev;
 
+		dx = (xF - x0) / (random_var_sample_count - 1);
+
 		for (int i = 0; i < random_var_sample_count; i++) {
 			floatType x = x0 + i * dx;
 			PP[i] = { x , 1/(xF-x0)}; // other distributions could be used

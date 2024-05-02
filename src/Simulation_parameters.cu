@@ -57,7 +57,7 @@ int16_t BuildTimeVector(std::vector<Time_instants>& time_vector, double& deltaT,
 	// Build the vector
 	while (t0 < tF + ReinitSteps * deltaT / 2) {						// THIS WAY, WE MAKE SURE THAT ROUND-OFF ERRORS ARE NOT ALLOWED!!
 		time_vector.push_back({ t0, false });
-		t0 = t0 + ReinitSteps * deltaT;
+		t0 += ReinitSteps * deltaT;
 	}
 
 	// 2.- if there are impulses:
