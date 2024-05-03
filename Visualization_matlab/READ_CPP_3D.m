@@ -22,7 +22,7 @@ conf_lvl = 0.95;
 
 %% CHANGE FOR YOUR CURRENT COMPUTER
 
-Info=readcell  ('../SIMULATION_OUTPUT/Simulation_Info_1.csv');
+Info=readcell  ('../output/Simulation_Info_1.csv');
 
 Total_Pts           = Info{1,1};
 Pts_Per_Dimension   = Info{1,2};
@@ -40,7 +40,7 @@ Z   =Info{1,7}:h_X:Info{1,8};
 timesteps = 2;%length(Info);
 
 %%
-fileID = fopen('../SIMULATION_OUTPUT/Mean_PDFs_1.bin');
+fileID = fopen('../output/Mean_PDFs_1.bin');
 Data=fread(fileID,[Pts_Per_Dimension^3,timesteps],'float');
 fclose(fileID);
 

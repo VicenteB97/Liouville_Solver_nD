@@ -18,7 +18,7 @@ int16_t BuildTimeVector(std::vector<Time_instants>& time_vector, double& deltaT,
 		std::cout << "Choose initial simulation time: ";
 		std::cin >> terminalInput;
 
-		errorCheck(doubleCheck(get_answer, terminalInput, INIT_TIME_ERR_MSG, -pow(10, -6), 0))
+		errorCheck(doubleCheck(get_answer, terminalInput, INIT_TIME_ERR_MSG, -1E-6, 0))
 	}
 	t0 = std::stod(terminalInput);
 
@@ -54,11 +54,11 @@ int16_t BuildTimeVector(std::vector<Time_instants>& time_vector, double& deltaT,
 	}
 	ReinitSteps = std::stoi(terminalInput);
 
-	// Build the vector
-	while (t0 < tF + ReinitSteps * deltaT / 2) {						// THIS WAY, WE MAKE SURE THAT ROUND-OFF ERRORS ARE NOT ALLOWED!!
-		time_vector.push_back({ t0, false });
-		t0 += ReinitSteps * deltaT;
+	time_vector.resize((double) (tF-t0) / (ReinitSteps * deltaT) + 1);
+	for(uintType i = 0; i < time_vector.size(); i++){
+		time_vector[i] = {(double) t0 + i*ReinitSteps * deltaT, false};
 	}
+
 
 	// 2.- if there are impulses:
 #if (IMPULSE_TYPE != 0)

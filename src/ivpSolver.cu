@@ -57,7 +57,7 @@ int16_t ivpSolver::buildTimeVec() {
 	}
 
 	__storage_steps = std::stoi(terminalInput);
-	const uintType 		savingArraySize = floor(__reinitialization_info.size() / __storage_steps);
+	const uintType savingArraySize = floor((double) __reinitialization_info.size() / __storage_steps) + 1;
 
 	__simulation_storage.resize(__problem_domain.Total_Nodes() * savingArraySize);
 
