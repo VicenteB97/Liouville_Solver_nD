@@ -30,7 +30,8 @@ target_include_directories(
     ${LIB_NAME} PUBLIC 
     ${LIBRARY_INCLUDES}
     "${CMAKE_BINARY_DIR}/configured_files/include"
-    "${LIOUVILLE_EQ_SOLVER_SOURCE_DIR}/../boost_1_84_0"
+    "${LIOUVILLE_EQ_SOLVER_SOURCE_DIR}/../boost"
+    "${LIOUVILLE_EQ_SOLVER_SOURCE_DIR}/../boost_dir"
 )
 
 if(CMAKE_HOST_SYSTEM MATCHES Windows)

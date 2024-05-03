@@ -43,7 +43,7 @@ static const bool   IC_isTRUNC[PHASE_SPACE_DIMENSIONS] = { true, true, true };
 static const floatType   IC_InfTVAL[PHASE_SPACE_DIMENSIONS] = { 0.5,0,0 };
 static const floatType   IC_SupTVAL[PHASE_SPACE_DIMENSIONS] = { 1,0.3,0.25 };
 static const floatType	IC_MEAN[PHASE_SPACE_DIMENSIONS] = { 0.75, 0.15, 0.1 };
-static const floatType	IC_STD[PHASE_SPACE_DIMENSIONS] = { sqrtf(0.0001), sqrtf(0.0001), sqrtf(0.0001) };
+static const floatType	IC_STD[PHASE_SPACE_DIMENSIONS] = { sqrtf(0.0002), sqrtf(0.0002), sqrtf(0.0002) };
 
 // Vector field definition
     // explanation: p0 = \Delta (birth rate), p1 = \mu (death rate), p2 = \beta (S to I transmission), p3 = \gamma (I to R transmission)
