@@ -33,17 +33,20 @@ __device__ void runge_kutta_45(
 	floatType& value, 
 	double t0, 
 	const double tF, 
-	const double time_step,
+	double time_step,
 	Param_vec<PARAM_SPACE_DIMENSIONS> parameter_realization, 
 	const double* extra_param, 
 	const uintType mode,
 	const Mesh domain_mesh
 ) {
 
-	Particle k0, k1, k2, k3, k_final, temp;	// register storing the initial particle location;
-	floatType	 Int1, Int2, Int3, val_aux = 1;	// register storing the initial particle value;
+	Particle k0, k1, k2, k3, k_final, temp;		// register storing the initial particle location;
+	floatType Int1, Int2, Int3, val_aux = 1;	// register storing the initial particle value;
 
-	while (t0 < tF - time_step / 2) {
+	while (t0 < tF - 1E-6) {
+		// Just in case not detaT-proportional
+		time_step = fmin(time_step, tF-t0);
+
 		// Particle flow
 		k0 = VECTOR_FIELD(position, t0, parameter_realization, mode, extra_param);
 
@@ -100,14 +103,14 @@ __global__ void ODE_INTEGRATE(
 	floatType* PDF,
 	const Param_pair* parameters,
 	const intType* n_Samples,
-	double			t0,
-	const double	time_step,
-	const double	tF,
-	const intType		Adapt_Points,
-	const intType		Random_Samples,
-	const uintType		mode,
+	double t0,
+	const double time_step,
+	const double tF,
+	const intType Adapt_Points,
+	const intType Random_Samples,
+	const uintType mode,
 	const double* extra_param,
-	const Mesh  	D_Mesh) {
+	const Mesh D_Mesh) {
 
 	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
 

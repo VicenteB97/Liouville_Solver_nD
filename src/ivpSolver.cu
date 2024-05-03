@@ -57,7 +57,7 @@ int16_t ivpSolver::buildTimeVec() {
 	}
 
 	__storage_steps = std::stoi(terminalInput);
-	const uintType savingArraySize = floor((double) __reinitialization_info.size() / __storage_steps) + 1;
+	const uintType savingArraySize = (double) __reinitialization_info.size() / __storage_steps;
 
 	__simulation_storage.resize(__problem_domain.Total_Nodes() * savingArraySize);
 
@@ -227,7 +227,7 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 										indicators::option::Remainder{"-"},
 										indicators::option::End{"]"}, };
 
-	const uintType __storage_steps = (__reinitialization_info.size()) / (__simulation_storage.size() / nrNodesPerFrame);
+	const uintType __storage_steps = (double) __reinitialization_info.size() / (__simulation_storage.size() / nrNodesPerFrame);
 
 	// Resize the simulation logger
 	__simulation_log.resize(__reinitialization_info.size() - 1);
@@ -268,7 +268,7 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 			thrust::copy(vSrc.begin(), vSrc.end(), &vDst[saveStepCount * nrNodesPerFrame]);
 			saveStepCount++;
 		}
-		};
+	};
 
 	// IN THIS LINE WE START WITH THE ACTUAL ITERATIONS OF THE LIOUVILLE EQUATION
 	while (simStepCount < __reinitialization_info.size() - 1) {
@@ -613,7 +613,7 @@ int16_t ivpSolver::writeFramesToFile(const double& simulationDuration) {
 	}
 
 	while (saving_active) {
-		std::cout << "Total memory of simulation: " << (float)MEM_2_STORE / 1024 / 1024 << " MB. \n";
+		std::cout << "Total memory of simulation: " << (double) MEM_2_STORE / 1024 / 1024 << " MB. \n";
 		std::cout << number_of_files_needed << " files required for total storage. Total frames: " << number_of_frames_needed << ", with frames per file: " << max_frames_file << " \n";
 		std::cout << "Write? (Y = Yes(total), N = No, P = Partial): ";
 		std::cin >> ans;

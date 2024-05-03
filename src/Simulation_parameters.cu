@@ -55,9 +55,10 @@ int16_t BuildTimeVector(std::vector<Time_instants>& time_vector, double& deltaT,
 	ReinitSteps = std::stoi(terminalInput);
 
 	time_vector.resize((double) (tF-t0) / (ReinitSteps * deltaT) + 1);
-	for(uintType i = 0; i < time_vector.size(); i++){
-		time_vector[i] = {(double) t0 + i*ReinitSteps * deltaT, false};
+	for(uintType i = 0; i < time_vector.size() - 1; i++){
+		time_vector[i] = {(double) t0 + i * ReinitSteps * deltaT, false};
 	}
+	time_vector[time_vector.size() - 1] = {tF, false};
 
 
 	// 2.- if there are impulses:
