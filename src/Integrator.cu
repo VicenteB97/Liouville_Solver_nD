@@ -1,15 +1,15 @@
 #include <./include/Integrator.cuh>
 
-using namespace thrust::placeholders; // this is useful for the multiplication of a device vector by a constant
-
 // Dynamics functions:
 // The following functions are not to be modified
 __device__
-inline Particle VECTOR_FIELD(Particle X,
-	floatType      t,
+inline Particle VECTOR_FIELD(
+	Particle X,
+	double      t,
 	const Param_vec<PARAM_SPACE_DIMENSIONS> parameter,
 	const uintType      mode,
-	const double    extra_param[]) {
+	const double    extra_param[]
+) {
 
 	return { VEC_FIELD };
 }
@@ -18,7 +18,7 @@ inline Particle VECTOR_FIELD(Particle X,
 //-------------------------------------------------------------------------
 __device__
 inline floatType DIVERGENCE_FIELD(Particle X,
-	floatType      t,
+	double      t,
 	const Param_vec<PARAM_SPACE_DIMENSIONS> parameter,
 	const uintType   mode,
 	const double extra_param[]) {
@@ -28,12 +28,20 @@ inline floatType DIVERGENCE_FIELD(Particle X,
 
 
 // Output the final point
-__device__ void runge_kutta_45(Particle& position, floatType& value, double t0, const double tF, const double time_step,
-	Param_vec<PARAM_SPACE_DIMENSIONS> parameter_realization, const double* extra_param, const uintType mode,
-	const Mesh domain_mesh) {
+__device__ void runge_kutta_45(
+	Particle& position, 
+	floatType& value, 
+	double t0, 
+	const double tF, 
+	const double time_step,
+	Param_vec<PARAM_SPACE_DIMENSIONS> parameter_realization, 
+	const double* extra_param, 
+	const uintType mode,
+	const Mesh domain_mesh
+) {
 
 	Particle k0, k1, k2, k3, k_final, temp;	// register storing the initial particle location;
-	floatType	 Int1, Int2, Int3;				// register storing the initial particle value;
+	floatType	 Int1, Int2, Int3, val_aux = 1;	// register storing the initial particle value;
 
 	while (t0 < tF - time_step / 2) {
 		// Particle flow
@@ -52,24 +60,26 @@ __device__ void runge_kutta_45(Particle& position, floatType& value, double t0, 
 		k2 = k2.Mult_by_Scalar(2.00f);
 
 		temp = k0 + k3 + k1 + k2;
-		temp = position + temp.Mult_by_Scalar((floatType)time_step / 6.00f); // New particle dim
+		temp = position + temp.Mult_by_Scalar((floatType)time_step / 6); // New particle dim
 
 		// Integration of PDF: The following line corresponds to computing the approximation via a Hermite interpolation (we know initial and final points and their velocities)
 		Int1 = DIVERGENCE_FIELD(position, t0, parameter_realization, mode, extra_param);
 
 		k_final = VECTOR_FIELD(temp, t0 + time_step, parameter_realization, mode, extra_param);
-		position = (position + temp).Mult_by_Scalar(0.50f);
-		position = position + (k0 + k_final).Mult_by_Scalar(0.125f);
-		Int2 = DIVERGENCE_FIELD(position, (floatType)(2.00f * t0 + time_step) / 2.00f, parameter_realization, mode, extra_param);
+		position = (position + temp).Mult_by_Scalar(0.5);
+		position = position + (k0 + k_final).Mult_by_Scalar(0.125);
+		Int2 = DIVERGENCE_FIELD(position, (floatType)(2 * t0 + time_step) / 2, parameter_realization, mode, extra_param);
 
 		Int3 = DIVERGENCE_FIELD(temp, (floatType)t0 + time_step, parameter_realization, mode, extra_param);
 
-		value *= expf((float)-time_step / 6.00f * (Int1 + 4.00f * Int2 + Int3)); // New particle value
+		val_aux *= expf((float)-time_step / 6 * (Int1 + 4 * Int2 + Int3)); // New particle value
 
 		// Reinit step
 		position = temp;
 		t0 += time_step;
 	}
+
+	value *= val_aux;
 
 	if (!domain_mesh.Contains_particle(position)) { value = 0; }
 }
@@ -85,7 +95,8 @@ __device__ void runge_kutta_45(Particle& position, floatType& value, double t0, 
 /// @param Adapt_Points Number of particles as computed by the AMR scheme
 /// @param Random_Samples Number of random parameter_realization samples
 /// @return 
-__global__ void ODE_INTEGRATE(Particle* Particles,
+__global__ void ODE_INTEGRATE(
+	Particle* Particles,
 	floatType* PDF,
 	const Param_pair* parameters,
 	const intType* n_Samples,
@@ -109,7 +120,7 @@ __global__ void ODE_INTEGRATE(Particle* Particles,
 		const Param_vec<PARAM_SPACE_DIMENSIONS> parameter_realization = Gather_Param_Vec<PARAM_SPACE_DIMENSIONS>(i_sample, parameters, n_Samples);
 
 		Particle pos_particle = Particles[i];
-		floatType 	 value_particle = PDF[i];
+		floatType value_particle = PDF[i];
 
 		runge_kutta_45(pos_particle, value_particle, t0, tF, time_step, parameter_realization, extra_param, mode, D_Mesh);
 

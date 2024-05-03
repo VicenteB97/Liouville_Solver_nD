@@ -2,10 +2,10 @@
 //////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////
 //														//
-//		Written by: Vicente José Bevia Escrig			//
+//		Written by: Vicente Josï¿½ Bevia Escrig			//
 //		Mathematics Ph.D. student (2020-2024) at:		//
-//		Instituto de Matemática Multidisciplinar,		//
-//		Universitat Politècnica de València, Spain		//
+//		Instituto de Matemï¿½tica Multidisciplinar,		//
+//		Universitat Politï¿½cnica de Valï¿½ncia, Spain		//
 //														//
 //////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////
@@ -94,12 +94,12 @@ __host__ intType CONJUGATE_GRADIENT_SOLVE(
 
 
 	// Determine threads and blocks for the simulation
-	const uintType Threads = (uintType)fminf(THREADS_P_BLK, Total_Particles);
-	const uintType Blocks = (uintType)floorf((Total_Particles - 1) / Threads) + 1;
+	const uintType Threads = fminf(THREADS_P_BLK, Total_Particles);
+	const uintType Blocks = floor((double)(Total_Particles - 1) / Threads) + 1;
 
 	// These are for the update_vec function
-	const uintType Threads_2 = (uintType)fminf(THREADS_P_BLK, (float)Total_Particles / ELEMENTS_AT_A_TIME);
-	const uintType Blocks_2 = (uintType)floorf((float)(Total_Particles / ELEMENTS_AT_A_TIME - 1) / Threads) + 1;
+	const uintType Threads_2 = fminf(THREADS_P_BLK, (float)Total_Particles / ELEMENTS_AT_A_TIME);
+	const uintType Blocks_2 = floor((double)(Total_Particles / ELEMENTS_AT_A_TIME - 1) / Threads) + 1;
 
 	// ------------------ AUXILIARIES FOR THE INTEPROLATION PROC. ------------------------------- //
 	// Auxiliary values
@@ -178,22 +178,22 @@ __host__ intType CONJUGATE_GRADIENT_SOLVE(
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 __global__ void RESTART_GRID_FIND_GN(Particle* Particle_Positions,
-	floatType* PDF,
-	floatType* lambdas,
-	const Param_pair* Parameter_Mesh,
-	const intType* n_Samples,
-	const floatType 	 		search_radius,
-	const uintType	 		Adapt_Pts,
-	const uintType	 		Block_samples,
-	const uintType	 		offset,
-	const Mesh 	Domain,
-	const Mesh	Expanded_Domain) {
-
+									floatType* PDF,
+									floatType* lambdas,
+									const Param_pair* Parameter_Mesh,
+									const intType* n_Samples,
+									const floatType 	 		search_radius,
+									const uintType	 		Adapt_Pts,
+									const uintType	 		Block_samples,
+									const uintType	 		offset,
+									const Mesh 	Domain,
+									const Mesh	Expanded_Domain) {
+	
 	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
 
 	if (i >= Adapt_Pts * Block_samples) { return; }
 
-	uintType Current_sample = offset + floorf(i / Adapt_Pts);
+	uintType Current_sample = offset + floor((double) i / Adapt_Pts);
 	Param_vec<PARAM_SPACE_DIMENSIONS>	aux = Gather_Param_Vec<PARAM_SPACE_DIMENSIONS>(Current_sample, Parameter_Mesh, n_Samples);
 
 	floatType weighted_lambda = lambdas[i] * aux.Joint_PDF;
@@ -204,7 +204,7 @@ __global__ void RESTART_GRID_FIND_GN(Particle* Particle_Positions,
 	Particle Lowest_node(Expanded_Domain.Get_node(Expanded_Domain.Get_binIdx(particle, -lround(DISC_RADIUS))));
 
 	const uintType Neighbors_per_dim = 2 * lround(DISC_RADIUS) + 1;
-	const uintType totalNeighborsToVisit = pow(Neighbors_per_dim, PHASE_SPACE_DIMENSIONS);
+	const uintType totalNeighborsToVisit = pow(Neighbors_per_dim, PHASE_SPACE_DIMENSIONS); 
 	const floatType domainDiscretization = Domain.Discr_length();
 
 	// Go through all the nodes where rewriting will be possible
@@ -215,9 +215,9 @@ __global__ void RESTART_GRID_FIND_GN(Particle* Particle_Positions,
 		// Get the node at that point
 		uintType tempPowerAccumulate = 1;
 
-#pragma unroll
+		#pragma unroll
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-			uintType temp_idx = floorf(positive_rem(k, Neighbors_per_dim * tempPowerAccumulate) / tempPowerAccumulate);
+			uintType temp_idx = floor((double) positive_rem(k, Neighbors_per_dim * tempPowerAccumulate) / tempPowerAccumulate);
 
 			visit_node.dim[d] += temp_idx * domainDiscretization;
 			tempPowerAccumulate *= Neighbors_per_dim;
@@ -285,7 +285,7 @@ __global__ void RESTART_GRID_FIND_GN(Particle* Particle_Positions,
 
 #pragma unroll
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-			uintType temp_idx = floorf(positive_rem(k, Neighbors_per_dim * tempPowerAccumulate) / tempPowerAccumulate);
+			uintType temp_idx = floorf((float)positive_rem(k, Neighbors_per_dim * tempPowerAccumulate) / tempPowerAccumulate);
 
 			visit_node.dim[d] += temp_idx * domainDiscretization;
 			tempPowerAccumulate *= Neighbors_per_dim;
