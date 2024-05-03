@@ -33,15 +33,15 @@
 
 // State variables information
 #define PHASE_SPACE_DIMENSIONS  2
-#define DOMAIN_INF {-5.5, -5.5}
-#define DOMAIN_SUP {5.5, 5.5}
+#define DOMAIN_INF {-6.0, -6.0}
+#define DOMAIN_SUP {6.0, 6.0}
 
 static const char   IC_NAMES[PHASE_SPACE_DIMENSIONS] = { 'N','N' };
 static const bool   IC_isTRUNC[PHASE_SPACE_DIMENSIONS] = { true, true };
 // static const floatType   IC_InfTVAL[PHASE_SPACE_DIMENSIONS] = { -2, 0.5 };
 // static const floatType   IC_SupTVAL[PHASE_SPACE_DIMENSIONS] = { 2, 4.5 };
-static const floatType   IC_InfTVAL[PHASE_SPACE_DIMENSIONS] = { -5.5, -5.5 };
-static const floatType   IC_SupTVAL[PHASE_SPACE_DIMENSIONS] = { 5.5, 5.5 };
+static const floatType   IC_InfTVAL[PHASE_SPACE_DIMENSIONS] = DOMAIN_INF;
+static const floatType   IC_SupTVAL[PHASE_SPACE_DIMENSIONS] = DOMAIN_SUP;
 static const floatType	IC_MEAN[PHASE_SPACE_DIMENSIONS] = { 0, 2.5 };
 static const floatType	IC_STD[PHASE_SPACE_DIMENSIONS] = { sqrtf(0.02),sqrtf(0.02) };
 
@@ -62,7 +62,7 @@ static const bool   _DIST_isTRUNC[PARAM_SPACE_DIMENSIONS] = { true };
 static const floatType  _DIST_InfTVAL[PARAM_SPACE_DIMENSIONS] = { 0 };
 static const floatType  _DIST_SupTVAL[PARAM_SPACE_DIMENSIONS] = { 5 };
 static floatType 		_DIST_MEAN[PARAM_SPACE_DIMENSIONS] = { 2.5 };
-static floatType 		_DIST_STD[PARAM_SPACE_DIMENSIONS] = { sqrtf(0.1) };
+static floatType 		_DIST_STD[PARAM_SPACE_DIMENSIONS] = { sqrtf(2) };
 
 #define IMPULSE_TYPE 0
 

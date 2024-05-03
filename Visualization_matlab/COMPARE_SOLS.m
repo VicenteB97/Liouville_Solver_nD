@@ -2,8 +2,8 @@ clear
 close all
 clc
 
-test_name_1 = "VdP_2000";
-test_name_2 = "VdP 200";
+test_name_1 = "VdP 20 new var";
+test_name_2 = "VdP 20";
 
 % Load info for first test:
 load(test_name_1 + ".mat")
