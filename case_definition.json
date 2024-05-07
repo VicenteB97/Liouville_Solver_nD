@@ -1,0 +1,53 @@
+{
+    "VDP_1":{
+        "simulation_parameters":{
+            "floatType": "float",
+            "TOLERANCE_AMR": "1E-5",
+            "TOLERANCE_ConjGrad": "1E-9",
+            "DISC_RADIUS": "4.49",
+
+            "phase_space_dimensions": "2",
+            "DOMAIN_INF": "{-15, -15}",
+            "DOMAIN_SUP": "{15, 15}",
+
+            "param_space_dimensions": "1",
+
+            "disc_finest_level": "10",
+            "t0": "0",
+            "tF": "6",
+            "delta_t": "0.01",
+            "reinit_steps": "1",
+            "saving_steps": "4"
+        },
+
+        "vector_field":{
+            "VF_1": "X.dim[1]",
+            "D_1": "0",
+            
+            "VF_2": "parameter.sample_vec[0]*(1 - powf(X.dim[0], 2))*X.dim[1] - parameter.sample_vec[1]*X.dim[0]",
+            "D_2": "parameter.sample_vec[0]*(1 - powf(X.dim[0], 2))",
+
+            "VEC_FIELD": "{VF_1, VF_2}",
+            "DIVERGENCE": "D_1 + D_2"
+        },
+
+
+        "initial_condition":{
+            "IC_NAMES": "{'N', 'N'}",
+            "IC_isTRUNC": "{true, true}",
+            "IC_InfTVAL": "DOMAIN_INF",
+            "IC_SupTVAL": "DOMAIN_SUP",
+            "IC_MEAN": "{ 1.0f, -1.0f }",
+            "IC_STD": "{ sqrtf(0.09), sqrtf(0.09) }"
+        },
+
+        "parameters":{
+            "DIST_NAMES": "{'N'}",
+            "DIST_isTRUNC": "{true}",
+            "DIST_InfTVAL": "{-10.5}",
+            "DIST_SupTVAL": "{10.5}",
+            "DIST_MEAN": "{1.0}",
+            "DIST_STD": "{sqrtf(0.09)}"
+        }
+    }
+}
