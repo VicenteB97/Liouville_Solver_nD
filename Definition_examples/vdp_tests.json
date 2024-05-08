@@ -5,6 +5,7 @@
             "first_frame": 0,
             "last_frame": 0
         },
+        
         "simulation_parameters":{
             "floatType": "float",
             "TOLERANCE_AMR": "1E-5",

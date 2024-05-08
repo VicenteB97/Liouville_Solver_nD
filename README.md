@@ -5,21 +5,43 @@ We will explain the steps so you can familiarize with the code and test it for y
 
 ## REQUIREMENTS
 
-- LINUX/WSL:
+- General:
+  - At least 2 cores
+  - An NVIDIA graphics card (compute capability >= 6.0)
+  - Windows or any Linux distro (not tested in all)
+  - Python (>3.0) installed
 
-  - g++ compiler (g++ >= 11.3.0)
-  - nvcc compiler (nvcc >= 11.5) -- Obviously you need a CUDA-Capable GPU
-  - GNU Make >= 4.3
-  - CMake >= 3.22 (required)
-  - Boost Library (used 1.81.0) (save it in the folder: ```/usr/include/``` or in the same directory as the project, under the names ```boost```, or ```boost_dir```)
+- Linux/WSL - specific:
 
-- WINDOWS:
-  - C++ compiler: MSVC (>= 19.36)
-  - CUDA compiler: NVIDIA >= 12.2.91
-  - CMake >= 3.22 (required)
-  - Boost Library (save its ```include``` folder in the ```include``` folder of MSVC or in the same directory as the project, under the names ```boost```, or ```boost_dir```)
+  - g++ compiler (g++ >=11.3.0).
+  - nvcc compiler (nvcc >= 11.5).
+  - GNU Make >= 4.3.
+  - CMake >= 3.22 (required).
+  - Boost Library (>= 1.81.0).
+    - save it in the folder: ```/usr/include/``` or in the same directory as the project, under the names ```boost```, or ```boost_dir```.
 
-## IMPORTANT NOTES
+- Windows - specific:
+  - C++ compiler: MSVC (>= 19.36).
+  - CUDA compiler: NVIDIA >= 12.2.91.
+  - CMake >= 3.22 (required).
+  - Boost Library (>= 1.81.0) .
+    - save its ```include``` folder in the ```include``` folder of MSVC or in the same directory as the project, under the names ```boost```, or ```boost_dir```.
+
+## Create CUDA experiment from .json file and python function (easier)
+
+This method is the easiest and assumes that you have Python installed (used Python 3.12, but works with previous versions).
+
+- Create the .json file:
+  - There is an example in ```Definition_examples/vdp_tests.json```.
+    - In the *saving* key, we introduce the kind of saving we want. ```Y``` means that we save all the frames, and thus the two following keys (*first_frame* and *last_frame*) can be left at 0, or any other value.
+    - All other parameters are self-explanatory (will be detailed).
+- To launch the simulation:
+  - First verify that the ```output``` folder exists. If not, create it.
+  - Then, open the terminal at the directory level. 
+  - Type: ```python setSimulator.py "<your_json_filename>.json"```
+  - If your json example definition contains multiple experiments, it will compile, build and execute them sequentially.
+
+## Create CUDA experiment '.cuh' file and launch from terminal (more complicated)
 
 - Set the build system in the CMakeLists.txt file (```Linux``` or ```Windows```)
 - To initialize the project:
