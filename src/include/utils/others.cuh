@@ -1,6 +1,4 @@
 #pragma once
-
-#include "../headers.cuh"
 #include "numeric_defs.cuh"
 
 // This is for the thrust library

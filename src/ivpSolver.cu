@@ -19,10 +19,11 @@ using namespace thrust::placeholders;
 ivpSolver::ivpSolver() {};
 ivpSolver::~ivpSolver() {};
 
-
 // This method is used to build the domain in which the simulation will take place
 int16_t ivpSolver::buildDomain() {
 
+	int16_t LvlFine;
+	#if TERMINAL_INPUT_ALLOWED
 	bool getAnswer = true;
 	std::string inputTerminal;
 
@@ -33,7 +34,10 @@ int16_t ivpSolver::buildDomain() {
 		errorCheck(intCheck(getAnswer, inputTerminal, DOMAIN_ERR_MSG, 1, 0))
 	}
 
-	int16_t LvlFine = std::stoi(inputTerminal);
+	LvlFine = std::stoi(inputTerminal);
+	#else
+	LvlFine = FINEST_DISCR_LVL;
+	#endif
 
 	// This variable represents the problem domain, which is NOT going to be the one used for computations
 	__problem_domain.Nodes_per_Dim = pow(2, LvlFine);
@@ -46,8 +50,9 @@ int16_t ivpSolver::buildTimeVec() {
 
 	errorCheck(BuildTimeVector(__reinitialization_info, __delta_t, __reinitialization_steps))
 
-		// Build saving array
-		bool get_answer = true; std::string terminalInput;
+	#if TERMINAL_INPUT_ALLOWED
+	// Build saving array
+	bool get_answer = true; std::string terminalInput;
 	while (get_answer) {
 
 		std::cout << "Saving steps? (applied to the time vector, not the timestep): ";
@@ -57,7 +62,10 @@ int16_t ivpSolver::buildTimeVec() {
 	}
 
 	__storage_steps = std::stoi(terminalInput);
-	const uintType savingArraySize = (double) __reinitialization_info.size() / __storage_steps;
+	#else
+	__storage_steps = SAVING_STEPS;
+	#endif
+	const uintType savingArraySize = floor((double) __reinitialization_info.size() / __storage_steps) + 1;
 
 	__simulation_storage.resize(__problem_domain.Total_Nodes() * savingArraySize);
 
@@ -88,6 +96,7 @@ int16_t ivpSolver::buildDistributions() {
 		__parameter_distributions[p].params[0] = _DIST_MEAN[p];		// mean
 		__parameter_distributions[p].params[1] = _DIST_STD[p];			// std
 
+		#if TERMINAL_INPUT_ALLOWED
 		// Read number of samples from terminal
 		bool get_answer = true;
 		std::string inputTerminal;
@@ -100,6 +109,9 @@ int16_t ivpSolver::buildDistributions() {
 			errorCheck(intCheck(get_answer, inputTerminal, DISTR_ERR_MSG, 0, 1))
 		}
 		__parameter_distributions[p].num_Samples = std::stoi(inputTerminal);
+		#else
+		__parameter_distributions[p].num_Samples = _DIST_N_SAMPLES[p];
+		#endif
 	}
 
 	
@@ -226,8 +238,6 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 										indicators::option::Lead{"*"},
 										indicators::option::Remainder{"-"},
 										indicators::option::End{"]"}, };
-
-	const uintType __storage_steps = (double) __reinitialization_info.size() / (__simulation_storage.size() / nrNodesPerFrame);
 
 	// Resize the simulation logger
 	__simulation_log.resize(__reinitialization_info.size() - 1);
@@ -449,7 +459,7 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 			uintType Samples_PerBlk = fmin((uintType)totalSampleCount, MAX_BYTES_USEABLE / Bytes_per_sample);
 
 			// Number of blocks to simulate
-			uintType total_simulation_blocks = ceil((double)totalSampleCount / Samples_PerBlk);
+			uintType total_simulation_blocks = floor((double)totalSampleCount / Samples_PerBlk) + 1;
 
 			// For correct reinitialization
 			D_fixedParticles = D_Particle_Locations;
@@ -521,11 +531,11 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 				/////////////////////////////////////////////////////////////////////////////////////////
 				/////////////////////////////////////////////////////////////////////////////////////////
 
-#if ERASE_dPDF
+				#if ERASE_dPDF
 				D_PDF_ProbDomain.resize(nrNodesPerFrame, 0);	// PDF is reset to 0, so that we may use atomic adding at the remeshing step
-#else
+				#else
 				thrust::fill(thrust::device, D_PDF_ProbDomain.begin(), D_PDF_ProbDomain.end(), 0);
-#endif
+				#endif
 
 				Threads = fmin(THREADS_P_BLK, ActiveNodes_PerBlk);
 				Blocks = (uintType) floor((double)(ActiveNodes_PerBlk - 1) / Threads) + 1;
@@ -585,7 +595,9 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 	std::cout << termcolor::bold << termcolor::green << "[INFO] Completed successfully!" << std::endl;
 	std::cout << termcolor::reset;
 
-	__simulation_log.writeSimulationLog_toFile();
+	std::string log_filename{CASE};
+	log_filename += "_log_file"; 
+	__simulation_log.writeSimulationLog_toFile(log_filename);
 	// Exit current function
 	return 0;
 };
@@ -599,11 +611,11 @@ int16_t ivpSolver::writeFramesToFile(const double& simulationDuration) {
 
 	const uint64_t MEM_2_STORE = __simulation_storage.size() * sizeof(float);
 
-	uintType number_of_frames_needed = MEM_2_STORE / nrNodesPerFrame / sizeof(float);
-	uint64_t max_frames_file = (uint64_t)MAX_FILE_SIZE_B / nrNodesPerFrame / sizeof(float);
-	uintType number_of_files_needed = (uintType)floor((double)(number_of_frames_needed - 1) / max_frames_file) + 1;
+	uintType number_of_frames_needed = floor((double) __simulation_storage.size() / nrNodesPerFrame) + 1;
 
-	char ans;
+	uint64_t max_frames_file = (uint64_t)MAX_FILE_SIZE_B / nrNodesPerFrame / sizeof(float);
+	uintType number_of_files_needed = floor((double)(number_of_frames_needed - 1) / max_frames_file) + 1;
+
 	std::cout << "\nSimulation time: " << simulationDuration << " seconds. ";
 
 	if (number_of_files_needed == 0) {
@@ -613,6 +625,8 @@ int16_t ivpSolver::writeFramesToFile(const double& simulationDuration) {
 	}
 
 	while (saving_active) {
+		#if TERMINAL_INPUT_ALLOWED
+		char ans;
 		std::cout << "Total memory of simulation: " << (double) MEM_2_STORE / 1024 / 1024 << " MB. \n";
 		std::cout << number_of_files_needed << " files required for total storage. Total frames: " << number_of_frames_needed << ", with frames per file: " << max_frames_file << " \n";
 		std::cout << "Write? (Y = Yes(total), N = No, P = Partial): ";
@@ -655,7 +669,7 @@ int16_t ivpSolver::writeFramesToFile(const double& simulationDuration) {
 				frames_init = 0, frames_end = number_of_files_needed - 1;
 			}
 
-#pragma omp parallel for
+			#pragma omp parallel for
 			for (int16_t k = 0; k < (int16_t)number_of_files_needed; k++) {
 
 				uintType frames_in_file = fmin(max_frames_file, number_of_frames_needed - k * max_frames_file);
@@ -663,12 +677,14 @@ int16_t ivpSolver::writeFramesToFile(const double& simulationDuration) {
 				std::string temp_str = std::to_string((uintType)k);
 
 				// SIMULATION INFORMATION FILE
-				std::string relavtive_pth = SIM_OUTPUT_relPATH;
-				relavtive_pth.append("Simulation_info_");
-				relavtive_pth.append(temp_str);
-				relavtive_pth.append(".csv");
+				std::string source_path{SRC_DIR};
 
-				std::ofstream file1(relavtive_pth, std::ios::out);
+				std::string relative_pth = source_path + "/output/" + CASE;
+				relative_pth.append("_Simulation_info_");
+				relative_pth.append(temp_str);
+				relative_pth.append(".csv");
+
+				std::ofstream file1(relative_pth, std::ios::out);
 				assert(file1.is_open());
 
 				file1 << nrNodesPerFrame << "," << __problem_domain.Nodes_per_Dim << ",";
@@ -689,12 +705,12 @@ int16_t ivpSolver::writeFramesToFile(const double& simulationDuration) {
 				file1.close();
 
 				// SIMULATION OUTPUT
-				relavtive_pth = SIM_OUTPUT_relPATH;
-				relavtive_pth.append("Mean_PDFs_");
-				relavtive_pth.append(temp_str);
-				relavtive_pth.append(".bin");
+				relative_pth = source_path + "/output/" + CASE;
+				relative_pth.append("_Mean_PDFs_");
+				relative_pth.append(temp_str);
+				relative_pth.append(".bin");
 
-				std::ofstream myfile(relavtive_pth, std::ios::out | std::ios::binary);
+				std::ofstream myfile(relative_pth, std::ios::out | std::ios::binary);
 				assert(myfile.is_open());
 
 				myfile.write((char*)&__simulation_storage[(k * max_frames_file + frames_init) * nrNodesPerFrame], sizeof(floatType) * frames_in_file * nrNodesPerFrame);
@@ -704,6 +720,87 @@ int16_t ivpSolver::writeFramesToFile(const double& simulationDuration) {
 			}
 		}
 		saving_active = false;
+		#else
+		std::cout << "Total memory of simulation: " << (double) MEM_2_STORE / 1024 / 1024 << " MB. \n";
+		std::cout << number_of_files_needed << " files required for total storage. Total frames: ";
+		std::cout << number_of_frames_needed << ", with frames per file: " << max_frames_file << " \n";
+
+		intType frames_init = 0, frames_end = number_of_files_needed - 1;
+		bool condition = false;
+
+		if ((SAVING_TYPE == "P") || (SAVING_TYPE == "p")) {
+			while (!condition) {
+				frames_init = FIRST_FRAME;
+				frames_end = LAST_FRAME;
+
+				if (frames_init < 0 || frames_end >= number_of_frames_needed || frames_init > frames_end) {
+
+					if (frames_init == -1 || frames_end == -1) {
+						std::cout << "Exiting simulation without saving simulation results...\n";
+						return -1;
+					}
+					std::cout << "Check numbers, something's not right...\n";
+				}
+				else {
+					condition = true;
+					number_of_frames_needed = frames_end - frames_init + 1;
+					number_of_files_needed = (uintType) floor((double)(number_of_frames_needed - 1) / max_frames_file) + 1;
+				}
+			}
+		}
+
+		#pragma omp parallel for
+		for (int16_t k = 0; k < (int16_t)number_of_files_needed; k++) {
+
+			uintType frames_in_file = fmin(max_frames_file, number_of_frames_needed - k * max_frames_file);
+
+			std::string temp_str = std::to_string((uintType)k);
+
+			// SIMULATION INFORMATION FILE
+			std::string source_path{SRC_DIR};
+
+			std::string relative_pth = source_path + "/output/" + CASE;
+			relative_pth.append("_Simulation_info_");
+			relative_pth.append(temp_str);
+			relative_pth.append(".csv");
+
+			std::ofstream file1(relative_pth, std::ios::out);
+			assert(file1.is_open());
+
+			file1 << nrNodesPerFrame << "," << __problem_domain.Nodes_per_Dim << ",";
+
+			for (uintType d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
+				file1 << __problem_domain.Boundary_inf.dim[d] << "," << __problem_domain.Boundary_sup.dim[d] << ",";
+			}
+			for (uint16_t d = 0; d < PARAM_SPACE_DIMENSIONS; d++) {
+				file1 << __parameter_distributions[d].num_Samples << ",";
+			}
+			file1 << simulationDuration << "\n";
+
+			for (uintType i = k * max_frames_file + frames_init; i < k * max_frames_file + frames_in_file + frames_init - 1; i++) {
+				file1 << __reinitialization_info[i * __storage_steps].time << ",";
+			}
+			file1 << __reinitialization_info[(k * max_frames_file + frames_in_file + frames_init - 1) * __storage_steps].time;
+
+			file1.close();
+
+			// SIMULATION OUTPUT
+			relative_pth = source_path + "/output/" + CASE;
+			relative_pth.append("_Mean_PDFs_");
+			relative_pth.append(temp_str);
+			relative_pth.append(".bin");
+
+			std::ofstream myfile(relative_pth, std::ios::out | std::ios::binary);
+			assert(myfile.is_open());
+
+			myfile.write((char*)&__simulation_storage[(k * max_frames_file + frames_init) * nrNodesPerFrame], sizeof(floatType) * frames_in_file * nrNodesPerFrame);
+			myfile.close();
+
+			std::string temp_output_str = "|	Simulation output file " + std::to_string(k) + " completed!";
+			Intro_square_filler(temp_output_str, windowLength, 1, 0);
+		}
+		saving_active = false;
+		#endif
 	}
 	return error_check;
 };

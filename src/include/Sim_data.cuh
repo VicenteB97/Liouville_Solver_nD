@@ -1,7 +1,7 @@
 #ifndef __SIM_DATA_CUH__
 #define __SIM_DATA_CUH__
 
-#include "utils/paths.cuh"
+#include "config.hpp"
 #include "utils/numeric_defs.cuh"
 #include "headers.cuh"
 #include "indicators/cursor_control.hpp"
@@ -55,7 +55,7 @@ public:
 public:
     void resize(uintType size = 1);
 
-    int16_t writeSimulationLog_toFile(const std::string& fileName = "Simulation Log File", const std::string fileExtension = ".csv", const std::string fileRelativePath = LOG_OUTPUT_relPATH);
+    int16_t writeSimulationLog_toFile(const std::string& fileName = "Simulation Log File", const std::string fileExtension = ".csv", const std::string_view fileRelativePath = SRC_DIR);
 };
 
 #endif

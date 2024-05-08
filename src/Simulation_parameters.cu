@@ -9,6 +9,8 @@ int16_t BuildTimeVector(std::vector<Time_instants>& time_vector, double& deltaT,
 	// 1.- Time values for output + impulse vectors
 	double t0, tF;
 
+	#if TERMINAL_INPUT_ALLOWED
+
 	// Read init. Time from terminal 
 	bool get_answer = true;
 	std::string terminalInput;
@@ -53,6 +55,12 @@ int16_t BuildTimeVector(std::vector<Time_instants>& time_vector, double& deltaT,
 		errorCheck(intCheck(get_answer, terminalInput, REINIT_ERR_MSG, 0, 1))
 	}
 	ReinitSteps = std::stoi(terminalInput);
+	#else
+	t0 = INIT_TIME;
+	tF = FINAL_TIME;
+	deltaT = TIME_STEP;
+	ReinitSteps = REINIT_STEPS;
+	#endif
 
 	time_vector.resize((double) (tF-t0) / (ReinitSteps * deltaT) + 1);
 	for(uintType i = 0; i < time_vector.size() - 1; i++){

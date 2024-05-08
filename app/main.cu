@@ -25,15 +25,12 @@ int main() {
 
 	int16_t ret_val = PDF_EVOLUTION();
 
-	std::cout << "Simulation finished. Press any key to continue...\n";
-	std::cin.ignore();
-	std::cin.get();
-
+	std::string temp = "|	Simulation finished successfully.\n";
+	Intro_square_filler(temp, windowLength, 1, 0);
+	std::cout << border_mid << "\n" << border << "\n";
+	
 	return ret_val;
 }
-
-// --------------------------------------------------------- //
-// --------------------------------------------------------- //
 
 //--------------------------------------------------------------------------------------------- //
 int16_t PDF_EVOLUTION() {
@@ -41,10 +38,9 @@ int16_t PDF_EVOLUTION() {
 	cudaDeviceProp prop;
 	errorCheck(IntroDisplay(prop));
 
-	std::cout << "You are simulating the " << CASE <<". Log level is (0 = off, 1 = only frame time, 2 = all steps time): " << OUTPUT_INFO << ".\n\n";
-	std::cout << "You must choose: \n - FINEST MESH LEVEL \n - FINAL time \n - TIMESTEP";
-	std::cout << "\n - Reinitialization Steps \n - SAMPLES PER PARAMETER \n";
-	std::cout << "(REMINDER) You can type \"-1\" to  exit the program while typing this information.\n\n";
+	std::string temp = "|	You are simulating " + (std::string)CASE;
+	Intro_square_filler(temp, windowLength, 1, 0);
+	std::cout << border_mid << "\n";
 	// Pre-Simulation Data initialization -------------------------------------------------------------------------------
 
 	ivpSolver Solver;

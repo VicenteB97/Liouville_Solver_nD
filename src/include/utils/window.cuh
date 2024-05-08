@@ -2,7 +2,7 @@
 
 #include "../headers.cuh"
 #include "numeric_defs.cuh"
-#include "../../../build/configured_files/include/config.hpp"
+#include "config.hpp"
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -14,7 +14,11 @@
 #define border_mid "|==========================================================================================|"
 #define windowLength 92
 
-inline void Intro_square_filler(std::string& message, const uint32_t border_length, const uint32_t number_of_tabs, const uint32_t offset){
+inline void Intro_square_filler(
+	std::string& message, 
+	const uint32_t border_length, 
+	const uint32_t number_of_tabs, 
+	const uint32_t offset){
 
 	uint32_t msg_length = message.size() + number_of_tabs*8 - 1 - offset;
 	for (uint32_t k = 0; k < border_length - msg_length; k++){

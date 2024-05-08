@@ -1,9 +1,9 @@
-import subprocess, json, os, shutil
+import subprocess, json, os, shutil, argparse
 from typing import Any
 
 # 0.- Read the .json file where we defined the case:
-def read_json() -> dict[str, Any] | None:
-    with open('case_definition.json', 'r') as file:
+def read_json(filename: str) -> dict[str, Any] | None:
+    with open(filename, 'r') as file:
         # Load the JSON data
         return json.load(file)
 
@@ -15,6 +15,11 @@ def write_header(sim_name: str, sim_data: dict[str, Any]):
 
     // Choosing whether showing full or simplified timing information
     #define OUTPUT_INFO 0
+    #define TERMINAL_INPUT_ALLOWED 0
+    #define SAVING_TYPE "{sim_data["saving"]["type"]}"
+    
+    #define FIRST_FRAME {sim_data["saving"]["first_frame"]}
+    #define LAST_FRAME {sim_data["saving"]["last_frame"]}
 
     #define floatType {sim_data["simulation_parameters"]["floatType"]}
 
@@ -23,17 +28,25 @@ def write_header(sim_name: str, sim_data: dict[str, Any]):
     #define TOLERANCE_ConjGrad  {sim_data["simulation_parameters"]["TOLERANCE_ConjGrad"]}
     #define DISC_RADIUS         {sim_data["simulation_parameters"]["DISC_RADIUS"]}
 
-    // State variables information
+    // Phase space information
     #define PHASE_SPACE_DIMENSIONS  {sim_data["simulation_parameters"]["phase_space_dimensions"]}
     #define DOMAIN_INF {sim_data["simulation_parameters"]["DOMAIN_INF"]}
     #define DOMAIN_SUP {sim_data["simulation_parameters"]["DOMAIN_SUP"]}
+    #define FINEST_DISCR_LVL {sim_data["simulation_parameters"]["disc_finest_level"]}
+    
+    // Timing definitions:
+    #define INIT_TIME {sim_data["simulation_parameters"]["t0"]}
+    #define FINAL_TIME {sim_data["simulation_parameters"]["tF"]}
+    #define TIME_STEP {sim_data["simulation_parameters"]["delta_t"]}
+    #define REINIT_STEPS {sim_data["simulation_parameters"]["reinit_steps"]}
+    #define SAVING_STEPS {sim_data["simulation_parameters"]["saving_steps"]}
 
     // Vector field definition
     // explanation: 
-    #define VF_1    {sim_data["vector_field"]["VF_1"]}
-    #define D_1     {sim_data["vector_field"]["D_1"]}
-    #define VF_2    {sim_data["vector_field"]["VF_2"]}
-    #define D_2     {sim_data["vector_field"]["D_2"]}
+    #define VF_1 {sim_data["vector_field"]["VF_1"]}
+    #define D_1  {sim_data["vector_field"]["D_1"]}
+    #define VF_2 {sim_data["vector_field"]["VF_2"]}
+    #define D_2  {sim_data["vector_field"]["D_2"]}
 
     #define VEC_FIELD {sim_data["vector_field"]["VEC_FIELD"]}
     #define DIVERGENCE {sim_data["vector_field"]["DIVERGENCE"]}
@@ -53,6 +66,7 @@ def write_header(sim_name: str, sim_data: dict[str, Any]):
     static const floatType  _DIST_SupTVAL[PARAM_SPACE_DIMENSIONS] = {sim_data["parameters"]["DIST_SupTVAL"]};
     static floatType 		_DIST_MEAN[PARAM_SPACE_DIMENSIONS] = {sim_data["parameters"]["DIST_MEAN"]};
     static floatType 		_DIST_STD[PARAM_SPACE_DIMENSIONS] = {sim_data["parameters"]["DIST_STD"]};
+    static floatType 		_DIST_N_SAMPLES[PARAM_SPACE_DIMENSIONS] = {sim_data["parameters"]["DIST_N_SAMPLES"]};
 
     #define IMPULSE_TYPE 0
     #define INCLUDE_XTRA_PARAMS false'''
@@ -61,26 +75,47 @@ def write_header(sim_name: str, sim_data: dict[str, Any]):
         # Write the C++/CUDA header content into the file
         file.write(text_to_header)
 
-def build_compile_execute(config: str, cores: str):
-    my_path = os.getcwd() + f"\\build\\app\\{config}"
+# 2.- Build, compile and execute tests
+def build_compile_execute(config: str, cores: str, clean_start: bool = True):
+    my_path = os.getcwd() + f"/build/app/{config}"
+    
+    commands = ["cmake -S ./ -B ./build"]
 
-    if os.path.exists(f"{my_path}"):
+    if os.path.exists(f"{my_path}") and clean_start:
         shutil.rmtree(f"{my_path}")
         print(f"{my_path} has been deleted")
-
-    commands = ["cmake -S ./ -B ./build", f"cmake --build ./build --config {config} --parallel {cores}"]
+    else:
+        commands.append(f"cmake --build ./build --target clean --config {config}")
+        
+    commands.extend([
+            f"cmake --build ./build --config {config} --parallel {cores}",
+            "clear"
+        ])
+    
     for command in commands:
         try:
             subprocess.run(command, shell=True, check=True)
         except subprocess.CalledProcessError as e:
             print(f"Error executing command '{command}': {e}")
+            
+    try:        
+        subprocess.run(f"{my_path}/Simulation.exe", shell=True, check=True)
+    except subprocess.CalledProcessError as e:
+            print(f"Error executing command '{command}': {e}")
 
-
+# Note that this does not mean you can't define the case_definition.cuh by yourself!
 if __name__ == "__main__":
-    sim_cases = read_json()
+    
+    parser = argparse.ArgumentParser(description='Give simulation case file name.')
+    parser.add_argument('filename', type=str, help='the filename to read')
+    args = parser.parse_args()
+
+    filename = args.filename
+    
+    sim_cases = read_json("./Definition_examples/" + filename)
 
     if sim_cases is not None:
         for case_name, case_props in sim_cases.items():
             write_header(case_name, case_props)
             # Compile and execute each case
-            build_compile_execute("Release", "12")
+            build_compile_execute("Release", "12", False)

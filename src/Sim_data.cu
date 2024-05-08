@@ -29,9 +29,12 @@ void LogSimulation::resize(uintType size) {
     LogFrames.resize(size);
 };
 
-int16_t LogSimulation::writeSimulationLog_toFile(const std::string& fileName, const std::string fileExtension, const std::string fileRelativePath) {
+int16_t LogSimulation::writeSimulationLog_toFile(const std::string& fileName, const std::string fileExtension, const std::string_view fileRelativePath) {
 
-    const std::string fileCompleteInfo = fileRelativePath + fileName + fileExtension;
+    std::string fileCompleteInfo{fileRelativePath};
+    fileCompleteInfo += "/output/";
+    fileCompleteInfo += fileName;
+    fileCompleteInfo += fileExtension;
 
     std::cout << "[INFO] Saving log file into " + fileCompleteInfo << std::endl;
 

@@ -9,3 +9,5 @@ static constexpr std::string_view project_version = "@PROJECT_VERSION@";
 static constexpr std::int16_t project_version_major{@PROJECT_VERSION_MAJOR@};
 static constexpr std::int16_t project_version_minor{@PROJECT_VERSION_MINOR@};
 static constexpr std::int16_t project_version_patch{@PROJECT_VERSION_PATCH@};
+
+static constexpr std::string_view SRC_DIR = "@MY_SOURCE_DIR@";

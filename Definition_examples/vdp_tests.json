@@ -1,5 +1,10 @@
 {
     "VDP_1":{
+        "saving": {
+            "type": "Y",
+            "first_frame": 0,
+            "last_frame": 0
+        },
         "simulation_parameters":{
             "floatType": "float",
             "TOLERANCE_AMR": "1E-5",
@@ -47,7 +52,8 @@
             "DIST_InfTVAL": "{-10.5}",
             "DIST_SupTVAL": "{10.5}",
             "DIST_MEAN": "{1.0}",
-            "DIST_STD": "{sqrtf(0.09)}"
+            "DIST_STD": "{sqrtf(0.09)}",
+            "DIST_N_SAMPLES": "{50}"
         }
     }
 }

@@ -14,9 +14,9 @@
 #ifndef __IVPSOLVER_CUH__
 #define __IVPSOLVER_CUH__
 
+#include "config.hpp"
 #include "include/headers.cuh"
 #include "include/utils/others.cuh"
-#include "include/utils/paths.cuh"
 #include "include/utils/error_functs.cuh"
 #include "include/utils/numeric_defs.cuh"
 
