@@ -101,7 +101,7 @@ def build_compile_execute(config: str, cores: str, clean_start: bool = True):
     try:        
         subprocess.run(f"{my_path}/Simulation.exe", shell=True, check=True)
     except subprocess.CalledProcessError as e:
-            print(f"Error executing command '{command}': {e}")
+            print(f"Error executing the simulation. Code: {e}")
 
 # Note that this does not mean you can't define the case_definition.cuh by yourself!
 if __name__ == "__main__":

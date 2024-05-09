@@ -1,4 +1,5 @@
-## Creating experiments ##
+# Creating experiments #
+
 In this folder, we explain how to prepare the ```Case_definition.cuh``` header file to perform your specified simulation.
 **NOTE** This file is located in ``` ./src/include ```.
 

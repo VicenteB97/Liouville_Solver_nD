@@ -37,7 +37,7 @@ This method is the easiest and assumes that you have Python installed (used Pyth
     - All other parameters are self-explanatory (will be detailed).
 - To launch the simulation:
   - First verify that the ```output``` folder exists. If not, create it.
-  - Then, open the terminal at the directory level. 
+  - Then, open the terminal at the directory level.
   - Type: ```python setSimulator.py "<your_json_filename>.json"```
   - If your json example definition contains multiple experiments, it will compile, build and execute them sequentially.
 

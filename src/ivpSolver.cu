@@ -23,6 +23,7 @@ ivpSolver::~ivpSolver() {};
 int16_t ivpSolver::buildDomain() {
 
 	int16_t LvlFine;
+
 	#if TERMINAL_INPUT_ALLOWED
 	bool getAnswer = true;
 	std::string inputTerminal;
@@ -65,6 +66,7 @@ int16_t ivpSolver::buildTimeVec() {
 	#else
 	__storage_steps = SAVING_STEPS;
 	#endif
+
 	const uintType savingArraySize = floor((double) __reinitialization_info.size() / __storage_steps) + 1;
 
 	__simulation_storage.resize(__problem_domain.Total_Nodes() * savingArraySize);
@@ -258,17 +260,17 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 	uint32_t mode = 0;
 
 	// IF THERE ARE DELTA TERMS
-#if IMPULSE_TYPE == 1
+	#if IMPULSE_TYPE == 1
 	uintType jumpCount = 0;	// auxiliary variable to know how many delta jumpCounts have passed
-#endif
+	#endif
 
 	// IF THERE ARE HEAVISIDE TERMS WITH EXTRA PARAMETERS
-#if INCLUDE_XTRA_PARAMS
+	#if INCLUDE_XTRA_PARAMS
 	thrust::device_vector<double>	Extra_Parameter(XTRA_PARAM_LENGTH);
 	thrust::copy(&XTRA_PARAM[0], &XTRA_PARAM[XTRA_PARAM_LENGTH], Extra_Parameter.begin());
-#else
+	#else
 	thrust::device_vector<double> Extra_Parameter(0);
-#endif
+	#endif
 
 
 	// Define concurrent saving lambda function
@@ -313,10 +315,10 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 		__simulation_log.LogFrames[simStepCount].log_AMR_Time = durationSeconds.count();
 		__simulation_log.LogFrames[simStepCount].log_AMR_RelevantParticles = AMR_ActiveNodeCount;
 
-#if ERASE_dPDF
+		#if ERASE_dPDF
 		// Clear the GPU-stored PDF for better memory availability
 		D_PDF_ProbDomain.clear();
-#endif
+		#endif
 
 		/////////////////////////////////////////////////////////////////////////////////////////
 		/////////////////////////////////////////////////////////////////////////////////////////
@@ -379,11 +381,11 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 		__simulation_log.LogFrames[simStepCount].log_Interpolation_Time = durationSeconds.count();
 		__simulation_log.LogFrames[simStepCount].log_Interpolation_Iterations = iterations;
 
-#if ERASE_auxVectors == true
+		#if ERASE_auxVectors == true
 		// Clear the vectors to save memory
 		D_Mat_Indx.clear();
 		D_Mat_Vals.clear();
-#endif
+		#endif
 
 		D_Particle_Values = D_lambdas;
 
@@ -394,7 +396,7 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 			// -------------------------- DELTA/HEAVISIDE IMPULSE TERMS -------------------------- //
 			/////////////////////////////////////////////////////////////////////////////////////////
 			/////////////////////////////////////////////////////////////////////////////////////////
-#if(IMPULSE_TYPE == 1)	// THIS IS FOR DELTA-floatType IMPULSE!
+		#if(IMPULSE_TYPE == 1)	// THIS IS FOR DELTA-floatType IMPULSE!
 
 			std::cout << "RVT transformation at time: " << t0 << "\n";
 
@@ -423,7 +425,7 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 			PDF_ProbDomain = D_PDF_ProbDomain;
 
 
-#elif(IMPULSE_TYPE == 2)
+		#elif(IMPULSE_TYPE == 2)
 /////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////
 // ----------------------------- HEAVISIDE/STEP IMPULSE ------------------------------ //
@@ -433,7 +435,7 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 			std::cout << "Now the vector field is in mode: " << mode % 2 << ".\n";
 
 
-#elif(IMPULSE_TYPE != 0)
+		#elif(IMPULSE_TYPE != 0)
 /////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////
 // -------------------------- ERROR:  UNDEFINED IMPULSE floatType ------------------------- //
@@ -443,7 +445,7 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 			error_check = -1;
 			break;
 
-#endif
+		#endif
 		}
 		else {
 			/////////////////////////////////////////////////////////////////////////////////////////
@@ -459,7 +461,7 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 			uintType Samples_PerBlk = fmin((uintType)totalSampleCount, MAX_BYTES_USEABLE / Bytes_per_sample);
 
 			// Number of blocks to simulate
-			uintType total_simulation_blocks = floor((double)totalSampleCount / Samples_PerBlk) + 1;
+			uintType total_simulation_blocks = ceil((double)totalSampleCount / Samples_PerBlk);
 
 			// For correct reinitialization
 			D_fixedParticles = D_Particle_Locations;
@@ -538,7 +540,7 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 				#endif
 
 				Threads = fmin(THREADS_P_BLK, ActiveNodes_PerBlk);
-				Blocks = (uintType) floor((double)(ActiveNodes_PerBlk - 1) / Threads) + 1;
+				Blocks = floor((double)(ActiveNodes_PerBlk - 1) / Threads) + 1;
 
 				startTimeSeconds = std::chrono::high_resolution_clock::now();
 				RESTART_GRID_FIND_GN << < Blocks, Threads >> > (rpc(D_Particle_Locations, 0),
@@ -568,7 +570,7 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 
 			// Correction of any possible negative PDF values
 			uintType Threads = fmin(THREADS_P_BLK, nrNodesPerFrame / ELEMENTS_AT_A_TIME);
-			uintType Blocks = (uintType) floor((double)(nrNodesPerFrame / ELEMENTS_AT_A_TIME - 1) / Threads) + 1;
+			uintType Blocks = floor((double)(nrNodesPerFrame / ELEMENTS_AT_A_TIME - 1) / Threads) + 1;
 
 			CORRECTION << <Blocks, Threads >> > (rpc(D_PDF_ProbDomain, 0), nrNodesPerFrame);
 			gpuError_Check(cudaDeviceSynchronize());
@@ -611,7 +613,7 @@ int16_t ivpSolver::writeFramesToFile(const double& simulationDuration) {
 
 	const uint64_t MEM_2_STORE = __simulation_storage.size() * sizeof(float);
 
-	uintType number_of_frames_needed = floor((double) __simulation_storage.size() / nrNodesPerFrame) + 1;
+	uintType number_of_frames_needed = floor((double) __simulation_storage.size() / nrNodesPerFrame);
 
 	uint64_t max_frames_file = (uint64_t)MAX_FILE_SIZE_B / nrNodesPerFrame / sizeof(float);
 	uintType number_of_files_needed = floor((double)(number_of_frames_needed - 1) / max_frames_file) + 1;
