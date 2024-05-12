@@ -1,4 +1,4 @@
-#include <./include/Simulation_parameters.cuh>
+#include <Simulation_parameters.cuh>
 
 bool Time_instants::operator < (const Time_instants& other) const {
 	return (time < other.time);
@@ -67,7 +67,6 @@ int16_t BuildTimeVector(std::vector<Time_instants>& time_vector, double& deltaT,
 		time_vector[i] = {(double) t0 + i * ReinitSteps * deltaT, false};
 	}
 	time_vector[time_vector.size() - 1] = {tF, false};
-
 
 	// 2.- if there are impulses:
 #if (IMPULSE_TYPE != 0)

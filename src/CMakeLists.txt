@@ -1,4 +1,4 @@
-set(LIBRARY_INCLUDES ${CMAKE_CURRENT_SOURCE_DIR})
+set(LIBRARY_INCLUDES "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 set(LIBRARY_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/Adapt_Mesh.cu"
@@ -10,6 +10,7 @@ set(LIBRARY_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/Probability.cu"
     "${CMAKE_CURRENT_SOURCE_DIR}/Simulation_parameters.cu"
     "${CMAKE_CURRENT_SOURCE_DIR}/Sim_data.cu"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Impulse_transformations.cu"
 )
 
 set(LIBRARY_HEADERS
@@ -22,6 +23,7 @@ set(LIBRARY_HEADERS
     "${CMAKE_CURRENT_SOURCE_DIR}/include/Probability.cuh"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/Simulation_parameters.cuh"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/Sim_data.cuh"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/Impulse_transformations.cuh"
 )
 
 add_library(${LIB_NAME} STATIC ${LIBRARY_HEADERS} ${LIBRARY_SOURCES})

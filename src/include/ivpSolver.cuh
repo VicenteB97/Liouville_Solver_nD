@@ -15,21 +15,21 @@
 #define __IVPSOLVER_CUH__
 
 #include "config.hpp"
-#include "include/headers.cuh"
-#include "include/utils/others.cuh"
-#include "include/utils/error_functs.cuh"
-#include "include/utils/numeric_defs.cuh"
+#include "headers.cuh"
+#include "utils/others.cuh"
+#include "utils/error_functs.cuh"
+#include "utils/numeric_defs.cuh"
 
-#include "include/Adapt_Mesh.cuh"
-#include "include/Domain.cuh"
-#include "include/Sim_data.cuh"
-#include "include/Probability.cuh"
-#include "include/Simulation_parameters.cuh"
-#include "include/Interpolation.cuh"
-#include "include/PointSearch.cuh"
-#include "include/Impulse_transformations.cuh"
-#include "include/Integrator.cuh"
-#include "include/Sim_data.cuh"
+#include "Adapt_Mesh.cuh"
+#include "Domain.cuh"
+#include "Sim_data.cuh"
+#include "Probability.cuh"
+#include "Simulation_parameters.cuh"
+#include "Interpolation.cuh"
+#include "PointSearch.cuh"
+#include "Impulse_transformations.cuh"
+#include "Integrator.cuh"
+#include "Sim_data.cuh"
 
 class ivpSolver{
 private:

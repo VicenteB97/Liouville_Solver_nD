@@ -1,0 +1,73 @@
+{
+    "Duffing_1":{
+        "saving": {
+            "type": "Y",
+            "first_frame": 0,
+            "last_frame": 0
+        },
+        
+        "simulation_parameters":{
+            "floatType": "float",
+            "TOLERANCE_AMR": "5E-5",
+            "TOLERANCE_ConjGrad": "1E-9",
+            "DISC_RADIUS": "4.49",
+
+            "phase_space_dimensions": "2",
+            "DOMAIN_INF": "{-6, -6}",
+            "DOMAIN_SUP": "{6, 6}",
+
+            "param_space_dimensions": "2",
+
+            "disc_finest_level": "9",
+            "t0": "0",
+            "tF": "3",
+            "delta_t": "0.01",
+            "reinit_steps": "1",
+            "saving_steps": "4"
+        },
+
+        "vector_field":{
+            "VF_1": "X.dim[1]",
+            "D_1": "0",
+            
+            "VF_2": "-2 * parameter.sample_vec[0] * X.dim[1] - X.dim[0] - parameter.sample_vec[1] * powf(X.dim[0], 3)",
+            "D_2": "-2 * parameter.sample_vec[0]",
+
+            "VEC_FIELD": "{VF_1, VF_2}",
+            "DIVERGENCE": "D_1 + D_2"
+        },
+
+
+        "initial_condition":{
+            "IC_NAMES": "{'N', 'N'}",
+            "IC_isTRUNC": "{true, true}",
+            "IC_InfTVAL": "DOMAIN_INF",
+            "IC_SupTVAL": "DOMAIN_SUP",
+            "IC_MEAN": "{ 1.75f, 0.00f }",
+            "IC_STD": "{ sqrtf(0.015f),sqrtf(0.015f) }"
+        },
+
+        "parameters":{
+            "DIST_NAMES": "{ 'N','N' }",
+            "DIST_isTRUNC": "{ true,true }",
+            "DIST_InfTVAL": "{ 0.0f, 0.0f }",
+            "DIST_SupTVAL": "{ 1000.0f, 1000.0f }",
+            "DIST_MEAN": "{ 0.2f, 3.0f }",
+            "DIST_STD": "{ sqrtf(0.002f),sqrtf(0.03f) }",
+            "DIST_N_SAMPLES": "{10, 15}"
+        },
+
+        "impulse_parameters":{
+            "type": 1,
+            "dirac_delta_impulse_count": 3,
+            "IMPULSE_TIMES": "{0.6, 1.2, 2.4}",
+            "DIST_NAMES": "{'N', 'N', 'N', 'N', 'N', 'N'}",
+            "DIST_isTRUNC": "{ true, true, true, true, true, true }",
+            "DIST_InfTVAL": "{ 0, 0, 0, 0, 0, 0 }",
+            "DIST_SupTVAL": "{ 1000, 1000, 1000, 1000, 1000, 1000 }",
+            "DIST_MEAN": "{ 0, 2.5, 0, 1, 0, 1.2 }",
+            "DIST_STD": "{ 0, sqrtf(0.02f), 0, sqrtf(0.02f), 0, sqrtf(0.02f) }",
+            "DIST_N_SAMPLES": "{ 1, 20, 1, 20, 1, 20 }"
+        }
+    }
+}

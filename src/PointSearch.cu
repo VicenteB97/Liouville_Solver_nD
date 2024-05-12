@@ -1,4 +1,4 @@
-#include <./include/PointSearch.cuh>
+#include <PointSearch.cuh>
 
 /// @brief 
 /// @param Bin_locations 

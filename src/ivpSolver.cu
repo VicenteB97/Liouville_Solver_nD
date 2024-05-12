@@ -11,7 +11,7 @@
 //////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////
 
-#include <./include/ivpSolver.cuh>
+#include <ivpSolver.cuh>
 
 using namespace thrust::placeholders;
 
@@ -251,7 +251,7 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// START OF SIMULATION STEPS AS SUCH
 
-		// Simulation steps
+	// Simulation steps
 	uint32_t simStepCount = 0;
 	std::atomic<uint32_t> saveStepCount = 0;
 	double t0, tF;
@@ -298,6 +298,7 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 		/////////////////////////////////////////////////////////////////////////////////////////
 		// -------------------------- ADAPT. MESH REFINEMENT --------------------------------- //
 		/////////////////////////////////////////////////////////////////////////////////////////
+
 		/////////////////////////////////////////////////////////////////////////////////////////
 		auto startTimeSeconds = std::chrono::high_resolution_clock::now();
 
@@ -389,7 +390,6 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 
 		D_Particle_Values = D_lambdas;
 
-
 		if (__reinitialization_info[simStepCount].impulse) {
 			/////////////////////////////////////////////////////////////////////////////////////////
 			/////////////////////////////////////////////////////////////////////////////////////////
@@ -397,8 +397,6 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 			/////////////////////////////////////////////////////////////////////////////////////////
 			/////////////////////////////////////////////////////////////////////////////////////////
 		#if(IMPULSE_TYPE == 1)	// THIS IS FOR DELTA-floatType IMPULSE!
-
-			std::cout << "RVT transformation at time: " << t0 << "\n";
 
 			startTimeSeconds = std::chrono::high_resolution_clock::now();
 
@@ -414,10 +412,9 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 			endTimeSeconds = std::chrono::high_resolution_clock::now();
 			durationSeconds = endTimeSeconds - startTimeSeconds;
 
-#if OUTPUT_INFO > 0
 			// Enter the information into the log information
-			__simulation_log.subFrame_time[5 * simStepCount + 1] = durationSeconds.count();
-#endif
+			__simulation_log.LogFrames[simStepCount].log_Advection_Time = durationSeconds.count();
+			__simulation_log.LogFrames[simStepCount].log_Advection_TotalParticles = durationSeconds.count();
 
 			jumpCount++;
 
@@ -432,8 +429,6 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 /////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////
 			mode++;
-			std::cout << "Now the vector field is in mode: " << mode % 2 << ".\n";
-
 
 		#elif(IMPULSE_TYPE != 0)
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -615,7 +610,7 @@ int16_t ivpSolver::writeFramesToFile(const double& simulationDuration) {
 
 	uintType number_of_frames_needed = floor((double) __simulation_storage.size() / nrNodesPerFrame);
 
-	uint64_t max_frames_file = (uint64_t)MAX_FILE_SIZE_B / nrNodesPerFrame / sizeof(float);
+	uint64_t max_frames_file = MAX_FILE_SIZE_B / nrNodesPerFrame / sizeof(float);
 	uintType number_of_files_needed = floor((double)(number_of_frames_needed - 1) / max_frames_file) + 1;
 
 	std::cout << "\nSimulation time: " << simulationDuration << " seconds. ";
@@ -746,7 +741,7 @@ int16_t ivpSolver::writeFramesToFile(const double& simulationDuration) {
 				else {
 					condition = true;
 					number_of_frames_needed = frames_end - frames_init + 1;
-					number_of_files_needed = (uintType) floor((double)(number_of_frames_needed - 1) / max_frames_file) + 1;
+					number_of_files_needed = floor((double)(number_of_frames_needed - 1) / max_frames_file) + 1;
 				}
 			}
 		}
@@ -782,7 +777,14 @@ int16_t ivpSolver::writeFramesToFile(const double& simulationDuration) {
 			for (uintType i = k * max_frames_file + frames_init; i < k * max_frames_file + frames_in_file + frames_init - 1; i++) {
 				file1 << __reinitialization_info[i * __storage_steps].time << ",";
 			}
-			file1 << __reinitialization_info[(k * max_frames_file + frames_in_file + frames_init - 1) * __storage_steps].time;
+
+			// Store the last element of the time vector, even if it is not proportional to the number of saving steps
+			if (number_of_files_needed == 1){
+				file1 << __reinitialization_info.back().time;
+			}
+			else{
+				file1 << __reinitialization_info[(k * max_frames_file + frames_in_file + frames_init - 1) * __storage_steps].time;
+			}
 
 			file1.close();
 

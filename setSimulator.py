@@ -66,10 +66,30 @@ def write_header(sim_name: str, sim_data: dict[str, Any]):
     static const floatType  _DIST_SupTVAL[PARAM_SPACE_DIMENSIONS] = {sim_data["parameters"]["DIST_SupTVAL"]};
     static floatType 		_DIST_MEAN[PARAM_SPACE_DIMENSIONS] = {sim_data["parameters"]["DIST_MEAN"]};
     static floatType 		_DIST_STD[PARAM_SPACE_DIMENSIONS] = {sim_data["parameters"]["DIST_STD"]};
-    static floatType 		_DIST_N_SAMPLES[PARAM_SPACE_DIMENSIONS] = {sim_data["parameters"]["DIST_N_SAMPLES"]};
+    static floatType 		_DIST_N_SAMPLES[PARAM_SPACE_DIMENSIONS] = {sim_data["parameters"]["DIST_N_SAMPLES"]};'''
 
-    #define IMPULSE_TYPE 0
-    #define INCLUDE_XTRA_PARAMS false'''
+    if "impulse_parameters" not in sim_data.keys():
+        text_to_header += '''
+
+            #define IMPULSE_TYPE 0
+            #define INCLUDE_XTRA_PARAMS false'''
+    elif sim_data["impulse_parameters"]["type"] == 1:
+        text_to_header += f'''
+
+        #define IMPULSE_TYPE 1
+        #define DiracDelta_impulseCount 3
+        //	time | Imp | mean_vec  |   st. dev. | 	samples
+        static double 		deltaImpulse_distribution_TIME[DiracDelta_impulseCount] = {sim_data["impulse_parameters"]["IMPULSE_TIMES"]};
+        static const char   deltaImpulse_distribution_NAMES[DiracDelta_impulseCount * PHASE_SPACE_DIMENSIONS] = {sim_data["impulse_parameters"]["DIST_NAMES"]};
+        static const bool   deltaImpulse_distribution_isTRUNC[DiracDelta_impulseCount * PHASE_SPACE_DIMENSIONS] = {sim_data["impulse_parameters"]["DIST_isTRUNC"]};
+        static const floatType  deltaImpulse_distribution_InfTVAL[DiracDelta_impulseCount * PHASE_SPACE_DIMENSIONS] = {sim_data["impulse_parameters"]["DIST_InfTVAL"]};
+        static const floatType  deltaImpulse_distribution_SupTVAL[DiracDelta_impulseCount * PHASE_SPACE_DIMENSIONS] = {sim_data["impulse_parameters"]["DIST_SupTVAL"]};
+        static floatType 		deltaImpulse_distribution_MEAN[DiracDelta_impulseCount * PHASE_SPACE_DIMENSIONS] = {sim_data["impulse_parameters"]["DIST_MEAN"]};
+        static floatType 		deltaImpulse_distribution_STD[DiracDelta_impulseCount * PHASE_SPACE_DIMENSIONS] = {sim_data["impulse_parameters"]["DIST_STD"]};
+        static const int 	deltaImpulse_distribution_SAMPLES[DiracDelta_impulseCount * PHASE_SPACE_DIMENSIONS] = {sim_data["impulse_parameters"]["DIST_N_SAMPLES"]};
+
+        #define INCLUDE_XTRA_PARAMS false
+        '''
 
     with open('./src/include/Case_definition.cuh', 'w') as file:
         # Write the C++/CUDA header content into the file
@@ -89,7 +109,7 @@ def build_compile_execute(config: str, cores: str, clean_start: bool = True):
         
     commands.extend([
             f"cmake --build ./build --config {config} --parallel {cores}",
-            "clear"
+            "cls"
         ])
     
     for command in commands:

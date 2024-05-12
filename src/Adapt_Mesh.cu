@@ -1,4 +1,4 @@
-#include <include/Adapt_Mesh.cuh>
+#include <Adapt_Mesh.cuh>
 
 /// @brief (DEVICE FUNCTION) Compute a 1D Haar wavelet transform
 /// @param s1 

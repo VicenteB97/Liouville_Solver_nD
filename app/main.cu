@@ -15,7 +15,7 @@
 #include <iostream>
 #include <string>
 
-#include <include/ivpSolver.cuh>
+#include <ivpSolver.cuh>
 #include "config.hpp"
 
 int16_t PDF_EVOLUTION();

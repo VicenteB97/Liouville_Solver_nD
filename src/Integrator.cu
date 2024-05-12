@@ -1,4 +1,4 @@
-#include <./include/Integrator.cuh>
+#include <Integrator.cuh>
 
 // Dynamics functions:
 // The following functions are not to be modified
