@@ -1,3 +1,4 @@
+# if IMPULSE_TYPE == 1
 #include <Impulse_transformations.cuh>
 
 using namespace thrust::placeholders; // this is useful for the multiplication of a device vector by a constant
@@ -171,3 +172,4 @@ int16_t RANDOMIZE_II(const intType* 								n_samples,
 	}
 	return 0;
 }
+#endif

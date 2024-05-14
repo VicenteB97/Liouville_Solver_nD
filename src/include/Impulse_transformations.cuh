@@ -1,5 +1,5 @@
-#ifndef __IMPULSE_TRANSFORMATIONS_CUH__
-#define __IMPULSE_TRANSFORMATIONS_CUH__
+#pragma once
+# if IMPULSE_TYPE == 1
 
 #include "headers.cuh"
 #include "utils/numeric_defs.cuh"
