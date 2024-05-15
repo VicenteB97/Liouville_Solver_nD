@@ -1,14 +1,14 @@
 #pragma once
-# if IMPULSE_TYPE == 1
 
 #include "headers.cuh"
+
+#if IMPULSE_TYPE == 1
+
 #include "utils/numeric_defs.cuh"
 #include "utils/others.cuh"
 #include "Probability.cuh"
 #include "Interpolation.cuh"
 #include "Simulation_parameters.cuh"
-
-using namespace thrust::placeholders; // this is useful for the multiplication of a device vector by a constant
 
 __global__ void TRANSFORM_PARTICLES(Particle*					Particle_Locations,
 									const Param_vec<PHASE_SPACE_DIMENSIONS>*	impulse_strengths,

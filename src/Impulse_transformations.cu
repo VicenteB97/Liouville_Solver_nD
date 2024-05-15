@@ -1,5 +1,5 @@
-# if IMPULSE_TYPE == 1
 #include <Impulse_transformations.cuh>
+# if IMPULSE_TYPE == 1
 
 using namespace thrust::placeholders; // this is useful for the multiplication of a device vector by a constant
 

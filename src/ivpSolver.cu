@@ -67,7 +67,7 @@ int16_t ivpSolver::buildTimeVec() {
 	__storage_steps = SAVING_STEPS;
 	#endif
 
-	const uintType savingArraySize = floor((double) __reinitialization_info.size() / __storage_steps) + 1;
+	const uintType savingArraySize = ceil((double) __reinitialization_info.size() / __storage_steps);
 
 	__simulation_storage.resize(__problem_domain.Total_Nodes() * savingArraySize);
 
@@ -608,7 +608,7 @@ int16_t ivpSolver::writeFramesToFile(const double& simulationDuration) {
 
 	const uint64_t MEM_2_STORE = __simulation_storage.size() * sizeof(float);
 
-	uintType number_of_frames_needed = floor((double) __simulation_storage.size() / nrNodesPerFrame);
+	uintType number_of_frames_needed = __simulation_storage.size() / nrNodesPerFrame;
 
 	uint64_t max_frames_file = MAX_FILE_SIZE_B / nrNodesPerFrame / sizeof(float);
 	uintType number_of_files_needed = floor((double)(number_of_frames_needed - 1) / max_frames_file) + 1;
