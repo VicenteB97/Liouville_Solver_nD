@@ -181,7 +181,7 @@ __global__ void ODE_INTEGRATE(
 
 		// AUXILIARY DATA TO RUN THE ITERATIONS
 		// So, the total amount of advections are going to be: (no. particles x no. of samples)
-		const uintType  i_sample {floor((double)i / Adapt_Points)};
+		const uintType  i_sample {(uintType) floor((double)i / Adapt_Points)};
 
 		const Param_vec<PARAM_SPACE_DIMENSIONS> parameter_realization {Gather_Param_Vec<PARAM_SPACE_DIMENSIONS>(i_sample, parameters, n_Samples)};
 
@@ -195,7 +195,7 @@ __global__ void ODE_INTEGRATE(
 		#endif
 
 		// Output results
-		Particles[i] {pos_particle};
-		PDF[i] {value_particle};
+		Particles[i] = pos_particle;
+		PDF[i] = value_particle;
 	}
 }
