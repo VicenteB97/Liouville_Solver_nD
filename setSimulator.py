@@ -112,7 +112,7 @@ def build_compile_execute(config: str, cores: str, clean_start: bool = True):
         
     commands.extend([
             f"cmake --build ./build --config {config} --parallel {cores}",
-            # "cls"
+            "cls"
         ])
     
     for command in commands:
