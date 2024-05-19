@@ -41,15 +41,18 @@ def write_header(sim_name: str, sim_data: dict[str, Any]):
     #define REINIT_STEPS {sim_data["simulation_parameters"]["reinit_steps"]}
     #define SAVING_STEPS {sim_data["simulation_parameters"]["saving_steps"]}
 
+    // Use ad-hoc integrator? (ONLY FOR MATHIEU FOR NOW)
+    #define SPECIAL_INTEGRATOR {sim_data.get("special_integrator", "false")}
+
     // Vector field definition
     // explanation: 
-    #define VF_1 {sim_data["vector_field"]["VF_1"]}
+    #define VF_1 (floatType){sim_data["vector_field"]["VF_1"]}
     #define D_1  {sim_data["vector_field"]["D_1"]}
-    #define VF_2 {sim_data["vector_field"]["VF_2"]}
+    #define VF_2 (floatType){sim_data["vector_field"]["VF_2"]}
     #define D_2  {sim_data["vector_field"]["D_2"]}
 
     #define VEC_FIELD {sim_data["vector_field"]["VEC_FIELD"]}
-    #define DIVERGENCE {sim_data["vector_field"]["DIVERGENCE"]}
+    #define DIVERGENCE (floatType){sim_data["vector_field"]["DIVERGENCE"]}
 
     static const char   IC_NAMES[PHASE_SPACE_DIMENSIONS] = {sim_data["initial_condition"]["IC_NAMES"]};
     static const bool   IC_isTRUNC[PHASE_SPACE_DIMENSIONS] = {sim_data["initial_condition"]["IC_isTRUNC"]};
@@ -109,7 +112,7 @@ def build_compile_execute(config: str, cores: str, clean_start: bool = True):
         
     commands.extend([
             f"cmake --build ./build --config {config} --parallel {cores}",
-            "cls"
+            # "cls"
         ])
     
     for command in commands:

@@ -35,6 +35,9 @@ public:
 	__host__ __device__
 		bool operator==(const Particle& other) const;
 
+	__host__ __device__ 
+		void operator=(const Particle &other);
+
 	__host__ __device__
 		floatType Distance(const Particle& other) const;
 	

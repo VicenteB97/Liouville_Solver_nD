@@ -32,6 +32,18 @@ __device__ void runge_kutta_45(Particle& position, floatType& value, double t0, 
 	Param_vec<PARAM_SPACE_DIMENSIONS> parameter_realization, const double* extra_param, const uintType mode,
 	const Mesh domain_mesh);
 
+__device__ void lie_midpoint_mathieu(
+	Particle& position,
+	floatType& value,
+	double t0,
+	const double tF,
+	double time_step,
+	Param_vec<PARAM_SPACE_DIMENSIONS> parameter_realization,
+	const double* extra_param,
+	const uintType mode,
+	const Mesh domain_mesh
+);
+
 
 /// @brief This function computes the advection of the particles created by AMR.
 /// @param Particles Particle location (spatial variables)

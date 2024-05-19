@@ -51,6 +51,14 @@ __host__ __device__
 
 	return out;
 }
+
+__host__ __device__ 
+void Particle::operator=(const Particle &other) {
+	for(uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++){
+		dim[d] = other.dim[d];
+	}
+}
+
 __host__ __device__
 	bool Particle::operator==(const Particle& other) const {
 	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
