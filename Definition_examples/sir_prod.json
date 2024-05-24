@@ -1,0 +1,53 @@
+{
+    "SIR_r_5y5": {
+        "saving": {
+            "type": "Y",
+            "first_frame": 0,
+            "last_frame": 0
+        },
+        "simulation_parameters": {
+            "floatType": "float",
+            "TOLERANCE_AMR": "1E-6",
+            "TOLERANCE_ConjGrad": "1E-9",
+            "DISC_RADIUS": "5.5",
+            "phase_space_dimensions": "3",
+            "DOMAIN_INF": "{0, 0, 0}",
+            "DOMAIN_SUP": "{1, 1, 1}",
+            "param_space_dimensions": "4",
+            "disc_finest_level": "9",
+            "t0": "0",
+            "tF": "31",
+            "delta_t": "0.05",
+            "reinit_steps": "2",
+            "saving_steps": "1"
+        },
+        "vector_field": {
+            "VF_1": "parameter.sample_vec[0] - (parameter.sample_vec[1] + parameter.sample_vec[2]*X.dim[1])*X.dim[0]",
+            "D_1": "-parameter.sample_vec[1] - parameter.sample_vec[2]*X.dim[1]",
+            "VF_2": "(parameter.sample_vec[2]*X.dim[0] - parameter.sample_vec[1] - parameter.sample_vec[3]*X.dim[2])*X.dim[1]",
+            "D_2": "parameter.sample_vec[2]*X.dim[0] - parameter.sample_vec[1] - parameter.sample_vec[3]*X.dim[2]",
+            "VF_3": "(parameter.sample_vec[3]*X.dim[1] - parameter.sample_vec[1])*X.dim[2]",
+            "D_3": "parameter.sample_vec[3]*X.dim[1] - parameter.sample_vec[1]",
+            "VEC_FIELD": "{VF_1, VF_2, VF_3}",
+            "DIVERGENCE": "D_1 + D_2 + D_3"
+        },
+        "special_integrator": "false",
+        "initial_condition": {
+            "IC_NAMES": "{'N', 'N', 'N'}",
+            "IC_isTRUNC": "{true, true, true}",
+            "IC_InfTVAL": "DOMAIN_INF",
+            "IC_SupTVAL": "DOMAIN_SUP",
+            "IC_MEAN": "{ 0.75, 0.15, 0.10 }",
+            "IC_STD": "{ sqrtf(0.0004),  sqrtf(0.0003), sqrtf(0.0002) }"
+        },
+        "parameters": {
+            "DIST_NAMES": "{'U','U','N','G'}",
+            "DIST_isTRUNC": "{false, false, true, true}",
+            "DIST_InfTVAL": "{0,0,0,0}",
+            "DIST_SupTVAL": "{1,1,1,1}",
+            "DIST_MEAN": "{0.025,0.025,0.3,0.2}",
+            "DIST_STD": "{sqrtf(0.0005),sqrtf(0.0005),sqrtf(0.0001),sqrtf(0.0001)}",
+            "DIST_N_SAMPLES": "{1,1,8,10}"
+        }
+    }
+}

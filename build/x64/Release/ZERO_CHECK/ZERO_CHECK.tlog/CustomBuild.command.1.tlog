@@ -1,0 +1,10 @@
+^C:\USERS\IMM-VICENTE\SOURCE\REPOS\LIOUVILLE_SOLVER_ND\BUILD\CMAKEFILES\7F2BFF199143B70BC0A1016F8E561D6D\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/Imm-Vicente/source/repos/Liouville_Solver_nD -BC:/Users/Imm-Vicente/source/repos/Liouville_Solver_nD/build --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/Users/Imm-Vicente/source/repos/Liouville_Solver_nD/build/LIOUVILLE_EQ_SOLVER.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

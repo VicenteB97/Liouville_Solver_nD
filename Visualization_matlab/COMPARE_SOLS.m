@@ -2,6 +2,8 @@ clear
 close all
 clc
 
+% CAMBIAR LOS NOMBRES AQUÍ:
+
 test_name_1 = "VdP 20 new var";
 test_name_2 = "VdP 20";
 

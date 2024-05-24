@@ -1,0 +1,55 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CudaCompile Include="..\..\src\Adapt_Mesh.cu">
+      <Filter>Source Files</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\..\src\Domain.cu">
+      <Filter>Source Files</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\..\src\Integrator.cu">
+      <Filter>Source Files</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\..\src\Interpolation.cu">
+      <Filter>Source Files</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\..\src\ivpSolver.cu">
+      <Filter>Source Files</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\..\src\PointSearch.cu">
+      <Filter>Source Files</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\..\src\Probability.cu">
+      <Filter>Source Files</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\..\src\Simulation_parameters.cu">
+      <Filter>Source Files</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\..\src\Sim_data.cu">
+      <Filter>Source Files</Filter>
+    </CudaCompile>
+    <CudaCompile Include="..\..\src\Impulse_transformations.cu">
+      <Filter>Source Files</Filter>
+    </CudaCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\Imm-Vicente\source\repos\Liouville_Solver_nD\src\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="C:\Users\Imm-Vicente\source\repos\Liouville_Solver_nD\src\include\Adapt_Mesh.cuh" />
+    <None Include="C:\Users\Imm-Vicente\source\repos\Liouville_Solver_nD\src\include\Domain.cuh" />
+    <None Include="C:\Users\Imm-Vicente\source\repos\Liouville_Solver_nD\src\include\Integrator.cuh" />
+    <None Include="C:\Users\Imm-Vicente\source\repos\Liouville_Solver_nD\src\include\Interpolation.cuh" />
+    <None Include="C:\Users\Imm-Vicente\source\repos\Liouville_Solver_nD\src\include\ivpSolver.cuh" />
+    <None Include="C:\Users\Imm-Vicente\source\repos\Liouville_Solver_nD\src\include\PointSearch.cuh" />
+    <None Include="C:\Users\Imm-Vicente\source\repos\Liouville_Solver_nD\src\include\Probability.cuh" />
+    <None Include="C:\Users\Imm-Vicente\source\repos\Liouville_Solver_nD\src\include\Simulation_parameters.cuh" />
+    <None Include="C:\Users\Imm-Vicente\source\repos\Liouville_Solver_nD\src\include\Sim_data.cuh" />
+    <None Include="C:\Users\Imm-Vicente\source\repos\Liouville_Solver_nD\src\include\Impulse_transformations.cuh" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{F6445416-0881-3526-B306-D56312A58DEE}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

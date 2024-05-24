@@ -50,6 +50,8 @@ def write_header(sim_name: str, sim_data: dict[str, Any]):
     #define D_1  {sim_data["vector_field"]["D_1"]}
     #define VF_2 (floatType){sim_data["vector_field"]["VF_2"]}
     #define D_2  {sim_data["vector_field"]["D_2"]}
+    #define VF_3 (floatType){sim_data["vector_field"]["VF_3"]}
+    #define D_3  {sim_data["vector_field"]["D_3"]}
 
     #define VEC_FIELD {sim_data["vector_field"]["VEC_FIELD"]}
     #define DIVERGENCE (floatType){sim_data["vector_field"]["DIVERGENCE"]}

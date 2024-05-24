@@ -118,11 +118,11 @@ __device__ void lie_midpoint_mathieu(
 
 		Particle u_n {position}, temp_position;
 
-		floatType c {(floatType) -(parameter_realization.sample_vec[0]-2*parameter_realization.sample_vec[1]*cos(2*t0))};
+		//floatType c {(floatType) -(parameter_realization.sample_vec[0]-2*parameter_realization.sample_vec[1]*cos(2*t0))};
+		floatType c {(floatType) -(parameter_realization.sample_vec[0]-2*(-8)*cos(2*t0))};
 
 		temp_position.dim[0] = (1 + 1/24 *c * h*h *(12 + c *h*h)) * u_n.dim[0] + (h + (c * h*h*h)/6 + (c*c*powf(h,5))/120) * u_n.dim[1];
 		temp_position.dim[1] = (c * h + 1/120*c*c*h*h*h* (20 + c * h*h)) * u_n.dim[0] + (1 + 1/24 * c * h*h * (12 + c * h*h)) * u_n.dim[1];
-
 
 		// Advect the integral value:
 		floatType Int1 {DIVERGENCE_FIELD(position, t0, parameter_realization, mode, extra_param)};

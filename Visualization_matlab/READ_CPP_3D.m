@@ -22,7 +22,7 @@ conf_lvl = 0.95;
 
 %% CHANGE FOR YOUR CURRENT COMPUTER
 
-Info=readcell  ('../output/Simulation_Info_1.csv');
+Info=readcell  ('../output/Simulation_Info_0.csv');
 
 Total_Pts           = Info{1,1};
 Pts_Per_Dimension   = Info{1,2};
@@ -37,10 +37,10 @@ h_Z =(Info{1,8}-Info{1,7})/(Pts_Per_Dimension-1);
 Z   =Info{1,7}:h_X:Info{1,8};
 
 % F_Output=zeros(Pts_Per_Dimension, Pts_Per_Dimension, Pts_Per_Dimension, timesteps);
-timesteps = 2;%length(Info);
+timesteps = length(Info);
 
 %%
-fileID = fopen('../output/Mean_PDFs_1.bin');
+fileID = fopen('../output/Mean_PDFs_0.bin');
 Data=fread(fileID,[Pts_Per_Dimension^3,timesteps],'float');
 fclose(fileID);
 
@@ -81,13 +81,13 @@ for l = 1:skip:timesteps
     title(['Confidence surface at time ', num2str(Info{2,l})]);
     isosurface(x,y,z,F_Output(:,:,:,l),iso_val(l,1));view(3);colorbar;grid on; grid minor; lightangle(-45,45); drawnow;
 
-%     figure(100+l)
-%     subplot(3,1,1)
-%     plot(X,Marg_X,'r.-');xlabel(Name_var1);ylabel('Probability Density'); drawnow;
-%     subplot(3,1,2)
-%     plot(Y,Marg_Y,'r.-');xlabel(Name_var2);ylabel('Probability Density'); drawnow;
-%     subplot(3,1,3)
-%     plot(Z,Marg_Z,'r.-');xlabel(Name_var3);ylabel('Probability Density'); drawnow;
-%     sgtitle(['Marginal PDFs at time ', num2str(Info{2,l})]);
-%     pause(0.5);
+    figure(100+l)
+    subplot(3,1,1)
+    plot(X,Marg_X,'r.-');xlabel(Name_var1);ylabel('Probability Density'); drawnow;
+    subplot(3,1,2)
+    plot(Y,Marg_Y,'r.-');xlabel(Name_var2);ylabel('Probability Density'); drawnow;
+    subplot(3,1,3)
+    plot(Z,Marg_Z,'r.-');xlabel(Name_var3);ylabel('Probability Density'); drawnow;
+    sgtitle(['Marginal PDFs at time ', num2str(Info{2,l})]);
+    pause(0.5);
 end

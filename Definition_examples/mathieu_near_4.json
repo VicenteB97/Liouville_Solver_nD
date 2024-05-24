@@ -1,0 +1,297 @@
+{
+    "ME_p_-8_r_4y1":{
+        "saving": {
+            "type": "Y",
+            "first_frame": 0,
+            "last_frame": 0
+        },
+        
+        "simulation_parameters":{
+            "floatType": "float",
+            "TOLERANCE_AMR": "1E-6",
+            "TOLERANCE_ConjGrad": "1E-9",
+            "DISC_RADIUS": "4.1",
+
+            "phase_space_dimensions": "2",
+            "DOMAIN_INF": "{-8, -8}",
+            "DOMAIN_SUP": "{8, 8}",
+
+            "param_space_dimensions": "1",
+
+            "disc_finest_level": "9",
+            "t0": "0",
+            "tF": "2*M_PI",
+            "delta_t": "M_PI/500",
+            "reinit_steps": "1",
+            "saving_steps": "1"
+        },
+
+        "vector_field":{
+            "VF_1": "X.dim[1]",
+            "D_1": "0",
+            
+            "VF_2": "-(parameter.sample_vec[0]-2*(-8)*cos(2*t))*X.dim[0]",
+            "D_2": "0",
+
+            "VEC_FIELD": "{VF_1, VF_2}",
+            "DIVERGENCE": "D_1 + D_2"
+        },
+
+        "special_integrator": "true",
+
+        "initial_condition":{
+            "IC_NAMES": "{'N', 'N'}",
+            "IC_isTRUNC": "{true, true}",
+            "IC_InfTVAL": "DOMAIN_INF",
+            "IC_SupTVAL": "DOMAIN_SUP",
+            "IC_MEAN": "{ 0, -1 }",
+            "IC_STD": "{ sqrtf(0.09), sqrtf(0.09) }"
+        },
+
+        "parameters":{
+            "DIST_NAMES": "{'N'}",
+            "DIST_isTRUNC": "{true}",
+            "DIST_InfTVAL": "{0}",
+            "DIST_SupTVAL": "{6}",
+            "DIST_MEAN": "{3}",
+            "DIST_STD": "{sqrtf(0.09)}",
+            "DIST_N_SAMPLES": "{64}"
+        }
+    },
+    "ME_p_-8_r_4y2":{
+        "saving": {
+            "type": "Y",
+            "first_frame": 0,
+            "last_frame": 0
+        },
+        
+        "simulation_parameters":{
+            "floatType": "float",
+            "TOLERANCE_AMR": "1E-6",
+            "TOLERANCE_ConjGrad": "1E-9",
+            "DISC_RADIUS": "4.2",
+
+            "phase_space_dimensions": "2",
+            "DOMAIN_INF": "{-8, -8}",
+            "DOMAIN_SUP": "{8, 8}",
+
+            "param_space_dimensions": "1",
+
+            "disc_finest_level": "9",
+            "t0": "0",
+            "tF": "2*M_PI",
+            "delta_t": "M_PI/500",
+            "reinit_steps": "1",
+            "saving_steps": "1"
+        },
+
+        "vector_field":{
+            "VF_1": "X.dim[1]",
+            "D_1": "0",
+            
+            "VF_2": "-(parameter.sample_vec[0]-2*(-8)*cos(2*t))*X.dim[0]",
+            "D_2": "0",
+
+            "VEC_FIELD": "{VF_1, VF_2}",
+            "DIVERGENCE": "D_1 + D_2"
+        },
+
+        "special_integrator": "true",
+
+        "initial_condition":{
+            "IC_NAMES": "{'N', 'N'}",
+            "IC_isTRUNC": "{true, true}",
+            "IC_InfTVAL": "DOMAIN_INF",
+            "IC_SupTVAL": "DOMAIN_SUP",
+            "IC_MEAN": "{ 0, -1 }",
+            "IC_STD": "{ sqrtf(0.09), sqrtf(0.09) }"
+        },
+
+        "parameters":{
+            "DIST_NAMES": "{'N'}",
+            "DIST_isTRUNC": "{true}",
+            "DIST_InfTVAL": "{0}",
+            "DIST_SupTVAL": "{6}",
+            "DIST_MEAN": "{3}",
+            "DIST_STD": "{sqrtf(0.09)}",
+            "DIST_N_SAMPLES": "{64}"
+        }
+    },
+    "ME_p_-8_r_4y3":{
+        "saving": {
+            "type": "Y",
+            "first_frame": 0,
+            "last_frame": 0
+        },
+        
+        "simulation_parameters":{
+            "floatType": "float",
+            "TOLERANCE_AMR": "1E-6",
+            "TOLERANCE_ConjGrad": "1E-9",
+            "DISC_RADIUS": "4.3",
+
+            "phase_space_dimensions": "2",
+            "DOMAIN_INF": "{-8, -8}",
+            "DOMAIN_SUP": "{8, 8}",
+
+            "param_space_dimensions": "1",
+
+            "disc_finest_level": "9",
+            "t0": "0",
+            "tF": "2*M_PI",
+            "delta_t": "M_PI/500",
+            "reinit_steps": "1",
+            "saving_steps": "1"
+        },
+
+        "vector_field":{
+            "VF_1": "X.dim[1]",
+            "D_1": "0",
+            
+            "VF_2": "-(parameter.sample_vec[0]-2*(-8)*cos(2*t))*X.dim[0]",
+            "D_2": "0",
+
+            "VEC_FIELD": "{VF_1, VF_2}",
+            "DIVERGENCE": "D_1 + D_2"
+        },
+
+        "special_integrator": "true",
+
+        "initial_condition":{
+            "IC_NAMES": "{'N', 'N'}",
+            "IC_isTRUNC": "{true, true}",
+            "IC_InfTVAL": "DOMAIN_INF",
+            "IC_SupTVAL": "DOMAIN_SUP",
+            "IC_MEAN": "{ 0, -1 }",
+            "IC_STD": "{ sqrtf(0.09), sqrtf(0.09) }"
+        },
+
+        "parameters":{
+            "DIST_NAMES": "{'N'}",
+            "DIST_isTRUNC": "{true}",
+            "DIST_InfTVAL": "{0}",
+            "DIST_SupTVAL": "{6}",
+            "DIST_MEAN": "{3}",
+            "DIST_STD": "{sqrtf(0.09)}",
+            "DIST_N_SAMPLES": "{64}"
+        }
+    },
+    "ME_p_-8_r_4y4":{
+        "saving": {
+            "type": "Y",
+            "first_frame": 0,
+            "last_frame": 0
+        },
+        
+        "simulation_parameters":{
+            "floatType": "float",
+            "TOLERANCE_AMR": "1E-6",
+            "TOLERANCE_ConjGrad": "1E-9",
+            "DISC_RADIUS": "4.4",
+
+            "phase_space_dimensions": "2",
+            "DOMAIN_INF": "{-8, -8}",
+            "DOMAIN_SUP": "{8, 8}",
+
+            "param_space_dimensions": "1",
+
+            "disc_finest_level": "9",
+            "t0": "0",
+            "tF": "2*M_PI",
+            "delta_t": "M_PI/500",
+            "reinit_steps": "1",
+            "saving_steps": "1"
+        },
+
+        "vector_field":{
+            "VF_1": "X.dim[1]",
+            "D_1": "0",
+            
+            "VF_2": "-(parameter.sample_vec[0]-2*(-8)*cos(2*t))*X.dim[0]",
+            "D_2": "0",
+
+            "VEC_FIELD": "{VF_1, VF_2}",
+            "DIVERGENCE": "D_1 + D_2"
+        },
+
+        "special_integrator": "true",
+
+        "initial_condition":{
+            "IC_NAMES": "{'N', 'N'}",
+            "IC_isTRUNC": "{true, true}",
+            "IC_InfTVAL": "DOMAIN_INF",
+            "IC_SupTVAL": "DOMAIN_SUP",
+            "IC_MEAN": "{ 0, -1 }",
+            "IC_STD": "{ sqrtf(0.09), sqrtf(0.09) }"
+        },
+
+        "parameters":{
+            "DIST_NAMES": "{'N'}",
+            "DIST_isTRUNC": "{true}",
+            "DIST_InfTVAL": "{0}",
+            "DIST_SupTVAL": "{6}",
+            "DIST_MEAN": "{3}",
+            "DIST_STD": "{sqrtf(0.09)}",
+            "DIST_N_SAMPLES": "{64}"
+        }
+    },
+    "ME_p_-8_r_4y5":{
+        "saving": {
+            "type": "Y",
+            "first_frame": 0,
+            "last_frame": 0
+        },
+        
+        "simulation_parameters":{
+            "floatType": "float",
+            "TOLERANCE_AMR": "1E-6",
+            "TOLERANCE_ConjGrad": "1E-9",
+            "DISC_RADIUS": "4.5",
+
+            "phase_space_dimensions": "2",
+            "DOMAIN_INF": "{-8, -8}",
+            "DOMAIN_SUP": "{8, 8}",
+
+            "param_space_dimensions": "1",
+
+            "disc_finest_level": "9",
+            "t0": "0",
+            "tF": "2*M_PI",
+            "delta_t": "M_PI/500",
+            "reinit_steps": "1",
+            "saving_steps": "1"
+        },
+
+        "vector_field":{
+            "VF_1": "X.dim[1]",
+            "D_1": "0",
+            
+            "VF_2": "-(parameter.sample_vec[0]-2*(-8)*cos(2*t))*X.dim[0]",
+            "D_2": "0",
+
+            "VEC_FIELD": "{VF_1, VF_2}",
+            "DIVERGENCE": "D_1 + D_2"
+        },
+
+        "special_integrator": "true",
+
+        "initial_condition":{
+            "IC_NAMES": "{'N', 'N'}",
+            "IC_isTRUNC": "{true, true}",
+            "IC_InfTVAL": "DOMAIN_INF",
+            "IC_SupTVAL": "DOMAIN_SUP",
+            "IC_MEAN": "{ 0, -1 }",
+            "IC_STD": "{ sqrtf(0.09), sqrtf(0.09) }"
+        },
+
+        "parameters":{
+            "DIST_NAMES": "{'N'}",
+            "DIST_isTRUNC": "{true}",
+            "DIST_InfTVAL": "{0}",
+            "DIST_SupTVAL": "{6}",
+            "DIST_MEAN": "{3}",
+            "DIST_STD": "{sqrtf(0.09)}",
+            "DIST_N_SAMPLES": "{64}"
+        }
+    }
+}
