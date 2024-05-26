@@ -98,7 +98,7 @@ __device__ void runge_kutta_45(
 /// @param mode 
 /// @param domain_mesh 
 /// @return 
-__device__ void lie_midpoint_mathieu(
+__device__ void lie_euler_mathieu(
 	Particle& position,
 	floatType& value,
 	double t0,
@@ -189,7 +189,7 @@ __global__ void ODE_INTEGRATE(
 		floatType value_particle {PDF[i]};
 
 		#if SPECIAL_INTEGRATOR
-		lie_midpoint_mathieu(pos_particle, value_particle, t0, tF, time_step, parameter_realization, extra_param, mode, D_Mesh);
+		lie_euler_mathieu(pos_particle, value_particle, t0, tF, time_step, parameter_realization, extra_param, mode, D_Mesh);
 		#else
 		runge_kutta_45(pos_particle, value_particle, t0, tF, time_step, parameter_realization, extra_param, mode, D_Mesh);
 		#endif
