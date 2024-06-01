@@ -222,10 +222,10 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 
 	// Full array storing appended particles for all parameter samples
 	std::vector<Particle>	Full_Particle_Locations;
-	std::vector<floatType>		Full_Particle_Values;
+	std::vector<floatType>	Full_Particle_Values;
 
 	thrust::device_vector<floatType> D_lambdas;
-	thrust::device_vector<floatType>	D_Mat_Vals;
+	thrust::device_vector<floatType> D_Mat_Vals;
 	thrust::device_vector<intType>	D_Mat_Indx;
 	InterpHandle interpVectors;
 	thrust::device_vector<Particle> D_fixedParticles;
@@ -321,75 +321,6 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 		D_PDF_ProbDomain.clear();
 		#endif
 
-		/////////////////////////////////////////////////////////////////////////////////////////
-		/////////////////////////////////////////////////////////////////////////////////////////
-		// -------------------------- PT. SEARCH --------------------------------------------- //
-		/////////////////////////////////////////////////////////////////////////////////////////
-		/////////////////////////////////////////////////////////////////////////////////////////
-
-		// Maximum neighbors to search. Diameter number of points powered to the dimension
-		uintType MaxNeighborNum = round(fmin(pow(2 * round(DISC_RADIUS) + 1, PHASE_SPACE_DIMENSIONS), AMR_ActiveNodeCount));
-
-		// Compressed COO-style indexing of the sparse interpolation matrix
-		D_Mat_Indx.resize(MaxNeighborNum * AMR_ActiveNodeCount);
-		thrust::fill(D_Mat_Indx.begin(), D_Mat_Indx.end(), -1);
-		// Sparse interpolation matrix values
-		D_Mat_Vals.resize(MaxNeighborNum * AMR_ActiveNodeCount);
-		thrust::fill(D_Mat_Vals.begin(), D_Mat_Vals.end(), 0);
-
-
-		startTimeSeconds = std::chrono::high_resolution_clock::now();
-
-		errorCheck(particleNeighborSearch(D_Particle_Locations,
-			D_Particle_Values,
-			D_Mat_Indx,
-			D_Mat_Vals,
-			AMR_ActiveNodeCount,
-			MaxNeighborNum,
-			PDF_Support,
-			RBF_SupportRadius));
-
-		endTimeSeconds = std::chrono::high_resolution_clock::now();
-		durationSeconds = endTimeSeconds - startTimeSeconds;
-
-		/////////////////////////////////////////////////////////////////////////////////////////
-		/////////////////////////////////////////////////////////////////////////////////////////
-		// -------------------------- INTERPOLATION ------------------------------------------ //
-		/////////////////////////////////////////////////////////////////////////////////////////
-		/////////////////////////////////////////////////////////////////////////////////////////
-		// Declare the solution of the interpolation vector (weights of the RBF functions)
-		D_lambdas.resize(AMR_ActiveNodeCount);
-		thrust::fill(D_lambdas.begin(), D_lambdas.end(), 0);
-
-		interpVectors.resize(AMR_ActiveNodeCount);
-
-		startTimeSeconds = std::chrono::high_resolution_clock::now();
-		int32_t iterations = CONJUGATE_GRADIENT_SOLVE(D_lambdas,
-			D_Mat_Indx,
-			D_Mat_Vals,
-			D_Particle_Values,
-			interpVectors,
-			AMR_ActiveNodeCount,
-			MaxNeighborNum,
-			ConjGrad_MaxSteps,
-			TOLERANCE_ConjGrad);
-		if (iterations == -1) { std::cout << "Convergence failure.\n"; break; }
-		endTimeSeconds = std::chrono::high_resolution_clock::now();
-		durationSeconds = endTimeSeconds - startTimeSeconds;
-
-
-		// To the Log file
-		__simulation_log.LogFrames[simStepCount].log_Interpolation_Time = durationSeconds.count();
-		__simulation_log.LogFrames[simStepCount].log_Interpolation_Iterations = iterations;
-
-		#if ERASE_auxVectors == true
-		// Clear the vectors to save memory
-		D_Mat_Indx.clear();
-		D_Mat_Vals.clear();
-		#endif
-
-		D_Particle_Values = D_lambdas;
-
 		if (__reinitialization_info[simStepCount].impulse) {
 			/////////////////////////////////////////////////////////////////////////////////////////
 			/////////////////////////////////////////////////////////////////////////////////////////
@@ -445,7 +376,7 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 		else {
 			/////////////////////////////////////////////////////////////////////////////////////////
 			/////////////////////////////////////////////////////////////////////////////////////////
-			// -------------------------- SMOOTH PARTICLE INTEGRATION ---------------------------- //
+			// ------------------------------ PARTICLE INTEGRATION ------------------------------- //
 			/////////////////////////////////////////////////////////////////////////////////////////
 			/////////////////////////////////////////////////////////////////////////////////////////
 
