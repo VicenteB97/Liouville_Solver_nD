@@ -121,6 +121,23 @@ int16_t ivpSolver::buildDistributions() {
 	return 0;
 };
 
+// The purpose of this function is getting the id's of the coarse bounding box where I've got points
+__global__ void get_blocks_for_inverse_advection(
+	const Particle* particle_locations,
+	const uintType* is_node_assigned,
+	const Mesh* coarse_bounding_box,
+	const uintType max_elements
+){
+	uint64_t global_id {blockDim.x * blockIdx.x + threadIdx.x};
+
+	if (global_id >= max_elements){ return; }
+	// Catch the index
+	uintType my_idx = coarse_bounding_box->Get_binIdx(particle_locations[global_id]);
+
+	// Activate the corresponding node:
+	atomicCAS(is_node_assigned(&[my_idx]), 0, 1);
+}
+
 // This function contains the most important function of them all: The full numerical method!
 int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -163,7 +180,7 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 		sum_sample_val += temp.Joint_PDF;
 	}
 
-	// Memory management
+	// Manual memory management
 	delete[] Parameter_Mesh;
 
 	// Output to the CLI
@@ -174,7 +191,7 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// PROBLEM DOMAIN AND INITIAL PDF
 
-		// This Mesh will be defined by the support bounding box of the data.
+	// This Mesh will be defined by the support bounding box of the data.
 	Mesh PDF_Support(IC_InfTVAL, IC_SupTVAL);
 
 	// Make it square for AMR-purposes
@@ -424,7 +441,7 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 				uintType Blocks = floor((double)(ActiveNodes_PerBlk - 1) / Threads) + 1;
 
 				startTimeSeconds = std::chrono::high_resolution_clock::now();
-				ODE_INTEGRATE << <Blocks, Threads >> > (
+				forward_integrate_positions << <Blocks, Threads >> > (
 					rpc(D_Particle_Locations, 0),
 					rpc(D_Particle_Values, 0),
 					rpc(D_Parameter_Mesh, Sample_idx_offset_init),
@@ -446,12 +463,38 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 				__simulation_log.LogFrames[simStepCount].log_Advection_TotalParticles = ActiveNodes_PerBlk;
 
 				PDF_Support.Update_boundingBox(D_Particle_Locations);
+				PDF_Support.align_with_mesh(__problem_domain);
 
-				// COMPUTE THE SOLUTION "PROJECTION" INTO THE L1 SUBSPACE. THIS WAY, REINITIALIZATION CONSERVES VOLUME (=1)
-				if (PHASE_SPACE_DIMENSIONS < 5) {
-					floatType temp = thrust::reduce(thrust::device, D_Particle_Values.begin(), D_Particle_Values.end());
-					thrust::transform(D_Particle_Values.begin(), D_Particle_Values.end(), D_Particle_Values.begin(), Samples_PerBlk / temp * _1);
-				}
+						/////////////////////////////////////////////////////////////////////////////////////////
+						// Now we're going to create the coarser grid to select the "bins" that we'll use to do inverse search
+						Mesh bins_for_inverse_advection (PDF_Support.Boundary_inf, PDF_Support.Boundary_sup, (uintType) PDF_Support.Nodes_per_dim / 4);
+
+						// Get the indeces from this mesh that show the "active" bins (use same idea as in the radius sort algorithm):
+						// Each GPU thread will do 4 - 8 particles
+						thrust::device_vector<uintType> nodeIdxs(PDF_Support.Total_Nodes(), 0);
+						thrust::device_vector<uintType> isAssignedNode(PDF_Support.Total_Nodes(), 0);
+						// Go through all the particles and find their index and activate point on the mesh
+						// INSERT __global__ FUNCTION
+						uint16_t threads = fmin(THREADS_P_BLK, ActiveNodes_PerBlk);
+						uint64_t blocks = ceil((ActiveNodes_PerBlk - 1) / THREADS_P_BLK); 
+						get_blocks_for_inverse_advection <<<threads, blocks>>>(
+							rpc(D_Particle_Locations, 0),
+							rpc(isAssignedNode, 0),
+							rpc(bins_for_inverse_advection, 0),
+							ActiveNodes_PerBlk
+						);
+
+						// Get the number of assigned nodes
+						const uintType nrSelectedNodes = thrust::reduce(thrust::device, isAssignedNode.begin(), isAssignedNode.end());
+						if (nrSelectedNodes == 0) { std::cout << "\nError: Points for inverse advect. is 0. Cannot continue\n"; return -1; }
+
+						// Set the selected nodes first
+						thrust::sort_by_key(thrust::device, isAssignedNode.begin(), isAssignedNode.end(), nodeIdxs.begin(), thrust::greater<intType>());
+
+						// Somehow, get a list of points from the Supp_BBox that we'll have to do inverse advection from:
+							// Get the total number of nodes that we'll need in the underlying mesh
+							// Do the inverse advection directly (we need the wavelet transform!)
+
 
 				/////////////////////////////////////////////////////////////////////////////////////////
 				/////////////////////////////////////////////////////////////////////////////////////////
@@ -466,7 +509,7 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 				#endif
 
 				Threads = fmin(THREADS_P_BLK, ActiveNodes_PerBlk);
-				Blocks = floor((double)(ActiveNodes_PerBlk - 1) / Threads) + 1;
+				Blocks  = floor((double)(ActiveNodes_PerBlk - 1) / Threads) + 1;
 
 				startTimeSeconds = std::chrono::high_resolution_clock::now();
 				RESTART_GRID_FIND_GN << < Blocks, Threads >> > (rpc(D_Particle_Locations, 0),
@@ -487,19 +530,6 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 				// To the Log file
 				__simulation_log.LogFrames[simStepCount].log_Reinitialization_Time = durationSeconds.count();
 			}
-
-			/////////////////////////////////////////////////////////////////////////////////////////
-			/////////////////////////////////////////////////////////////////////////////////////////
-			// -------------------------- STORE PDF INTO OUTPUT ARRAY ---------------------------- //
-			/////////////////////////////////////////////////////////////////////////////////////////
-			/////////////////////////////////////////////////////////////////////////////////////////
-
-			// Correction of any possible negative PDF values
-			uintType Threads = fmin(THREADS_P_BLK, nrNodesPerFrame / ELEMENTS_AT_A_TIME);
-			uintType Blocks = floor((double)(nrNodesPerFrame / ELEMENTS_AT_A_TIME - 1) / Threads) + 1;
-
-			CORRECTION << <Blocks, Threads >> > (rpc(D_PDF_ProbDomain, 0), nrNodesPerFrame);
-			gpuError_Check(cudaDeviceSynchronize());
 
 			// Divide by the sum of the values of the parameter mesh to obtain the weighted mean
 			thrust::transform(D_PDF_ProbDomain.begin(), D_PDF_ProbDomain.end(), D_PDF_ProbDomain.begin(), 1.0f / sum_sample_val * _1); // we use the thrust::placeholders here (@ the last input argument)

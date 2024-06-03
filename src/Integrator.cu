@@ -28,7 +28,7 @@ inline floatType DIVERGENCE_FIELD(Particle X,
 
 
 // Output the final point
-__device__ void runge_kutta_45(
+__device__ void forward_runge_kutta_45(
 	Particle& position, 
 	floatType& value, 
 	double t0, 
@@ -42,22 +42,23 @@ __device__ void runge_kutta_45(
 
 	Particle k0, k1, k2, k3, k_final, temp;		// register storing the initial particle location;
 	floatType Int1, Int2, Int3, val_aux = 1;	// register storing the initial particle value;
+	double t = t0;
 
-	while (t0 < tF - 1E-6) {
+	while (t < tF - 1E-6) {
 		// Just in case not detaT-proportional
-		time_step = fmin(time_step, tF-t0);
+		time_step = fmin(time_step, tF-t);
 
 		// Particle flow
-		k0 = VECTOR_FIELD(position, t0, parameter_realization, mode, extra_param);
+		k0 = VECTOR_FIELD(position, t, parameter_realization, mode, extra_param);
 
 		temp = k0.Mult_by_Scalar(time_step / 2.00f);
-		k1 = VECTOR_FIELD(position + temp, t0 + time_step / 2.00f, parameter_realization, mode, extra_param);
+		k1 = VECTOR_FIELD(position + temp, t + time_step / 2.00f, parameter_realization, mode, extra_param);
 
 		temp = k1.Mult_by_Scalar(time_step / 2.00f);
-		k2 = VECTOR_FIELD(position + temp, t0 + time_step / 2.00f, parameter_realization, mode, extra_param);
+		k2 = VECTOR_FIELD(position + temp, t + time_step / 2.00f, parameter_realization, mode, extra_param);
 
 		temp = k2.Mult_by_Scalar(time_step);
-		k3 = VECTOR_FIELD(position + temp, t0 + time_step, parameter_realization, mode, extra_param);
+		k3 = VECTOR_FIELD(position + temp, t + time_step, parameter_realization, mode, extra_param);
 
 		k1 = k1.Mult_by_Scalar(2.00f);
 		k2 = k2.Mult_by_Scalar(2.00f);
@@ -67,51 +68,58 @@ __device__ void runge_kutta_45(
 
 		// Reinit step
 		position = temp;
-		t0 += time_step;
+		t += time_step;
 	}
 }
 
-/// @brief This case is ONLY VALID for 2D methods! We'll use the 
-/// @param position 
-/// @param value 
-/// @param t0 
-/// @param tF 
-/// @param time_step 
-/// @param parameter_realization 
-/// @param extra_param 
-/// @param mode 
-/// @param domain_mesh 
-/// @return 
-__device__ void lie_euler_mathieu(
-	Particle& position,
-	double t0,
-	const double tF,
+// Output the final point
+__device__ void inverse_runge_kutta_45(
+	Particle& position, 
+	floatType& value, 
+	double t0, 
+	const double tF, 
 	double time_step,
-	Param_vec<PARAM_SPACE_DIMENSIONS> parameter_realization,
-	const double* extra_param,
+	Param_vec<PARAM_SPACE_DIMENSIONS> parameter_realization, 
+	const double* extra_param, 
 	const uintType mode,
 	const Mesh domain_mesh
-){
+) {
 
-	floatType val_aux = 1;
-	// The Euler step:
-	while (t0 < tF - 1E-6){
+	Particle k0, k1, k2, k3, k_final, temp;		// register storing the initial particle location;
+	floatType Int1, Int2, Int3, val_aux = 1;	// register storing the initial particle value;
+	double t = t0;
+
+	while (t < tF - 1E-6) {
 		// Just in case not detaT-proportional
-		double h {fmin(time_step, tF-t0)};
+		time_step = fmin(time_step, tF - t);
 
-		Particle u_n {position}, temp_position;
+		// Particle flow
+		k0 = VECTOR_FIELD(position, tF + t0 - t, parameter_realization, mode, extra_param);
+		k0 = k0.Mult_by_Scalar(-1.0);
 
-		floatType c {(floatType) -(parameter_realization.sample_vec[0]-2*parameter_realization.sample_vec[1]*cos(2*t0))};
+		temp = k0.Mult_by_Scalar(time_step / 2.00f);
+		k1 = -VECTOR_FIELD(position + temp, tF + t0 - t + time_step / 2.00f, parameter_realization, mode, extra_param);
+		k1 = k1.Mult_by_Scalar(-1.0);
 
-		temp_position.dim[0] = (1 + 1/24 *c * h*h *(12 + c *h*h)) * u_n.dim[0] + (h + (c * h*h*h)/6 + (c*c*powf(h,5))/120) * u_n.dim[1];
-		temp_position.dim[1] = (c * h + 1/120*c*c*h*h*h* (20 + c * h*h)) * u_n.dim[0] + (1 + 1/24 * c * h*h * (12 + c * h*h)) * u_n.dim[1];
+		temp = k1.Mult_by_Scalar(time_step / 2.00f);
+		k2 = -VECTOR_FIELD(position + temp, tF + t0 - t + time_step / 2.00f, parameter_realization, mode, extra_param);
+		k2 = k2.Mult_by_Scalar(-1.0);
+
+		temp = k2.Mult_by_Scalar(time_step);
+		k3 = -VECTOR_FIELD(position + temp, tF + t0 - t + time_step, parameter_realization, mode, extra_param);
+		k3 = k3.Mult_by_Scalar(-1.0);
+
+		k1 = k1.Mult_by_Scalar(2.00f);
+		k2 = k2.Mult_by_Scalar(2.00f);
+
+		temp = k0 + k3 + k1 + k2;
+		temp = position + temp.Mult_by_Scalar((floatType)time_step / 6); 	// New particle dims
 
 		// Reinit step
-		position = temp_position;
-		t0 += h;
+		position = temp;
+		t += time_step;
 	}
 }
-
 
 // NEW FUNCTIONS: (Forward + backward position integration) + (Backward position integration (and get value from the wavelet transform?)) 
 __global__ void forward_integrate_positions(
@@ -139,17 +147,9 @@ __global__ void forward_integrate_positions(
 	};
 
 	Particle pos_particle {Particles[i]};
-	floatType value_particle {PDF[i]};
-
-	#if SPECIAL_INTEGRATOR
-	lie_euler_mathieu(
-		pos_particle, value_particle, t0, tF, time_step, parameter_realization, extra_param, mode, D_Mesh
+	forward_runge_kutta_45(
+		pos_particle, t0, tF, time_step, parameter_realization, extra_param, mode, D_Mesh
 	);
-	#else
-	runge_kutta_45(
-		pos_particles, t0, tF, time_step, parameter_realization, extra_param, mode, D_Mesh
-	);
-	#endif
 
 	// Output results
 	Particles[i] = pos_particle;
@@ -180,18 +180,10 @@ __global__ void inverse_integrate_positions(
 		Gather_Param_Vec<PARAM_SPACE_DIMENSIONS>(i_sample, parameters, n_Samples)
 	};
 
-	Particle pos_particle {Particles[i]};
-	floatType value_particle {PDF[i]};
-
-	#if SPECIAL_INTEGRATOR
-	lie_euler_mathieu(
-		pos_particle, value_particle, t0, tF, time_step, parameter_realization, extra_param, mode, D_Mesh
+	Particle pos_particle {Particles[i]};	
+	inverse_runge_kutta_45(
+		pos_particle, t0, tF, time_step, parameter_realization, extra_param, mode, D_Mesh
 	);
-	#else
-	runge_kutta_45(
-		pos_particles, t0, tF, time_step, parameter_realization, extra_param, mode, D_Mesh
-	);
-	#endif
 
 	// Output results
 	Particles[i] = pos_particle;

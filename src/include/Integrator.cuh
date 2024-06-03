@@ -28,18 +28,26 @@ inline floatType DIVERGENCE_FIELD(
 
 
 // Output the final point
-__device__ void runge_kutta_45(Particle& position, floatType& value, double t0, const double tF, const double time_step,
-	Param_vec<PARAM_SPACE_DIMENSIONS> parameter_realization, const double* extra_param, const uintType mode,
-	const Mesh domain_mesh);
-
-__device__ void lie_midpoint_mathieu(
-	Particle& position,
-	floatType& value,
-	double t0,
-	const double tF,
+__device__ void inverse_runge_kutta_45(
+	Particle& position, 
+	floatType& value, 
+	double t0, 
+	const double tF, 
 	double time_step,
-	Param_vec<PARAM_SPACE_DIMENSIONS> parameter_realization,
-	const double* extra_param,
+	Param_vec<PARAM_SPACE_DIMENSIONS> parameter_realization, 
+	const double* extra_param, 
+	const uintType mode,
+	const Mesh domain_mesh
+);
+
+__device__ void forward_runge_kutta_45(
+	Particle& position, 
+	floatType& value, 
+	double t0, 
+	const double tF, 
+	double time_step,
+	Param_vec<PARAM_SPACE_DIMENSIONS> parameter_realization, 
+	const double* extra_param, 
 	const uintType mode,
 	const Mesh domain_mesh
 );
@@ -55,18 +63,30 @@ __device__ void lie_midpoint_mathieu(
 /// @param Adapt_Points Number of particles as computed by the AMR scheme
 /// @param Random_Samples Number of random parameter_realization samples
 /// @return 
-__global__ void ODE_INTEGRATE(
+__global__ void forward_integrate_positions(
 	Particle* Particles,
-	floatType* PDF,
 	const Param_pair* parameters,
 	const intType* n_Samples,
-	double			t0,
-	const double	time_step,
-	const double	tF,
-	const intType		Adapt_Points,
-	const intType		Random_Samples,
-	const uintType		mode,
+	double t0,
+	const double time_step,
+	const double tF,
+	const intType Adapt_Points,
+	const intType Random_Samples,
+	const uintType mode,
 	const double* extra_param,
-	const Mesh  	D_Mesh);
+	const Mesh D_Mesh);
+
+__global__ void inverse_integrate_positions(
+	Particle* Particles,
+	const Param_pair* parameters,
+	const intType* n_Samples,
+	double t0,
+	const double time_step,
+	const double tF,
+	const intType Adapt_Points,
+	const intType Random_Samples,
+	const uintType mode,
+	const double* extra_param,
+	const Mesh D_Mesh);
 
 #endif

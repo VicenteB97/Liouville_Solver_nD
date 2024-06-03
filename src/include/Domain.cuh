@@ -128,10 +128,12 @@ public:
 	/// @brief This function makes you domain a square (same Lebesgue-length in every direction)
 	__host__ __device__  void Squarify();
 
+	__host__ __device__ void align_with_mesh(const Mesh& base_mesh);
+
 	/// @brief This function updates a Mesh-defined bounding box
 	/// @param D_Particle_Locations GPU array storing the positions of the particles
 	/// @returns Nothing
-	 __host__ void Update_boundingBox(const thrust::device_vector<Particle>& D_Particle_Locations);
+	 __host__ void Update_boundingBox(const thrust::device_vector<Particle>& D_Particle_Locations, uintType extra_fill = 1);
 };
 
 #endif

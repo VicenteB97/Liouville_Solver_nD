@@ -170,27 +170,7 @@ int16_t setInitialParticles(const thrust::host_vector<floatType>& H_PDF,
 	uintType rescaling = 2;
 
 	// Prepare the bounding box for the Wavelet-based AMR procedure! (We don't really care if it's off limits from the problem domain)
-	Supp_BBox.Squarify();	// Make it square
-	Supp_BBox.Nodes_per_Dim = (Supp_BBox.Boundary_sup.dim[0] - Supp_BBox.Boundary_inf.dim[0]) / Problem_Domain.Discr_length() + 1;
-
-	double refinementLvl = log2(Supp_BBox.Nodes_per_Dim);
-
-	if (fmod(refinementLvl, 1) != 0) {
-		Supp_BBox.Nodes_per_Dim = pow(2, ceil(refinementLvl));
-
-		// Rewrite the refinement level value
-		refinementLvl = log2(Supp_BBox.Nodes_per_Dim);
-
-		if (Supp_BBox.Nodes_per_Dim >= Problem_Domain.Nodes_per_Dim) { Supp_BBox = Problem_Domain; }
-		else {
-			Supp_BBox.Boundary_inf = Base_Mesh.Get_node(Base_Mesh.Get_binIdx(Supp_BBox.Boundary_inf));	// To make sure it falls into the mesh nodes
-
-#pragma unroll
-			for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-				Supp_BBox.Boundary_sup.dim[d] = Supp_BBox.Boundary_inf.dim[d] + (Supp_BBox.Nodes_per_Dim - 1) * Problem_Domain.Discr_length();
-			}
-		}
-	}
+	Supp_BBox.align_with_mesh(Problem_Domain);
 
 	thrust::device_vector<uintType> nodeIdxs(Supp_BBox.Total_Nodes(), 0);
 	thrust::device_vector<uintType> isAssignedNode(Supp_BBox.Total_Nodes(), 0);

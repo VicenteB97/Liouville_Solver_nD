@@ -71,4 +71,11 @@ public:
 	int16_t writeFramesToFile(const double& simulationDuration);
 };
 
+__global__ void get_blocks_for_inverse_advection(
+	const Particle* particle_locations,
+	uintType* is_node_assigned,
+	const Mesh* coarse_bounding_box,
+	const uintType max_elements
+);
+
 #endif

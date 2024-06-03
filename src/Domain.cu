@@ -250,16 +250,43 @@ __host__ __device__  void Mesh::Squarify() {
 	}
 }
 
+
+__host__ __device__ void Mesh::align_with_mesh(const Mesh& base_mesh){
+	this->Squarify();	// Make it square (in case it isn't)
+	Nodes_per_Dim = (Boundary_sup.dim[0] - Boundary_inf.dim[0]) / base_mesh.Discr_length() + 1;
+
+	double refinementLvl = log2(Nodes_per_Dim);
+
+	if (fmod(refinementLvl, 1) != 0) {
+		Nodes_per_Dim = pow(2, ceil(refinementLvl));
+
+		// Rewrite the refinement level value
+		refinementLvl = log2(Nodes_per_Dim);
+
+		if (Nodes_per_Dim >= base_mesh.Nodes_per_Dim) { this = base_mesh; } // If we're going to get a larger mesh just get the initial mesh
+		else {
+			Boundary_inf = Base_Mesh.Get_node(Base_Mesh.Get_binIdx(Boundary_inf));	// To make sure it falls into the mesh nodes
+
+			#pragma unroll
+			for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
+				Boundary_sup.dim[d] = Boundary_inf.dim[d] + (Nodes_per_Dim - 1) * base_mesh.Discr_length();
+			}
+		}
+	}
+}
+
+
 /// @brief This function updates a Mesh-defined bounding box
 /// @param D_Particle_Locations GPU array storing the positions of the particles
 /// @returns Nothing
-	void Mesh::Update_boundingBox(const thrust::device_vector<Particle>& D_Particle_Locations) {
+	void Mesh::Update_boundingBox(const thrust::device_vector<Particle>& D_Particle_Locations, uintType extra_fill) {
 
 	intType Threads = fmin(THREADS_P_BLK, D_Particle_Locations.size());
-	intType Blocks = floor((D_Particle_Locations.size() - 1) / Threads) + 1;
+	intType Blocks  = floor((D_Particle_Locations.size() - 1) / Threads) + 1;
 
 	// Temporary vector storing the particles' projections in each dimension 
 	thrust::device_vector<floatType> projection(D_Particle_Locations.size(), (floatType)0);
+	floatType mesh_discr_length = this->Discr_length();
 
 	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
 		findProjection << <Blocks, Threads >> > (rpc(D_Particle_Locations, 0), rpc(projection, 0), D_Particle_Locations.size(), d);
@@ -267,8 +294,8 @@ __host__ __device__  void Mesh::Squarify() {
 		floatType temp_1 = *(thrust::min_element(thrust::device, projection.begin(), projection.end())); // min element from the projection in that direction
 		floatType temp_2 = *(thrust::max_element(thrust::device, projection.begin(), projection.end()));
 
-		Boundary_inf.dim[d] = temp_1 - ceilf(DISC_RADIUS) * this->Discr_length();
-		Boundary_sup.dim[d] = temp_2 + ceilf(DISC_RADIUS) * this->Discr_length();
+		Boundary_inf.dim[d] = temp_1 - extra_fill * mesh_discr_length;
+		Boundary_sup.dim[d] = temp_2 + extra_fill * mesh_discr_length;
 	}
 	projection.clear();
 }
