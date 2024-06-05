@@ -494,6 +494,8 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 						// Somehow, get a list of points from the Supp_BBox that we'll have to do inverse advection from:
 							// Get the total number of nodes that we'll need in the underlying mesh
 							// Do the inverse advection directly (we need the wavelet transform!)
+							// That is, each of the selected boxes will have certain points from the underlying mesh
+							// Get those and overwrite them
 
 
 				/////////////////////////////////////////////////////////////////////////////////////////
