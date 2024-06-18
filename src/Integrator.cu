@@ -156,8 +156,9 @@ __global__ void forward_integrate_positions(
 }
 
 
-__global__ void inverse_integrate_positions(
+__global__ void inverse_integrate_system(
 	Particle* Particles,
+	floatType* Values,
 	const Param_pair* parameters,
 	const intType* n_Samples,
 	double t0,

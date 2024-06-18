@@ -257,21 +257,20 @@ __host__ __device__ void Mesh::align_with_mesh(const Mesh& base_mesh){
 
 	double refinementLvl = log2(Nodes_per_Dim);
 
-	if (fmod(refinementLvl, 1) != 0) {
-		Nodes_per_Dim = pow(2, ceil(refinementLvl));
+	if (fmod(refinementLvl, 1) == 0) { return; } // If it's already got 2^something nodes, no need to worry
 
-		// Rewrite the refinement level value
-		refinementLvl = log2(Nodes_per_Dim);
+	Nodes_per_Dim = pow(2, ceil(refinementLvl));
 
-		if (Nodes_per_Dim >= base_mesh.Nodes_per_Dim) { this = base_mesh; } // If we're going to get a larger mesh just get the initial mesh
-		else {
-			Boundary_inf = Base_Mesh.Get_node(Base_Mesh.Get_binIdx(Boundary_inf));	// To make sure it falls into the mesh nodes
+	// Rewrite the refinement level value
+	refinementLvl = log2(Nodes_per_Dim);
 
-			#pragma unroll
-			for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-				Boundary_sup.dim[d] = Boundary_inf.dim[d] + (Nodes_per_Dim - 1) * base_mesh.Discr_length();
-			}
-		}
+	if (Nodes_per_Dim >= base_mesh.Nodes_per_Dim) { this = base_mesh; return; } // If we're going to get a larger mesh just get the initial mesh
+
+	Boundary_inf = Base_Mesh.Get_node(Base_Mesh.Get_binIdx(Boundary_inf));	// To make sure it falls into the mesh nodes
+
+	#pragma unroll
+	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
+		Boundary_sup.dim[d] = Boundary_inf.dim[d] + (Nodes_per_Dim - 1) * base_mesh.Discr_length();
 	}
 }
 

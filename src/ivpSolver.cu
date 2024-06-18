@@ -315,13 +315,16 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 		/////////////////////////////////////////////////////////////////////////////////////////
 		// -------------------------- ADAPT. MESH REFINEMENT --------------------------------- //
 		/////////////////////////////////////////////////////////////////////////////////////////
-
-		/////////////////////////////////////////////////////////////////////////////////////////
 		auto startTimeSeconds = std::chrono::high_resolution_clock::now();
 
-		errorCheck(setInitialParticles(PDF_ProbDomain, D_PDF_ProbDomain,				// Initial, gridded PDF
-			D_Particle_Values, D_Particle_Locations, 		// Output vectors that will give the relevant nodes
-			__problem_domain, Expanded_Domain, PDF_Support));	// Domain information
+		errorCheck(
+			setInitialParticles(
+				D_PDF_ProbDomain,		// Initial PDF at the problem domain (or at the bounding box)
+				D_Particle_Locations, 	// Output vectors that will give the relevant nodes
+				PDF_Support,
+				PDF_ProbDomain
+			)
+		);				// Domain information
 
 		auto endTimeSeconds = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<float> durationSeconds = endTimeSeconds - startTimeSeconds;
@@ -443,7 +446,6 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 				startTimeSeconds = std::chrono::high_resolution_clock::now();
 				forward_integrate_positions << <Blocks, Threads >> > (
 					rpc(D_Particle_Locations, 0),
-					rpc(D_Particle_Values, 0),
 					rpc(D_Parameter_Mesh, Sample_idx_offset_init),
 					rpc(D_sampVec, 0),
 					t0,
@@ -453,7 +455,8 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 					Samples_PerBlk,
 					mode,
 					rpc(Extra_Parameter, 0),
-					__problem_domain);
+					__problem_domain
+				);
 				gpuError_Check(cudaDeviceSynchronize());
 				endTimeSeconds = std::chrono::high_resolution_clock::now();
 				durationSeconds = endTimeSeconds - startTimeSeconds;
@@ -485,17 +488,48 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 						);
 
 						// Get the number of assigned nodes
-						const uintType nrSelectedNodes = thrust::reduce(thrust::device, isAssignedNode.begin(), isAssignedNode.end());
-						if (nrSelectedNodes == 0) { std::cout << "\nError: Points for inverse advect. is 0. Cannot continue\n"; return -1; }
+						const uintType nrSelectedBins = thrust::reduce(thrust::device, isAssignedNode.begin(), isAssignedNode.end());
+						if (nrSelectedBins == 0) { std::cout << "\nError: Points for inverse advect. is 0. Cannot continue\n"; return -1; }
 
 						// Set the selected nodes first
 						thrust::sort_by_key(thrust::device, isAssignedNode.begin(), isAssignedNode.end(), nodeIdxs.begin(), thrust::greater<intType>());
 
 						// Somehow, get a list of points from the Supp_BBox that we'll have to do inverse advection from:
 							// Get the total number of nodes that we'll need in the underlying mesh
+								// I need to multiply the total number of "influenced nodes" and the number of nodes per block
 							// Do the inverse advection directly (we need the wavelet transform!)
 							// That is, each of the selected boxes will have certain points from the underlying mesh
 							// Get those and overwrite them
+						uint64_t total_inverse_advections = nrSelectedBins * pow(4, PHASE_SPACE_DIMENSIONS) * totalSampleCount;
+
+						Threads = fmin(THREADS_P_BLK, total_inverse_advections);
+						Blocks = floor((double) (total_inverse_advections - 1) / Threads) + 1;
+
+						// Set the whole mesh PDF values to 0 and then add the final values
+						#if ERASE_dPDF
+						D_PDF_ProbDomain.resize(nrNodesPerFrame, 0);	// PDF is reset to 0, so that we may use atomic adding at the remeshing step
+						#else
+						thrust::fill(thrust::device, D_PDF_ProbDomain.begin(), D_PDF_ProbDomain.end(), 0);
+						#endif
+
+						// We have to pass the whole Mesh info (access via node information) and the whole PDF array 
+						startTimeSeconds = std::chrono::high_resolution_clock::now();
+						inverse_integrate_positions << <Blocks, Threads >> > (
+							rpc(D_Particle_Locations, 0),
+							rpc(D_PDF_ProbDomain, 0),
+							rpc(D_Parameter_Mesh, Sample_idx_offset_init),
+							rpc(D_sampVec, 0),
+							t0,
+							__delta_t,
+							tF,
+							AMR_ActiveNodeCount,
+							Samples_PerBlk,
+							mode,
+							rpc(Extra_Parameter, 0),
+							__problem_domain);
+						gpuError_Check(cudaDeviceSynchronize());
+						endTimeSeconds = std::chrono::high_resolution_clock::now();
+						durationSeconds = endTimeSeconds - startTimeSeconds;
 
 
 				/////////////////////////////////////////////////////////////////////////////////////////
