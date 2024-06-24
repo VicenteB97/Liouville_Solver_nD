@@ -11,120 +11,6 @@ __device__ inline void _1D_WVLET(floatType& s1, floatType& s2) {
 	s1 = aux;
 }
 
-/// @brief (GLOBAL FUNCTION) Compute 1 level of the multidimensional wavelet transform in the GPU
-/// @tparam PHASE_SPACE_DIMENSIONS
-/// @tparam floatType
-/// @param PDF Our "signal". The multidimensional signal we want to compress
-/// @param Activate_node An array with the nodes and the indication whether the node is chosen or not
-/// @param BoundingBox The "smallest" Mesh where the support of the PDF is contained
-/// @param Problem_Domain Problem domain
-/// @param rescaling Rescaling value that indicates the level of the wavelet transform
-/// @return 
-__global__ void D__Wavelet_Transform__F(floatType* PDF,
-	uintType* nodeIdxs,
-	uintType* isActiveNode,
-	const Mesh 	BoundingBox,
-	const Mesh	Problem_Domain,
-	const floatType	rescaling) {
-
-	const uint64_t globalID = blockDim.x * blockIdx.x + threadIdx.x;
-
-	// Range guard for out-of-bounds nodes
-	if (globalID >= BoundingBox.Total_Nodes() / powf(rescaling, PHASE_SPACE_DIMENSIONS)) { return; }
-
-	const uintType		totalNodes = Problem_Domain.Total_Nodes();		// Total nodes in the problem domain
-	const uint16_t	miniSquareNodes = pow(2, PHASE_SPACE_DIMENSIONS);	// Total nodes in each simple wavelet transform (per GPU thread)
-
-	// Global index of the main approximation vertex at the bounding box
-	intType cube_app_IDX = 0;
-
-	// Compute the index and the node per se
-
-	uintType multCounter = 1;	// auxiliary counter: => pow(BoundingBox.Nodes_per_Dim / rescaling, d)
-	uintType multCounter_2 = 1;	// For the BoundingBox: => pow(BoundingBox.Nodes_per_Dim, d)
-	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-		intType temp_idx = floorf(positive_rem(globalID, multCounter * (BoundingBox.Nodes_per_Dim / rescaling)) / multCounter) * rescaling;
-
-		cube_app_IDX += temp_idx * multCounter_2;
-		multCounter *= BoundingBox.Nodes_per_Dim / rescaling;
-		multCounter_2 *= BoundingBox.Nodes_per_Dim;
-	}
-
-	multCounter = 1;	// Reinitialize for next computations: => pow(2, d)
-	multCounter_2 = 1;	// For the BoundingBox: => pow(BoundingBox.Nodes_per_Dim, d)
-
-	// 1 set of wavelets per dimension (1D: horizontal; 2D: Horizontal + Vertical; 3D: Horz + Vert + Deep; ...)
-	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-		// Go through all the vertices that are defined by the main cube approximation vertex
-		for (uintType k = 0; k < miniSquareNodes; k++) {
-			// If we are at the current approximation vertex:
-			if (floorf(positive_rem(k, 2 * multCounter) / multCounter) == 0) {		// here, multCounter == pow(2, d)
-				// Compute approximation node
-				uintType app_IDX_at_BBox = cube_app_IDX;
-
-				uintType multCounter_3 = 1;	// => pow(2, j)
-				uintType multCounter_4 = 1;	// => pow(BoundingBox.Nodes_per_Dim, j)
-
-				for (uint16_t j = 0; j < PHASE_SPACE_DIMENSIONS; j++) {
-					intType temp = floorf(positive_rem(k, multCounter_3 * 2) / multCounter_3) * rescaling / 2;	// j-th component index
-
-					app_IDX_at_BBox += temp * multCounter_4;
-					multCounter_3 *= 2;
-					multCounter_4 *= BoundingBox.Nodes_per_Dim;
-				}
-
-				// Compute corresponding detail node
-				intType det_IDX_at_BBox = app_IDX_at_BBox + multCounter_2 * rescaling / 2;
-
-				Particle app_node(BoundingBox.Get_node(app_IDX_at_BBox));
-				Particle det_node(BoundingBox.Get_node(det_IDX_at_BBox));
-
-				// Check which ones are in the problem domain!
-				if (Problem_Domain.Contains_particle(app_node) && Problem_Domain.Contains_particle(det_node)) {
-
-					// Calculate the indeces for the problem domain
-					intType app_node_at_PD(Problem_Domain.Get_binIdx(app_node));
-					intType det_node_at_PD(Problem_Domain.Get_binIdx(det_node));
-
-					_1D_WVLET(PDF[app_node_at_PD], PDF[det_node_at_PD]);
-				}
-			}
-		}
-		multCounter *= 2;
-		multCounter_2 *= BoundingBox.Nodes_per_Dim;
-	}
-
-	// Now we have to go see what happens with the outputs
-	nodeIdxs[cube_app_IDX] = 0;
-
-	for (uintType k = 1; k < miniSquareNodes; k++) {
-
-		Particle visit_node(BoundingBox.Get_node(cube_app_IDX));
-
-		multCounter = 1;	// restart the counter
-
-		// Get the indeces at the bounding box:
-		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-			intType temp = floorf(positive_rem(k, multCounter * 2) / multCounter) * rescaling / 2;	// j-th component index
-
-			visit_node.dim[d] += temp * BoundingBox.Discr_length();
-			multCounter *= 2;
-		}
-
-		if (Problem_Domain.Contains_particle(visit_node)) {
-			// These two indeces can be obtained in the previous loop
-			intType temp = Problem_Domain.Get_binIdx(visit_node);
-			intType temp_IDX_at_BBox = BoundingBox.Get_binIdx(visit_node);
-
-			nodeIdxs[temp_IDX_at_BBox] = temp;
-
-			if (abs(PDF[temp]) >= TOLERANCE_AMR) {
-				isActiveNode[temp_IDX_at_BBox] = 1;
-			}
-		}
-	}
-}
-
 template<uint16_t elementsProcessedPerThread>
 __global__ void customAssignToGpuArray(Particle* outputNodes, const Mesh inputNodes,
 	const uintType* nodeIdx, const intType elementNr) {
@@ -197,6 +83,10 @@ thrust::device_vector<floatType> setInitialParticles(
 }
 
 __host__ __device__
+waveletMeshRefinement_GPU::waveletMeshRefinement_GPU(){};
+waveletMeshRefinement_GPU::~waveletMeshRefinement_GPU(){ delete this;};
+
+__host__ __device__
 void waveletMeshRefinement_GPU::set_min_refinement_level(uint16_t input){
 	__min_refinement_level = input;
 };
@@ -267,12 +157,12 @@ void waveletMeshRefinement_GPU::compute_wavelet_transform(){
 		uint16_t Threads = fmin(THREADS_P_BLK, total_nodes / pow(rescaling, PHASE_SPACE_DIMENSIONS));
 		uint64_t Blocks = floor((total_nodes / pow(rescaling, PHASE_SPACE_DIMENSIONS) - 1) / Threads) + 1;
 
-		single_block_single_level_wt_GPU <floatType, DIM> << <Blocks, Threads >> > (
+		single_block_single_level_wt_GPU<< <Blocks, Threads >> > (
 			rpc(__transformed_signal, 0), rescaling, nodes_per_dimension, total_nodes
 		);
 		gpuError_Check(cudaDeviceSynchronize());
 
-		get_detail_above_threshold_nodes <floatType, DIM> << <Blocks, Threads >> > (
+		get_nodes_above_threshold<< <Blocks, Threads >> > (
 			rpc(__transformed_signal, 0), 
 			rpc(__assigned_node_indeces, 0), 
 			rpc(__assigned_node_markers, 0), 
@@ -381,7 +271,8 @@ __global__ inline void single_block_single_level_wt_GPU(
 
 
 // template<typename floatType, uint16_t PHASE_SPACE_DIMENSIONS>
-__global__ inline void get_nodes_above_threshold(
+__global__ 
+inline void get_nodes_above_threshold(
 	floatType* signal,
 	uint64_t* assigned_node_indeces,
 	uint32_t* assigned_node_markers,

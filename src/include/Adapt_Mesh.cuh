@@ -15,8 +15,8 @@
 class waveletMeshRefinement_GPU{
 public:
 	// Default constructor and destrucor
-	waveletMeshRefinement_GPU(){};
-	~waveletMeshRefinement_GPU(){};
+	waveletMeshRefinement_GPU();
+	~waveletMeshRefinement_GPU();
 
 private:
 	// Input signal for wavelet transform: 
@@ -131,24 +131,6 @@ void write_signal_in_bounding_box(
 	const Mesh signal_domain,
 	const Mesh signal_bounding_box,
 	const uint64_t max_nodes
-);
-
-/// @brief (GLOBAL FUNCTION) Compute 1 level of the multidimensional wavelet transform in the GPU
-/// @tparam PHASE_SPACE_DIMENSIONS
-/// @tparam floatType
-/// @param PDF Our "signal". The multidimensional signal we want to compress
-/// @param Activate_node An array with the nodes and the indication whether the node is chosen or not
-/// @param BoundingBox The "smallest" Mesh where the support of the PDF is contained
-/// @param Problem_Domain Problem domain
-/// @param rescaling Rescaling value that indicates the level of the wavelet transform
-/// @return 
-__global__ void D__Wavelet_Transform__F(
-	floatType* PDF,
-	uint64_t* nodeIdxs,
-	uint64_t* isActiveNode,
-	const Mesh 	BoundingBox,
-	const Mesh	Problem_Domain,
-	const floatType	rescaling
 );
 
 #endif
