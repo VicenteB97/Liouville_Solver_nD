@@ -92,5 +92,5 @@ Particle Particle::mult_by_scalar(floatType scalar) const {
 
 void find_projection::operator()(const uint64_t global_id) {
 	if (global_id >= in_total_particles) { return; }
-	projections[global_id] = particles[global_id].dim[in_project_dimension];
+	out_projections[global_id] = in_particles[global_id].dim[in_project_dimension];
 }

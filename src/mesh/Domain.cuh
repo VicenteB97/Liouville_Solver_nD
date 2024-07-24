@@ -1,7 +1,7 @@
 #ifndef __DOMAIN_CUH__
 #define __DOMAIN_CUH__
 
-#include "headers.cuh"
+#include "headers.hpp"
 #include "cudaBase.cuh"
 #include "Particle.cuh"
 
