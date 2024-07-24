@@ -22,14 +22,14 @@ __global__ void TRANSFORM_PARTICLES(Particle*					Particle_Locations,
 	}
 }
 
-int16_t IMPULSE_TRANSFORM_PDF(thrust::device_vector<floatType>&		GPU_PDF,				// PDF in Mesh
+int16_t IMPULSE_TRANSFORM_PDF(thrust::device_vector<floatType>&		GPU_PDF,				// PDF in cartesianMesh
 							thrust::device_vector<Particle>& 	D_Particle_Locations,	// Particle positions
 							thrust::device_vector<floatType>&		D_Particle_Values,		// PDF in AMR-selected points
 							const Time_instants					time,					// time-impulse information 
 							const intType							jumpCount,				// current jumpCount 
-							const Mesh&							Problem_Domain,
-							const Mesh&							Expanded_Domain,
-							Mesh&								Supp_BBox){	 
+							const cartesianMesh&							Problem_Domain,
+							const cartesianMesh&							Expanded_Domain,
+							cartesianMesh&								Supp_BBox){	 
 
 // 0.- Create the impulse samples
 
@@ -56,13 +56,13 @@ int16_t IMPULSE_TRANSFORM_PDF(thrust::device_vector<floatType>&		GPU_PDF,				// 
 			Random_Samples *= n_samples[i];
 		}
 
-		std::vector<Param_vec<PHASE_SPACE_DIMENSIONS>> Impulse_Parameter_Mesh(Random_Samples);
+		std::vector<Param_vec<PHASE_SPACE_DIMENSIONS>> Impulse_Parameter_cartesianMesh(Random_Samples);
 
-		errorCheck(RANDOMIZE_II(n_samples, Random_Samples, &Impulse_Parameter_Mesh, Imp_Param_Dist))
+		errorCheck(RANDOMIZE_II(n_samples, Random_Samples, &Impulse_Parameter_cartesianMesh, Imp_Param_Dist))
 
 		float Sum_Rand_Params = 0;
 		for (intType i = 0; i < Random_Samples; i++) {
-			Sum_Rand_Params += Impulse_Parameter_Mesh[i].Joint_PDF;
+			Sum_Rand_Params += Impulse_Parameter_cartesianMesh[i].Joint_PDF;
 		}		
 
 		const intType Total_Particles = AMR_ActiveNodeCount * Random_Samples;
@@ -76,7 +76,7 @@ int16_t IMPULSE_TRANSFORM_PDF(thrust::device_vector<floatType>&		GPU_PDF,				// 
 		}
 
 // 1.- Do the transformation of the points according to the info given by the time-impulse vector
-		thrust::device_vector<Param_vec<PHASE_SPACE_DIMENSIONS>> 	Impulses = Impulse_Parameter_Mesh;
+		thrust::device_vector<Param_vec<PHASE_SPACE_DIMENSIONS>> 	Impulses = Impulse_Parameter_cartesianMesh;
 
 		intType Threads = (intType)fmin(THREADS_P_BLK, Total_Particles);
 		intType Blocks  = (intType)floor(Total_Particles / Threads) + 1;
@@ -92,12 +92,12 @@ int16_t IMPULSE_TRANSFORM_PDF(thrust::device_vector<floatType>&		GPU_PDF,				// 
 
 // 3.- Reinitialization
 	#if ERASE_dPDF
-	GPU_PDF.resize(Problem_Domain.Total_Nodes(), 0);	// PDF is reset to 0, so that we may use atomic adding at the remeshing step
+	GPU_PDF.resize(Problem_Domain.total_nodes(), 0);	// PDF is reset to 0, so that we may use atomic adding at the remeshing step
 	#else
 	thrust::fill(thrust::device, GPU_PDF.begin(), GPU_PDF.end(), 0);
 	#endif
 
-	floatType search_radius = DISC_RADIUS * Problem_Domain.Discr_length();
+	floatType search_radius = DISC_RADIUS * Problem_Domain.discr_length();
 
 for (uintType s = 0; s < Random_Samples; s++){
 	Threads = fmin(THREADS_P_BLK, AMR_ActiveNodeCount);
@@ -117,10 +117,10 @@ for (uintType s = 0; s < Random_Samples; s++){
 
 // Correction of any possible negative PDF values
 		// Re-define Threads and Blocks
-		Threads = fminf(THREADS_P_BLK, Problem_Domain.Total_Nodes());
-		Blocks  = floorf((Problem_Domain.Total_Nodes() - 1) / Threads) + 1;
+		Threads = fminf(THREADS_P_BLK, Problem_Domain.total_nodes());
+		Blocks  = floorf((Problem_Domain.total_nodes() - 1) / Threads) + 1;
 		
-		CORRECTION <<<Blocks, Threads>>>(rpc(GPU_PDF,0), Problem_Domain.Total_Nodes());
+		CORRECTION <<<Blocks, Threads>>>(rpc(GPU_PDF,0), Problem_Domain.total_nodes());
 		gpuError_Check(cudaDeviceSynchronize());
 
 	thrust::transform(GPU_PDF.begin(), GPU_PDF.end(), GPU_PDF.begin(), 1.00f / Sum_Rand_Params * _1); // we use the thrust::placeholders here (@ the last input argument)
@@ -131,7 +131,7 @@ for (uintType s = 0; s < Random_Samples; s++){
 // This function is for the Delta-impulsive case!
 int16_t RANDOMIZE_II(const intType* 								n_samples, 
 					const intType 									totalSampleCount, 
-					std::vector<Param_vec<PHASE_SPACE_DIMENSIONS>>* Parameter_Mesh,
+					std::vector<Param_vec<PHASE_SPACE_DIMENSIONS>>* Parameter_cartesianMesh,
 					const Distributions* 						Dist_Parameters) {
 
 	std::vector<Param_pair> aux_PM;
@@ -155,15 +155,15 @@ int16_t RANDOMIZE_II(const intType* 								n_samples,
 
 		intType aux_idx = positive_rem(k, aux_num);
 
-		Parameter_Mesh->at(k).sample_vec[0] = aux_PM[aux_idx].sample;
-		Parameter_Mesh->at(k).Joint_PDF 	= aux_PM[aux_idx].PDF;
+		Parameter_cartesianMesh->at(k).sample_vec[0] = aux_PM[aux_idx].sample;
+		Parameter_cartesianMesh->at(k).Joint_PDF 	= aux_PM[aux_idx].PDF;
 
 		for (uint16_t d = 1; d < PHASE_SPACE_DIMENSIONS; d++){
 
 			aux_idx = floor(positive_rem(k, aux_num * n_samples[d]) / aux_num);
 
-			Parameter_Mesh->at(k).sample_vec[d]  = aux_PM[aux_idx + aux_num_2].sample;
-			Parameter_Mesh->at(k).Joint_PDF 	*= aux_PM[aux_idx + aux_num_2].PDF;
+			Parameter_cartesianMesh->at(k).sample_vec[d]  = aux_PM[aux_idx + aux_num_2].sample;
+			Parameter_cartesianMesh->at(k).Joint_PDF 	*= aux_PM[aux_idx + aux_num_2].PDF;
 
 			aux_num *= n_samples[d];
 			aux_num_2 += n_samples[d];

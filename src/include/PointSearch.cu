@@ -12,7 +12,7 @@ __global__ void Bin_Insertion_Count(uintType* Bin_locations,
 	uintType* Bin_count,
 	uintType* Bin_local_accSum,
 	const Particle* Search_Particles,
-	const Mesh	Bounding_Box,
+	const cartesianMesh	Bounding_Box,
 	const uintType	Total_Particles) {
 
 	const uint64_t globalID = blockDim.x * blockIdx.x + threadIdx.x;
@@ -24,7 +24,7 @@ __global__ void Bin_Insertion_Count(uintType* Bin_locations,
 	// Find the Bin where it belongs. We use an unsigned int because since we are working with the bounding box,
 	// we're never going to have a point outside. Therefore, there will be a positive index for the bin location.
 
-	uintType bin_idx = Bounding_Box.Get_binIdx(temp_GP);	// this part should be positive...why aren't we getting a positive number?
+	uintType bin_idx = Bounding_Box.get_bin_idx(temp_GP);	// this part should be positive...why aren't we getting a positive number?
 
 	// Now, we've got the nearest bin index. This tells the idx of the bin center containing a given particle
 	Bin_locations[globalID] = bin_idx;
@@ -105,7 +105,7 @@ __global__ void Neighbor_search(Particle* Search_Particles,
 	const uintType	Total_Particles,
 	const uintType	offset,
 	const floatType			search_distance,			// This tells us how many discretizations we have to move back to find initial bin to search from
-	const Mesh		Bounding_Box) {
+	const cartesianMesh		Bounding_Box) {
 
 	const uint64_t globalID = blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -126,7 +126,7 @@ __global__ void Neighbor_search(Particle* Search_Particles,
 	const uintType Bin_offset = lroundf(DISC_RADIUS);
 
 	// We find the lowest corner in the neighboring bins (Hence, the Bin_offset variable)
-	uintType bin_idx = Bounding_Box.Get_binIdx(fixed_GP, -Bin_offset);
+	uintType bin_idx = Bounding_Box.get_bin_idx(fixed_GP, -Bin_offset);
 
 	for (uintType k = 0; k < pow(2 * Bin_offset + 1, PHASE_SPACE_DIMENSIONS); k++) { // That's the total number of bins to visit
 
@@ -134,17 +134,17 @@ __global__ void Neighbor_search(Particle* Search_Particles,
 		intType aux_index = bin_idx;
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
 			aux_index += floorf(positive_rem(k, (uintType)pow(2 * Bin_offset + 1, d + 1)) / (uintType)pow(2 * Bin_offset + 1, d))
-				* (uintType)pow(Bounding_Box.Nodes_per_Dim, d);
+				* (uintType)pow(Bounding_Box.__nodes_per_dim, d);
 		}
 
-		if (aux_index > -1 && aux_index < Bounding_Box.Total_Nodes()) { // If we are selecting nodes inside the domain
+		if (aux_index > -1 && aux_index < Bounding_Box.total_nodes()) { // If we are selecting nodes inside the domain
 
 			// Now that we have the bin to search, all we have to do is go through the particles that are in the corresponding bin:
 			uintType startIdx = Bin_count[aux_index];
 			uintType endIdx = Total_Particles;
 
 			// When we haven't reached the last element of the count vector, we have to know where do we stop the counting
-			if (aux_index < Bounding_Box.Total_Nodes() - 1) {
+			if (aux_index < Bounding_Box.total_nodes() - 1) {
 				endIdx = Bin_count[aux_index + 1];
 			}
 
@@ -172,7 +172,7 @@ __global__ void Neighbor_search(Particle* Search_Particles,
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Counting sort! This operation orders the Mesh indeces and it sets the number of nodes inside each bin
+// Counting sort! This operation orders the cartesianMesh indeces and it sets the number of nodes inside each bin
 
 /// @brief 
 /// @tparam floatType 
@@ -193,7 +193,7 @@ __host__ int16_t CS_Neighbor_Search(thrust::device_vector<Particle>& Search_Part
 	thrust::device_vector<floatType>& Matrix_Entries,
 	const uintType Adapt_Points,
 	const uintType max_neighbor_num,
-	const Mesh& Bounding_Box,
+	const cartesianMesh& Bounding_Box,
 	const floatType search_radius) {
 
 	// We need our particles
@@ -205,8 +205,8 @@ __host__ int16_t CS_Neighbor_Search(thrust::device_vector<Particle>& Search_Part
 	thrust::device_vector<floatType>		temp_values(Adapt_Points, (floatType)0);		// this one will store the values of the particles in the new order!
 
 	// Create a bounding box covering the same area as the bounding box from the particles, but change the number of nodes per dim!
-	Mesh CS_BBox(Bounding_Box);
-	CS_BBox.Nodes_per_Dim = 64;
+	cartesianMesh CS_BBox(Bounding_Box);
+	CS_BBox.__nodes_per_dim = 64;
 
 	// Bin the particles!
 	uintType Threads = fmin(THREADS_P_BLK, Adapt_Points);
@@ -217,7 +217,7 @@ __host__ int16_t CS_Neighbor_Search(thrust::device_vector<Particle>& Search_Part
 		uintType offset = k * Adapt_Points;
 
 		// Reinitialize the particle count array
-		thrust::device_vector<uintType> Bin_globalCount(CS_BBox.Total_Nodes(), 0);
+		thrust::device_vector<uintType> Bin_globalCount(CS_BBox.total_nodes(), 0);
 		thrust::device_vector<uintType> Bin_localCount(Adapt_Points, 0);
 
 		// Insert and count the particles inside each bin
@@ -332,7 +332,7 @@ int16_t particleNeighborSearch(
 	thrust::device_vector<floatType>& Matrix_Entries,
 	const uintType Adapt_Points,
 	const uintType MaxNeighborNum,
-	const Mesh& Bounding_Box,
+	const cartesianMesh& Bounding_Box,
 	const floatType search_radius) {
 
 	uint16_t	Threads = fmin(THREADS_P_BLK, Adapt_Points);

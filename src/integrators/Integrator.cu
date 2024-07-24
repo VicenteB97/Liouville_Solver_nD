@@ -37,7 +37,7 @@ __device__ void runge_kutta_45(
 	Param_vec<PARAM_SPACE_DIMENSIONS> parameter_realization, 
 	const double* extra_param, 
 	const uintType mode,
-	const Mesh domain_mesh
+	const cartesianMesh domain_mesh
 ) {
 
 	Particle k0, k1, k2, k3, k_final, temp;		// register storing the initial particle location;
@@ -84,7 +84,7 @@ __device__ void runge_kutta_45(
 
 	value *= val_aux;
 
-	if (!domain_mesh.Contains_particle(position)) { value = 0; }
+	if (!domain_mesh.contains_particle(position)) { value = 0; }
 }
 
 /// @brief This case is ONLY VALID for 2D methods! We'll use the 
@@ -107,7 +107,7 @@ __device__ void lie_euler_mathieu(
 	Param_vec<PARAM_SPACE_DIMENSIONS> parameter_realization,
 	const double* extra_param,
 	const uintType mode,
-	const Mesh domain_mesh
+	const cartesianMesh domain_mesh
 ){
 
 	floatType val_aux = 1;
@@ -147,7 +147,7 @@ __device__ void lie_euler_mathieu(
 
 	value *= val_aux;
 
-	if (!domain_mesh.Contains_particle(position)) { value = 0; }
+	if (!domain_mesh.contains_particle(position)) { value = 0; }
 }
 
 
@@ -173,7 +173,7 @@ __global__ void ODE_INTEGRATE(
 	const intType Random_Samples,
 	const uintType mode,
 	const double* extra_param,
-	const Mesh D_Mesh) {
+	const cartesianMesh D_cartesianMesh) {
 
 	const uint64_t i {blockDim.x * blockIdx.x + threadIdx.x};
 
@@ -189,9 +189,9 @@ __global__ void ODE_INTEGRATE(
 		floatType value_particle {PDF[i]};
 
 		#if SPECIAL_INTEGRATOR
-		lie_euler_mathieu(pos_particle, value_particle, t0, tF, time_step, parameter_realization, extra_param, mode, D_Mesh);
+		lie_euler_mathieu(pos_particle, value_particle, t0, tF, time_step, parameter_realization, extra_param, mode, D_cartesianMesh);
 		#else
-		runge_kutta_45(pos_particle, value_particle, t0, tF, time_step, parameter_realization, extra_param, mode, D_Mesh);
+		runge_kutta_45(pos_particle, value_particle, t0, tF, time_step, parameter_realization, extra_param, mode, D_cartesianMesh);
 		#endif
 
 		// Output results

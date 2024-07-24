@@ -180,32 +180,32 @@ __host__ intType CONJUGATE_GRADIENT_SOLVE(
 __global__ void RESTART_GRID_FIND_GN(Particle* Particle_Positions,
 									floatType* PDF,
 									floatType* lambdas,
-									const Param_pair* Parameter_Mesh,
+									const Param_pair* Parameter_cartesianMesh,
 									const intType* n_Samples,
 									const floatType 	 		search_radius,
 									const uintType	 		Adapt_Pts,
 									const uintType	 		Block_samples,
 									const uintType	 		offset,
-									const Mesh 	Domain,
-									const Mesh	Expanded_Domain) {
+									const cartesianMesh 	Domain,
+									const cartesianMesh	Expanded_Domain) {
 	
 	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
 
 	if (i >= Adapt_Pts * Block_samples) { return; }
 
 	uintType Current_sample = offset + floor((double) i / Adapt_Pts);
-	Param_vec<PARAM_SPACE_DIMENSIONS>	aux = Gather_Param_Vec<PARAM_SPACE_DIMENSIONS>(Current_sample, Parameter_Mesh, n_Samples);
+	Param_vec<PARAM_SPACE_DIMENSIONS>	aux = Gather_Param_Vec<PARAM_SPACE_DIMENSIONS>(Current_sample, Parameter_cartesianMesh, n_Samples);
 
 	floatType weighted_lambda = lambdas[i] * aux.Joint_PDF;
 
 	Particle particle(Particle_Positions[i]);
 
 	// Find the point in the lowest corner of the search box!
-	Particle Lowest_node(Expanded_Domain.Get_node(Expanded_Domain.Get_binIdx(particle, -lround(DISC_RADIUS))));
+	Particle Lowest_node(Expanded_Domain.get_node(Expanded_Domain.get_bin_idx(particle, -lround(DISC_RADIUS))));
 
 	const uintType Neighbors_per_dim = 2 * lround(DISC_RADIUS) + 1;
 	const uintType totalNeighborsToVisit = pow(Neighbors_per_dim, PHASE_SPACE_DIMENSIONS); 
-	const floatType domainDiscretization = Domain.Discr_length();
+	const floatType domainDiscretization = Domain.discr_length();
 
 	// Go through all the nodes where rewriting will be possible
 	for (uint16_t k = 0; k < totalNeighborsToVisit; k++) {
@@ -224,7 +224,7 @@ __global__ void RESTART_GRID_FIND_GN(Particle* Particle_Positions,
 		}
 
 		// If it is inside our problem mesh...
-		if (Domain.Contains_particle(visit_node)) {
+		if (Domain.contains_particle(visit_node)) {
 
 			// Calculate normalized distance
 			floatType dist = visit_node.Distance(particle) / search_radius;
@@ -234,7 +234,7 @@ __global__ void RESTART_GRID_FIND_GN(Particle* Particle_Positions,
 
 				dist = RBF(search_radius, dist) * weighted_lambda;
 
-				intType idx = Domain.Get_binIdx(visit_node);
+				intType idx = Domain.get_bin_idx(visit_node);
 
 				atomicAdd(&PDF[idx], dist);
 			}
@@ -254,9 +254,9 @@ __global__ void RESTART_GRID_FIND_GN(Particle* Particle_Positions,
 	const floatType 	search_radius,
 	const uintType	Adapt_Pts,
 	const uintType	Current_sample,
-	const Mesh	Domain,
-	const Mesh	Expanded_Domain) {
-	// OUTPUT: New values of the PDF at the fixed Mesh
+	const cartesianMesh	Domain,
+	const cartesianMesh	Expanded_Domain) {
+	// OUTPUT: New values of the PDF at the fixed cartesianMesh
 
 	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -269,11 +269,11 @@ __global__ void RESTART_GRID_FIND_GN(Particle* Particle_Positions,
 	Particle particle(Particle_Positions[global_id]);
 
 	// Find the point in the lowest corner of the search box!
-	Particle Lowest_node(Expanded_Domain.Get_node(Expanded_Domain.Get_binIdx(particle, -lround(DISC_RADIUS))));
+	Particle Lowest_node(Expanded_Domain.get_node(Expanded_Domain.get_bin_idx(particle, -lround(DISC_RADIUS))));
 
 	const uintType Neighbors_per_dim = 2 * lround(DISC_RADIUS) + 1;
 	const uintType totalNeighborsToVisit = pow(Neighbors_per_dim, PHASE_SPACE_DIMENSIONS);
-	const floatType domainDiscretization = Domain.Discr_length();
+	const floatType domainDiscretization = Domain.discr_length();
 
 	// Go through all the nodes where rewriting will be possible
 	for (uint16_t k = 0; k < totalNeighborsToVisit; k++) {
@@ -292,7 +292,7 @@ __global__ void RESTART_GRID_FIND_GN(Particle* Particle_Positions,
 		}
 
 		// If it is inside our problem mesh...
-		if (Domain.Contains_particle(visit_node)) {
+		if (Domain.contains_particle(visit_node)) {
 
 			// Calculate normalized distance
 			floatType dist = visit_node.Distance(particle) / search_radius;
@@ -302,7 +302,7 @@ __global__ void RESTART_GRID_FIND_GN(Particle* Particle_Positions,
 
 				dist = RBF(search_radius, dist) * weighted_lambda;
 
-				intType idx = Domain.Get_binIdx(visit_node);
+				intType idx = Domain.get_bin_idx(visit_node);
 
 				atomicAdd(&PDF[idx], dist);
 			}

@@ -41,7 +41,7 @@ int16_t ivpSolver::buildDomain() {
 	#endif
 
 	// This variable represents the problem domain, which is NOT going to be the one used for computations
-	__problem_domain.Nodes_per_Dim = pow(2, LvlFine);
+	__problem_domain.__nodes_per_dim = pow(2, LvlFine);
 
 	return 0;
 };
@@ -69,7 +69,7 @@ int16_t ivpSolver::buildTimeVec() {
 
 	const uintType savingArraySize = ceil((double) __reinitialization_info.size() / __storage_steps);
 
-	__simulation_storage.resize(__problem_domain.Total_Nodes() * savingArraySize);
+	__simulation_storage.resize(__problem_domain.total_nodes() * savingArraySize);
 
 	return 0;
 };
@@ -145,26 +145,26 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 	}
 
 	// Full parameter array
-	Param_pair* Parameter_Mesh = new Param_pair[sum_sampleNum];
+	Param_pair* Parameter_cartesianMesh = new Param_pair[sum_sampleNum];
 
 	// Build the parameter mesh from previous info
-	if (RANDOMIZE<PARAM_SPACE_DIMENSIONS>(Parameter_Mesh, __parameter_distributions) == -1) { delete[] Parameter_Mesh; return -1; }
+	if (RANDOMIZE<PARAM_SPACE_DIMENSIONS>(Parameter_cartesianMesh, __parameter_distributions) == -1) { delete[] Parameter_cartesianMesh; return -1; }
 
 	// Small vector containing the number of samples per parameter
 	thrust::device_vector<intType>	D_sampVec(Samples_per_Param, Samples_per_Param + PARAM_SPACE_DIMENSIONS);
 
 	// Parameter __problem_domain array (for the GPU)
-	thrust::device_vector<Param_pair> D_Parameter_Mesh(Parameter_Mesh, Parameter_Mesh + sum_sampleNum);
+	thrust::device_vector<Param_pair> D_Parameter_cartesianMesh(Parameter_cartesianMesh, Parameter_cartesianMesh + sum_sampleNum);
 
 	// auxiliary variable that will be used for ensemble mean computation
 	floatType sum_sample_val = 0;
 	for (uintType i = 0; i < totalSampleCount; i++) {
-		Param_vec<PARAM_SPACE_DIMENSIONS> temp = Gather_Param_Vec<PARAM_SPACE_DIMENSIONS>(i, Parameter_Mesh, Samples_per_Param);
+		Param_vec<PARAM_SPACE_DIMENSIONS> temp = Gather_Param_Vec<PARAM_SPACE_DIMENSIONS>(i, Parameter_cartesianMesh, Samples_per_Param);
 		sum_sample_val += temp.Joint_PDF;
 	}
 
 	// Memory management
-	delete[] Parameter_Mesh;
+	delete[] Parameter_cartesianMesh;
 
 	// Output to the CLI
 	std::cout << "Total number of random samples: " << totalSampleCount << ".\n";
@@ -174,19 +174,19 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// PROBLEM DOMAIN AND INITIAL PDF
 
-		// This Mesh will be defined by the support bounding box of the data.
-	Mesh PDF_Support(IC_InfTVAL, IC_SupTVAL);
+		// This cartesianMesh will be defined by the support bounding box of the data.
+	cartesianMesh PDF_Support(IC_InfTVAL, IC_SupTVAL);
 
 	// Make it square for AMR-purposes
 	PDF_Support.Squarify();
 
 	// Update the number of pts per dimension
-	PDF_Support.Nodes_per_Dim = round((IC_SupTVAL[0] - IC_InfTVAL[0]) / __problem_domain.Discr_length());
+	PDF_Support.__nodes_per_dim = round((IC_SupTVAL[0] - IC_InfTVAL[0]) / __problem_domain.discr_length());
 
-	// PDF values at the fixed, high-res Mesh (CPU)
-	thrust::host_vector<floatType> PDF_ProbDomain(__problem_domain.Total_Nodes(), 0);
+	// PDF values at the fixed, high-res cartesianMesh (CPU)
+	thrust::host_vector<floatType> PDF_ProbDomain(__problem_domain.total_nodes(), 0);
 
-	// initialize the Mesh and the PDF at the Mesh nodes (change so as to change the parameters as well)
+	// initialize the cartesianMesh and the PDF at the cartesianMesh nodes (change so as to change the parameters as well)
 	errorCheck(PDF_INITIAL_CONDITION(__problem_domain, PDF_ProbDomain, __initial_condition_distributions));
 
 	// PDF values at fixed Grid Nodes (for the GPU)
@@ -199,7 +199,7 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 	thrust::device_vector<floatType> D_Particle_Values;
 
 	// Now we make a slightly larger domain for the computations:
-	Mesh Expanded_Domain;
+	cartesianMesh Expanded_Domain;
 
 	// Expand 40 nodes appears to be just fine (MAKE IT BETTER)
 	const uint16_t expansion_nodes = 40;
@@ -211,14 +211,14 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// VARIABLES DEFINITION
 
-	const uintType nrNodesPerFrame = __problem_domain.Total_Nodes();
+	const uintType nrNodesPerFrame = __problem_domain.total_nodes();
 
 	// Max memory to be used (in bytes). 95% just in case
 	const uintType MAX_BYTES_USEABLE = 0.95 * (D_Properties.totalGlobalMem - nrNodesPerFrame * sizeof(floatType));
 
 	// The following consts don't need an explanation
 	const uintType	ConjGrad_MaxSteps = 1000;
-	const floatType	RBF_SupportRadius = DISC_RADIUS * __problem_domain.Discr_length();
+	const floatType	RBF_SupportRadius = DISC_RADIUS * __problem_domain.discr_length();
 
 	// Full array storing appended particles for all parameter samples
 	std::vector<Particle>	Full_Particle_Locations;
@@ -496,7 +496,7 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 				ODE_INTEGRATE << <Blocks, Threads >> > (
 					rpc(D_Particle_Locations, 0),
 					rpc(D_Particle_Values, 0),
-					rpc(D_Parameter_Mesh, Sample_idx_offset_init),
+					rpc(D_Parameter_cartesianMesh, Sample_idx_offset_init),
 					rpc(D_sampVec, 0),
 					t0,
 					__delta_t,
@@ -514,7 +514,7 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 				__simulation_log.LogFrames[simStepCount].log_Advection_Time = durationSeconds.count();
 				__simulation_log.LogFrames[simStepCount].log_Advection_TotalParticles = ActiveNodes_PerBlk;
 
-				PDF_Support.Update_boundingBox(D_Particle_Locations);
+				PDF_Support.update_bounding_box(D_Particle_Locations);
 
 				// COMPUTE THE SOLUTION "PROJECTION" INTO THE L1 SUBSPACE. THIS WAY, REINITIALIZATION CONSERVES VOLUME (=1)
 				if (PHASE_SPACE_DIMENSIONS < 5) {
@@ -541,7 +541,7 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 				RESTART_GRID_FIND_GN << < Blocks, Threads >> > (rpc(D_Particle_Locations, 0),
 					rpc(D_PDF_ProbDomain, 0),
 					rpc(D_Particle_Values, 0),
-					rpc(D_Parameter_Mesh, 0),
+					rpc(D_Parameter_cartesianMesh, 0),
 					rpc(D_sampVec, 0),
 					RBF_SupportRadius,
 					AMR_ActiveNodeCount,
@@ -604,7 +604,7 @@ int16_t ivpSolver::writeFramesToFile(const double& simulationDuration) {
 	bool saving_active = true;		// see if saving is still active
 	int16_t error_check = 0;
 
-	const uintType nrNodesPerFrame = __problem_domain.Total_Nodes();
+	const uintType nrNodesPerFrame = __problem_domain.total_nodes();
 
 	const uint64_t MEM_2_STORE = __simulation_storage.size() * sizeof(float);
 
@@ -684,10 +684,10 @@ int16_t ivpSolver::writeFramesToFile(const double& simulationDuration) {
 				std::ofstream file1(relative_pth, std::ios::out);
 				assert(file1.is_open());
 
-				file1 << nrNodesPerFrame << "," << __problem_domain.Nodes_per_Dim << ",";
+				file1 << nrNodesPerFrame << "," << __problem_domain.__nodes_per_dim << ",";
 
 				for (uintType d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-					file1 << __problem_domain.Boundary_inf.dim[d] << "," << __problem_domain.Boundary_sup.dim[d] << ",";
+					file1 << __problem_domain.__boundary_inf.dim[d] << "," << __problem_domain.__boundary_sup.dim[d] << ",";
 				}
 				for (uint16_t d = 0; d < PARAM_SPACE_DIMENSIONS; d++) {
 					file1 << __parameter_distributions[d].num_Samples << ",";
@@ -764,10 +764,10 @@ int16_t ivpSolver::writeFramesToFile(const double& simulationDuration) {
 			std::ofstream file1(relative_pth, std::ios::out);
 			assert(file1.is_open());
 
-			file1 << nrNodesPerFrame << "," << __problem_domain.Nodes_per_Dim << ",";
+			file1 << nrNodesPerFrame << "," << __problem_domain.__nodes_per_dim << ",";
 
 			for (uintType d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-				file1 << __problem_domain.Boundary_inf.dim[d] << "," << __problem_domain.Boundary_sup.dim[d] << ",";
+				file1 << __problem_domain.__boundary_inf.dim[d] << "," << __problem_domain.__boundary_sup.dim[d] << ",";
 			}
 			for (uint16_t d = 0; d < PARAM_SPACE_DIMENSIONS; d++) {
 				file1 << __parameter_distributions[d].num_Samples << ",";

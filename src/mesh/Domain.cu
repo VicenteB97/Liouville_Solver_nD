@@ -2,258 +2,194 @@
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Grid points ---------------------------------------------------------------------------------------------------------------- //
-
-// Default constructor
-__host__ __device__
-	Particle::Particle() {
-	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-		dim[d] = (floatType)0;
-	}
-}
-
-// Parametric constructors
-__host__ __device__
-	Particle::Particle(const floatType(&input)[PHASE_SPACE_DIMENSIONS]) {
-	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-		dim[d] = input[d];
-	}
-}
-
-__host__ __device__
-	Particle::Particle(const Particle& input) {
-	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-		dim[d] = input.dim[d];
-	}
-}
-
-// Operators and methods
-__host__ __device__
-	Particle Particle::operator+(const Particle& other) const {
-
-	Particle out;
-
-	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-		out.dim[d] = dim[d] + other.dim[d];
-	}
-
-	return out;
-}
-__host__ __device__
-	Particle Particle::operator-(const Particle& other) const {
-	Particle out;
-
-	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-		out.dim[d] = dim[d] - other.dim[d];
-	}
-
-	return out;
-}
-
-__host__ __device__ 
-void Particle::operator=(const Particle &other) {
-	for(uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++){
-		dim[d] = other.dim[d];
-	}
-}
-
-__host__ __device__
-	bool Particle::operator==(const Particle& other) const {
-	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-		if (dim[d] != other.dim[d]) { return false; }
-	}
-	return true;
-}
-
-__host__ __device__
-	 floatType Particle::Distance(const Particle& other) const {
-	floatType dist = 0;
-	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-		dist += (dim[d] - other.dim[d]) * (dim[d] - other.dim[d]);
-	}
-	return sqrtf(dist);
-}
-
-
-__host__ __device__
-	 Particle Particle::Mult_by_Scalar(floatType scalar) const {
-	Particle out;
-
-	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-		out.dim[d] = scalar * dim[d];
-	}
-
-	return out;
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Grid class ----------------------------------------------------------------------------------------------------------------- //
-
-// This function is defined aside because CUDA does not allow defining __global__ functions inside class definitions! (At least not statically)
-
-__global__ void findProjection(const Particle* particles, floatType* projections, intType totalParticles, intType dimension) {
-
-	const uint64_t globalID = blockDim.x * blockIdx.x + threadIdx.x;
-
-	if (globalID >= totalParticles) { return; }
-
-	projections[globalID] = particles[globalID].dim[dimension];
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Grid class definition
 	// Parametric constructors:
-	/// @brief Create a Mesh knowing the nodes per dimension
-	/// @param Nodes_per_dim 
+	/// @brief Create a cartesianMesh knowing the nodes per dimension
+	/// @param nodes_per_dim 
 	/// @return 
-__host__ __device__	Mesh::Mesh(intType Nodes_per_dim) {
+hostFunction deviceFunction	cartesianMesh::cartesianMesh(intType nodes_per_dim) {
 
-	Nodes_per_Dim = Nodes_per_dim;
-	Boundary_inf = Particle(DOMAIN_INF);
-	Boundary_sup = Particle(DOMAIN_SUP);
+	__nodes_per_dim = nodes_per_dim;
+	__boundary_inf = Particle(DOMAIN_INF);
+	__boundary_sup = Particle(DOMAIN_SUP);
 }
 
-/// @brief Create a Mesh knowing the discretization length
-/// @param Discretization_length 
+/// @brief Create a cartesianMesh knowing the discretization length
+/// @param discretization_length 
 /// @return 
-__host__ __device__	Mesh::Mesh(floatType Discretization_length) {
+hostFunction deviceFunction	cartesianMesh::cartesianMesh(floatType discretization_length) {
 
-	Boundary_inf = Particle(DOMAIN_INF);
-	Boundary_sup = Particle(DOMAIN_SUP);
-	Nodes_per_Dim = roundf((floatType)(Boundary_sup.dim[0] - Boundary_inf.dim[0]) / Discretization_length);
+	__boundary_inf = Particle(DOMAIN_INF);
+	__boundary_sup = Particle(DOMAIN_SUP);
+	__nodes_per_dim = roundf((floatType)(__boundary_sup.dim[0] - __boundary_inf.dim[0]) / discretization_length);
 }
 
-/// @brief Create a Mesh specifying all the parameters
-/// @param Bnd_inf 
-/// @param Bnd_sup 
-/// @param Nodes_per_dim 
+/// @brief Create a cartesianMesh specifying all the parameters
+/// @param bnd_inf 
+/// @param bnd_sup 
+/// @param nodes_per_dim 
 /// @return 
-__host__ __device__	Mesh::Mesh(const Particle& Bnd_inf, const Particle& Bnd_sup, intType Nodes_per_dim) {
+hostFunction deviceFunction	cartesianMesh::cartesianMesh(const Particle& bnd_inf, const Particle& bnd_sup, intType nodes_per_dim) {
 
-	Nodes_per_Dim = Nodes_per_dim;
-	Boundary_inf = Bnd_inf;
-	Boundary_sup = Bnd_sup;
+	__nodes_per_dim = nodes_per_dim;
+	__boundary_inf = bnd_inf;
+	__boundary_sup = bnd_sup;
 }
 
-/// @brief Create a Mesh specifying all the parameters (discr. length instead of the nodes per dimension)
-/// @param Bnd_inf 
-/// @param Bnd_sup 
-/// @param Discretization_length 
+/// @brief Create a cartesianMesh specifying all the parameters (discr. length instead of the nodes per dimension)
+/// @param bnd_inf 
+/// @param bnd_sup 
+/// @param discretization_length 
 /// @return 
-__host__ __device__	Mesh::Mesh(const Particle& Bnd_inf, const Particle& Bnd_sup, floatType Discretization_length) {
+hostFunction deviceFunction	cartesianMesh::cartesianMesh(const Particle& bnd_inf, const Particle& bnd_sup, floatType discretization_length) {
 
-	Boundary_inf = Bnd_inf;
-	Boundary_sup = Bnd_sup;
-	Nodes_per_Dim = (Boundary_sup.dim[0] - Boundary_inf.dim[0]) / Discretization_length + 1;
+	__boundary_inf = bnd_inf;
+	__boundary_sup = bnd_sup;
+	__nodes_per_dim = (__boundary_sup.dim[0] - __boundary_inf.dim[0]) / discretization_length + 1;
 }
+
+// Methods/functions
+hostFunction deviceFunction
+void cartesianMesh::set_boundary_inf(const Particle& boundary_inf) {
+	__boundary_inf = boundary_inf;
+};
+
+hostFunction deviceFunction
+Particle& cartesianMesh::boundary_inf() const {
+	return __boundary_inf;
+};
+
+hostFunction deviceFunction
+void cartesianMesh::set_boundary_sup(const Particle& boundary_sup) {
+	__boundary_sup = boundary_sup;
+};
+
+hostFunction deviceFunction
+Particle& cartesianMesh::boundary_sup() const {
+	return __boundary_sup;
+};
+
+hostFunction deviceFunction
+void cartesianMesh::set_nodes_per_dimension(uint32_t nodes_per_dimension) {
+	__nodes_per_dimension = nodes_per_dimension;
+};
+
+hostFunction deviceFunction
+uint32_t cartesianMesh::nodes_per_dimension() const {
+	return __nodes_per_dimension;
+};
 
 	/// @brief Compute the total number of nodes
-__host__ __device__	 intType Mesh::Total_Nodes() const {
-	return pow(Nodes_per_Dim, PHASE_SPACE_DIMENSIONS);
+hostFunction deviceFunction	 
+intType cartesianMesh::total_nodes() const {
+	return pow(__nodes_per_dim, PHASE_SPACE_DIMENSIONS);
 }
 
 /// @brief Gives the edge length (side length of a cube)
-__host__ __device__	 floatType Mesh::Edge_size() const {
-	return (Boundary_sup.dim[0] - Boundary_inf.dim[0]);
+hostFunction deviceFunction	 
+floatType cartesianMesh::edge_size() const {
+	return (__boundary_sup.dim[0] - __boundary_inf.dim[0]);
 }
 
-/// @brief Gives the center node of the Mesh
-__host__ __device__	 Particle Mesh::Center() const {
-	return (Boundary_sup + Boundary_inf).Mult_by_Scalar(0.5);
+/// @brief Gives the center node of the cartesianMesh
+hostFunction deviceFunction	 
+Particle cartesianMesh::center() const {
+	return (__boundary_sup + __boundary_inf).Mult_by_Scalar(0.5);
 }
 
 /// @brief Gives the discretization length (distance between two consecutive nodes in the same dimension) 
-__host__ __device__	 floatType Mesh::Discr_length() const {
-	if (Nodes_per_Dim == 1) { return (floatType)0; }
+hostFunction deviceFunction	 
+floatType cartesianMesh::discr_length() const {
+	if (__nodes_per_dim == 1) { return (floatType)0; }
 
-	return (floatType)(this->Edge_size() / (Nodes_per_Dim - 1));
+	return (floatType)(this->edge_size() / (__nodes_per_dim - 1));
 }
 
-/// @brief Gives the node (point in space) given the global index in the Mesh
-/// @param globalIdx Global index in the current Mesh
+/// @brief Gives the node (point in space) given the global index in the cartesianMesh
+/// @param globalIdx Global index in the current cartesianMesh
 /// @return point in space
-__host__ __device__	 Particle Mesh::Get_node(intType globalIdx) const {
+hostFunction deviceFunction	 
+Particle cartesianMesh::get_node(intType globalIdx) const {
 
-	Particle out(Boundary_inf);
+	Particle out(__boundary_inf);
 	intType temp = 1;
-	floatType discretizationLength = this->Discr_length();
+	floatType discretizationLength = this->discr_length();
 
 	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-		intType j = floorf((floatType)positive_rem(globalIdx, temp * Nodes_per_Dim) / temp);	// This line gives the index at each dimension
+		intType j = floorf((floatType)positive_rem(globalIdx, temp * __nodes_per_dim) / temp);	// This line gives the index at each dimension
 
-		out.dim[d] += j * discretizationLength; temp *= Nodes_per_Dim;			// This line gives the Mesh node per se
+		out.dim[d] += j * discretizationLength; temp *= __nodes_per_dim;			// This line gives the cartesianMesh node per se
 	}
 	return out;
 }
 
-/// @brief This method decides whether Particle is inside the Mesh or not
+/// @brief This method decides whether Particle is inside the cartesianMesh or not
 /// @param Particle 
-/// @return bool. True if particle is inside Mesh, false otherwise
-__host__ __device__	 bool Mesh::Contains_particle(const Particle& Particle) const {
+/// @return bool. True if particle is inside cartesianMesh, false otherwise
+hostFunction deviceFunction	 
+bool cartesianMesh::contains_particle(const Particle& Particle) const {
 	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-		if (Particle.dim[d] < Boundary_inf.dim[d] || Particle.dim[d] > Boundary_sup.dim[d]) { return false; }
+		if (Particle.dim[d] < __boundary_inf.dim[d] || Particle.dim[d] > __boundary_sup.dim[d]) { return false; }
 	}
 	return true;
 }
 
 // Returns the bin (or ID of the closest node) where Particle belongs to, adding bin_offset.
-__host__ __device__  intType Mesh::Get_binIdx(const Particle& Particle, intType bin_offset) const {
+hostFunction deviceFunction  
+intType cartesianMesh::get_bin_idx(const Particle& Particle, intType bin_offset) const {
 	intType bin_idx = 0, accPower = 1;
-	floatType discretizationLength = this->Discr_length();
+	floatType discretizationLength = this->discr_length();
 
 	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-		intType temp_idx = roundf((floatType)(Particle.dim[d] - Boundary_inf.dim[d]) / discretizationLength) + bin_offset;
+		intType temp_idx = roundf((floatType)(Particle.dim[d] - __boundary_inf.dim[d]) / discretizationLength) + bin_offset;
 
 		bin_idx += temp_idx * accPower;
-		accPower *= Nodes_per_Dim;
+		accPower *= __nodes_per_dim;
 	}
 	return bin_idx;
 };
 
 // Compute the global index at your mesh, given the global index in "other" mesh.
-__host__  intType Mesh::Indx_here(intType indx_at_other, const Mesh& other) const {
-	return this->Get_binIdx(other.Get_node(indx_at_other));
+hostFunction  
+intType cartesianMesh::idx_here_from_other_mesh(intType indx_at_other, const cartesianMesh& other) const {
+	return this->get_bin_idx(other.get_node(indx_at_other));
 }
 
-/// @brief This function expands a fixed Mesh "Other" by a length of  "expansion_length" in each direction/dimension
-/// @param Other The base Mesh from which we will expand
+/// @brief This function expands a fixed cartesianMesh "Other" by a length of  "expansion_length" in each direction/dimension
+/// @param Other The base cartesianMesh from which we will expand
 /// @param expansion_nodes Number of nodes we will expand in every direction
-__host__ __device__	 void Mesh::Expand_From(const Mesh& Other, intType expansion_nodes) {
+hostFunction deviceFunction	 
+void cartesianMesh::Expand_From(const cartesianMesh& Other, intType expansion_nodes) {
 
 	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-		// To make sure that the points fall into the Mesh nodes
-		Boundary_inf.dim[d] = Other.Boundary_inf.dim[d] - Other.Discr_length() * expansion_nodes;
-		Boundary_sup.dim[d] = Other.Boundary_sup.dim[d] + Other.Discr_length() * expansion_nodes;
+		// To make sure that the points fall into the cartesianMesh nodes
+		__boundary_inf.dim[d] = Other.__boundary_inf.dim[d] - Other.discr_length() * expansion_nodes;
+		__boundary_sup.dim[d] = Other.__boundary_sup.dim[d] + Other.discr_length() * expansion_nodes;
 	}
 
-	Nodes_per_Dim = Other.Nodes_per_Dim + 2 * expansion_nodes;
+	__nodes_per_dim = Other.__nodes_per_dim + 2 * expansion_nodes;
 }
 
 /// @brief This function makes you domain a square (same Lebesgue-length in every direction)
-__host__ __device__  void Mesh::Squarify() {
+hostFunction deviceFunction  
+void cartesianMesh::Squarify() {
 	// Get the max distance between the edges and then make the box larger!
-	floatType max_dist = Boundary_sup.dim[0] - Boundary_inf.dim[0];
+	floatType max_dist = __boundary_sup.dim[0] - __boundary_inf.dim[0];
 
 	for (uint16_t d = 1; d < PHASE_SPACE_DIMENSIONS; d++) {
-		max_dist = fmaxf((floatType)max_dist, Boundary_sup.dim[d] - Boundary_inf.dim[d]);
+		max_dist = fmaxf((floatType)max_dist, __boundary_sup.dim[d] - __boundary_inf.dim[d]);
 	}
 
 	// Now that we know the max dist, let's expand the edges!
 	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-		Boundary_sup.dim[d] = Boundary_inf.dim[d] + max_dist;
+		__boundary_sup.dim[d] = __boundary_inf.dim[d] + max_dist;
 	}
 }
 
-/// @brief This function updates a Mesh-defined bounding box
+/// @brief This function updates a cartesianMesh-defined bounding box
 /// @param D_Particle_Locations GPU array storing the positions of the particles
 /// @returns Nothing
-	void Mesh::Update_boundingBox(const thrust::device_vector<Particle>& D_Particle_Locations) {
+	void cartesianMesh::update_bounding_box(const thrust::device_vector<Particle>& D_Particle_Locations) {
 
 	intType Threads = fmin(THREADS_P_BLK, D_Particle_Locations.size());
 	intType Blocks = floor((D_Particle_Locations.size() - 1) / Threads) + 1;
@@ -267,8 +203,8 @@ __host__ __device__  void Mesh::Squarify() {
 		floatType temp_1 = *(thrust::min_element(thrust::device, projection.begin(), projection.end())); // min element from the projection in that direction
 		floatType temp_2 = *(thrust::max_element(thrust::device, projection.begin(), projection.end()));
 
-		Boundary_inf.dim[d] = temp_1 - ceilf(DISC_RADIUS) * this->Discr_length();
-		Boundary_sup.dim[d] = temp_2 + ceilf(DISC_RADIUS) * this->Discr_length();
+		__boundary_inf.dim[d] = temp_1 - ceilf(DISC_RADIUS) * this->discr_length();
+		__boundary_sup.dim[d] = temp_2 + ceilf(DISC_RADIUS) * this->discr_length();
 	}
 	projection.clear();
 }

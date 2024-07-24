@@ -23,7 +23,7 @@ __device__ inline void _1D_WVLET(floatType& s1, floatType& s2);
 /// @tparam floatType
 /// @param PDF Our "signal". The multidimensional signal we want to compress
 /// @param Activate_node An array with the nodes and the indication whether the node is chosen or not
-/// @param BoundingBox The "smallest" Mesh where the support of the PDF is contained
+/// @param BoundingBox The "smallest" cartesianMesh where the support of the PDF is contained
 /// @param Problem_Domain Problem domain
 /// @param rescaling Rescaling value that indicates the level of the wavelet transform
 /// @return 
@@ -31,8 +31,8 @@ __global__ void D__Wavelet_Transform__F(
 	floatType* PDF,
 	uintType* nodeIdxs,
 	uintType* isActiveNode,
-	const Mesh 	BoundingBox,
-	const Mesh	Problem_Domain,
+	const cartesianMesh 	BoundingBox,
+	const cartesianMesh	Problem_Domain,
 	const floatType	rescaling);
 
 
@@ -41,7 +41,7 @@ __global__ void customAssignToGpuArray(
 	floatType* outputPDF, 
 	const floatType* inputPDF, 
 	Particle* outputNodes, 
-	const Mesh inputNodes,
+	const cartesianMesh inputNodes,
 	const uintType* nodeIdx, 
 	const intType elementNr);
 
@@ -51,7 +51,7 @@ __global__ void customAssignToGpuArray(
 /// @param AdaptPDF 
 /// @param AdaptGrid 
 /// @param Problem_Domain 
-/// @param Base_Mesh 
+/// @param Base_cartesianMesh 
 /// @param Supp_BBox 
 /// @return Error code (0 = good, -1 = something went wrong)
 int16_t setInitialParticles(
@@ -59,8 +59,8 @@ int16_t setInitialParticles(
 	thrust::device_vector<floatType>& D__PDF,
 	thrust::device_vector<floatType>& AdaptPDF,
 	thrust::device_vector<Particle>& AdaptGrid,
-	const Mesh& Problem_Domain,
-	const Mesh& Base_Mesh,
-	Mesh& Supp_BBox);
+	const cartesianMesh& Problem_Domain,
+	const cartesianMesh& Base_cartesianMesh,
+	cartesianMesh& Supp_BBox);
 
 #endif

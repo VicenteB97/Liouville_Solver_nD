@@ -23,7 +23,7 @@ __global__ void Bin_Insertion_Count(
 	uintType* Bin_count,
 	uintType* Bin_local_accSum,
 	const Particle* Search_Particles,
-	const Mesh	Bounding_Box,
+	const cartesianMesh	Bounding_Box,
 	const uintType	Total_Particles);
 
 
@@ -80,14 +80,14 @@ __global__ void Neighbor_search(
 	const uintType	Total_Particles,
 	const uintType	offset,
 	const floatType			search_distance,			// This tells us how many discretizations we have to move back to find initial bin to search from
-	const Mesh		Bounding_Box);
+	const cartesianMesh		Bounding_Box);
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Counting sort! This operation orders the Mesh indeces and it sets the number of nodes inside each bin
+// Counting sort! This operation orders the cartesianMesh indeces and it sets the number of nodes inside each bin
 
 /// @brief 
 /// @tparam floatType 
@@ -108,7 +108,7 @@ __host__ int16_t CS_Neighbor_Search(thrust::device_vector<Particle>& Search_Part
 	thrust::device_vector<floatType>& Matrix_Entries,
 	const uintType Adapt_Points,
 	const uintType max_neighbor_num,
-	const Mesh& Bounding_Box,
+	const cartesianMesh& Bounding_Box,
 	const floatType search_radius);
 
 #endif // 0
@@ -151,7 +151,7 @@ int16_t particleNeighborSearch(thrust::device_vector<Particle>& Search_Particles
 	thrust::device_vector<floatType>& Matrix_Entries,
 	const uintType Adapt_Points,
 	const uintType MaxNeighborNum,
-	const Mesh& Bounding_Box,
+	const cartesianMesh& Bounding_Box,
 	const floatType search_radius);
 
 #endif

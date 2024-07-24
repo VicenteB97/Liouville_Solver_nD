@@ -15,13 +15,13 @@ hostFunction
 int32_t setInitialParticles(
 	const floatType* input_signal_dvc,
 	Particle* output_active_nodes_dvc,
-	const Mesh& signal_bounding_box,
-	const Mesh& signal_domain
+	const cartesianMesh& signal_bounding_box,
+	const cartesianMesh& signal_domain
 ) {
 	// deviceClass device;
 	// Create the signal in the bounding box. Initialized to 0
-	const uint64_t size_input_signal = signal_domain.Total_Nodes();
-	const uint64_t size_signal_in_bounding_box = signal_bounding_box.Total_Nodes();
+	const uint64_t size_input_signal = signal_domain.total_nodes();
+	const uint64_t size_signal_in_bounding_box = signal_bounding_box.total_nodes();
 
 	// Create and fill with 0 the signal_in_bounding_box array (remember to free memory afterwards):
 	thrust::device_vector<floatType> signal_in_bounding_box_dvc(size_signal_in_bounding_box);
@@ -43,10 +43,10 @@ int32_t setInitialParticles(
 	// );
 
 	// Create amr_handle
-	// waveletMeshRefinement amr_handle;
+	// waveletcartesianMeshRefinement amr_handle;
 
 	// amr_handle.set_min_refinement_level(0);
-	// amr_handle.set_max_refinement_level(log2(signal_bounding_box.Nodes_per_Dim));
+	// amr_handle.set_max_refinement_level(log2(signal_bounding_box.__nodes_per_dim));
 	// amr_handle.set_initial_signal(signal_in_bounding_box_dvc);
 
 	// amr_handle.compute_wavelet_transform();
@@ -57,90 +57,90 @@ int32_t setInitialParticles(
 }
 
 hostFunction
-waveletMeshRefinement::waveletMeshRefinement() {};
+waveletcartesianMeshRefinement::waveletcartesianMeshRefinement() {};
 
 hostFunction
-waveletMeshRefinement::~waveletMeshRefinement() { delete this; };
+waveletcartesianMeshRefinement::~waveletcartesianMeshRefinement() { delete this; };
 
 hostFunction
-void waveletMeshRefinement::set_signal_dimension(uint16_t input) {
+void waveletcartesianMeshRefinement::set_signal_dimension(uint16_t input) {
 	__signal_dimension = input;
 };
 
 hostFunction deviceFunction
-uint16_t waveletMeshRefinement::signal_dimension() const {
+uint16_t waveletcartesianMeshRefinement::signal_dimension() const {
 	return __signal_dimension;
 };
 
 hostFunction
-void waveletMeshRefinement::set_min_refinement_level(uint16_t input) {
+void waveletcartesianMeshRefinement::set_min_refinement_level(uint16_t input) {
 	__min_refinement_level = input;
 };
 
 hostFunction deviceFunction
-uint16_t waveletMeshRefinement::min_refinement_level() const {
+uint16_t waveletcartesianMeshRefinement::min_refinement_level() const {
 	return __min_refinement_level;
 };
 
 hostFunction
-void waveletMeshRefinement::set_max_refinement_level(uint16_t input) {
+void waveletcartesianMeshRefinement::set_max_refinement_level(uint16_t input) {
 	__max_refinement_level = input;
 };
 
 hostFunction deviceFunction
-uint16_t waveletMeshRefinement::max_refinement_level() const {
+uint16_t waveletcartesianMeshRefinement::max_refinement_level() const {
 	return __max_refinement_level;
 };
 
 hostFunction
-void waveletMeshRefinement::set_initial_signal_host2dvc(floatType* input_signal) {
+void waveletcartesianMeshRefinement::set_initial_signal_host2dvc(floatType* input_signal) {
 	__initial_signal_dvc = input_signal;
 	// malloc and memcopy
 };
 
 hostFunction
-void waveletMeshRefinement::set_initial_signal_dvc2dvc(floatType* input_signal_dvc) {
+void waveletcartesianMeshRefinement::set_initial_signal_dvc2dvc(floatType* input_signal_dvc) {
 	__initial_signal_dvc = input_signal;
 	// malloc and memcopy
 };
 
 hostFunction
-floatType* waveletMeshRefinement::initial_signal() const {
+floatType* waveletcartesianMeshRefinement::initial_signal() const {
 	return __initial_signal;
 };
 
 hostFunction
-floatType* waveletMeshRefinement::initial_signal_dvc() const {
+floatType* waveletcartesianMeshRefinement::initial_signal_dvc() const {
 	return __initial_signal_dvc;
 };
 
 hostFunction deviceFunction
-uint32_t waveletMeshRefinement::nodes_per_dimension() const {
+uint32_t waveletcartesianMeshRefinement::nodes_per_dimension() const {
 	return pow(2, __max_refinement_level);
 };
 
 hostFunction deviceFunction
-uint64_t waveletMeshRefinement::total_signal_nodes() const {
+uint64_t waveletcartesianMeshRefinement::total_signal_nodes() const {
 	return pow(this->nodes_per_dimension(), __signal_dimension);
 };
 
 hostFunction
-floatType* waveletMeshRefinement::transformed_signal() const {
+floatType* waveletcartesianMeshRefinement::transformed_signal() const {
 	return __transformed_signal;
 };	// Include a copy from the thrust container to the initial type
 
 //hostFunction
-//uint64_t* waveletMeshRefinement::assigned_node_indeces() const {
+//uint64_t* waveletcartesianMeshRefinement::assigned_node_indeces() const {
 //	return __assigned_node_indeces;
 //};
 //
 //hostFunction
-//uint32_t* waveletMeshRefinement::assigned_node_marker() const {
+//uint32_t* waveletcartesianMeshRefinement::assigned_node_marker() const {
 //	return __assigned_node_markers;
 //};
 
 hostFunction
-void waveletMeshRefinement::compute_wavelet_transform() {
+void waveletcartesianMeshRefinement::compute_wavelet_transform() {
 	// Here, you've got to compute the wavelet transformation of the initial signal.
 	// Pass the wavelet transform as a function pointer (future)
 	__transformed_signal = __initial_signal;
@@ -181,14 +181,14 @@ void waveletMeshRefinement::compute_wavelet_transform() {
 				tolerance
 			}
 		);
-		rescaling *= 2;	// our Mesh will now have half the number of points
+		rescaling *= 2;	// our cartesianMesh will now have half the number of points
 	}
 };
 
 //hostFunction
-//void waveletMeshRefinement::get_detail_above_threshold_nodes(
+//void waveletcartesianMeshRefinement::get_detail_above_threshold_nodes(
 //	Particle* particle_locations,
-//	const Mesh& signal_domain
+//	const cartesianMesh& signal_domain
 //) const {
 //
 //	deviceClass device;

@@ -16,23 +16,23 @@ __device__ inline void _1D_WVLET(floatType& s1, floatType& s2) {
 /// @tparam floatType
 /// @param PDF Our "signal". The multidimensional signal we want to compress
 /// @param Activate_node An array with the nodes and the indication whether the node is chosen or not
-/// @param BoundingBox The "smallest" Mesh where the support of the PDF is contained
+/// @param BoundingBox The "smallest" cartesianMesh where the support of the PDF is contained
 /// @param Problem_Domain Problem domain
 /// @param rescaling Rescaling value that indicates the level of the wavelet transform
 /// @return 
 __global__ void D__Wavelet_Transform__F(floatType* PDF,
 	uintType* nodeIdxs,
 	uintType* isActiveNode,
-	const Mesh 	BoundingBox,
-	const Mesh	Problem_Domain,
+	const cartesianMesh 	BoundingBox,
+	const cartesianMesh	Problem_Domain,
 	const floatType	rescaling) {
 
 	const uint64_t globalID = blockDim.x * blockIdx.x + threadIdx.x;
 
 	// Range guard for out-of-bounds nodes
-	if (globalID >= BoundingBox.Total_Nodes() / powf(rescaling, PHASE_SPACE_DIMENSIONS)) { return; }
+	if (globalID >= BoundingBox.total_nodes() / powf(rescaling, PHASE_SPACE_DIMENSIONS)) { return; }
 
-	const uintType		totalNodes = Problem_Domain.Total_Nodes();		// Total nodes in the problem domain
+	const uintType		totalNodes = Problem_Domain.total_nodes();		// Total nodes in the problem domain
 	const uint16_t	miniSquareNodes = pow(2, PHASE_SPACE_DIMENSIONS);	// Total nodes in each simple wavelet transform (per GPU thread)
 
 	// Global index of the main approximation vertex at the bounding box
@@ -40,18 +40,18 @@ __global__ void D__Wavelet_Transform__F(floatType* PDF,
 
 	// Compute the index and the node per se
 
-	uintType multCounter = 1;	// auxiliary counter: => pow(BoundingBox.Nodes_per_Dim / rescaling, d)
-	uintType multCounter_2 = 1;	// For the BoundingBox: => pow(BoundingBox.Nodes_per_Dim, d)
+	uintType multCounter = 1;	// auxiliary counter: => pow(BoundingBox.__nodes_per_dim / rescaling, d)
+	uintType multCounter_2 = 1;	// For the BoundingBox: => pow(BoundingBox.__nodes_per_dim, d)
 	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-		intType temp_idx = floorf(positive_rem(globalID, multCounter * (BoundingBox.Nodes_per_Dim / rescaling)) / multCounter) * rescaling;
+		intType temp_idx = floorf(positive_rem(globalID, multCounter * (BoundingBox.__nodes_per_dim / rescaling)) / multCounter) * rescaling;
 
 		cube_app_IDX += temp_idx * multCounter_2;
-		multCounter *= BoundingBox.Nodes_per_Dim / rescaling;
-		multCounter_2 *= BoundingBox.Nodes_per_Dim;
+		multCounter *= BoundingBox.__nodes_per_dim / rescaling;
+		multCounter_2 *= BoundingBox.__nodes_per_dim;
 	}
 
 	multCounter = 1;	// Reinitialize for next computations: => pow(2, d)
-	multCounter_2 = 1;	// For the BoundingBox: => pow(BoundingBox.Nodes_per_Dim, d)
+	multCounter_2 = 1;	// For the BoundingBox: => pow(BoundingBox.__nodes_per_dim, d)
 
 	// 1 set of wavelets per dimension (1D: horizontal; 2D: Horizontal + Vertical; 3D: Horz + Vert + Deep; ...)
 	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
@@ -66,35 +66,35 @@ __global__ void D__Wavelet_Transform__F(floatType* PDF,
 				uintType app_IDX_at_BBox = cube_app_IDX;
 
 				uintType multCounter_3 = 1;	// => pow(2, j)
-				uintType multCounter_4 = 1;	// => pow(BoundingBox.Nodes_per_Dim, j)
+				uintType multCounter_4 = 1;	// => pow(BoundingBox.__nodes_per_dim, j)
 
 				for (uint16_t j = 0; j < PHASE_SPACE_DIMENSIONS; j++) {
 					intType temp = floorf(positive_rem(k, multCounter_3 * 2) / multCounter_3) * rescaling / 2;	// j-th component index
 
 					app_IDX_at_BBox += temp * multCounter_4;
 					multCounter_3 *= 2;
-					multCounter_4 *= BoundingBox.Nodes_per_Dim;
+					multCounter_4 *= BoundingBox.__nodes_per_dim;
 				}
 
 				// Compute corresponding detail node
 				intType det_IDX_at_BBox = app_IDX_at_BBox + multCounter_2 * rescaling / 2;
 
-				Particle app_node(BoundingBox.Get_node(app_IDX_at_BBox));
-				Particle det_node(BoundingBox.Get_node(det_IDX_at_BBox));
+				Particle app_node(BoundingBox.get_node(app_IDX_at_BBox));
+				Particle det_node(BoundingBox.get_node(det_IDX_at_BBox));
 
 				// Check which ones are in the problem domain!
-				if (Problem_Domain.Contains_particle(app_node) && Problem_Domain.Contains_particle(det_node)) {
+				if (Problem_Domain.contains_particle(app_node) && Problem_Domain.contains_particle(det_node)) {
 
 					// Calculate the indeces for the problem domain
-					intType app_node_at_PD(Problem_Domain.Get_binIdx(app_node));
-					intType det_node_at_PD(Problem_Domain.Get_binIdx(det_node));
+					intType app_node_at_PD(Problem_Domain.get_bin_idx(app_node));
+					intType det_node_at_PD(Problem_Domain.get_bin_idx(det_node));
 
 					_1D_WVLET(PDF[app_node_at_PD], PDF[det_node_at_PD]);
 				}
 			}
 		}
 		multCounter *= 2;
-		multCounter_2 *= BoundingBox.Nodes_per_Dim;
+		multCounter_2 *= BoundingBox.__nodes_per_dim;
 	}
 
 	// Now we have to go see what happens with the outputs
@@ -102,7 +102,7 @@ __global__ void D__Wavelet_Transform__F(floatType* PDF,
 
 	for (uintType k = 1; k < miniSquareNodes; k++) {
 
-		Particle visit_node(BoundingBox.Get_node(cube_app_IDX));
+		Particle visit_node(BoundingBox.get_node(cube_app_IDX));
 
 		multCounter = 1;	// restart the counter
 
@@ -110,14 +110,14 @@ __global__ void D__Wavelet_Transform__F(floatType* PDF,
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
 			intType temp = floorf(positive_rem(k, multCounter * 2) / multCounter) * rescaling / 2;	// j-th component index
 
-			visit_node.dim[d] += temp * BoundingBox.Discr_length();
+			visit_node.dim[d] += temp * BoundingBox.discr_length();
 			multCounter *= 2;
 		}
 
-		if (Problem_Domain.Contains_particle(visit_node)) {
+		if (Problem_Domain.contains_particle(visit_node)) {
 			// These two indeces can be obtained in the previous loop
-			intType temp = Problem_Domain.Get_binIdx(visit_node);
-			intType temp_IDX_at_BBox = BoundingBox.Get_binIdx(visit_node);
+			intType temp = Problem_Domain.get_bin_idx(visit_node);
+			intType temp_IDX_at_BBox = BoundingBox.get_bin_idx(visit_node);
 
 			nodeIdxs[temp_IDX_at_BBox] = temp;
 
@@ -131,7 +131,7 @@ __global__ void D__Wavelet_Transform__F(floatType* PDF,
 
 
 template<uint16_t elementsProcessedPerThread>
-__global__ void customAssignToGpuArray(floatType* outputPDF, const floatType* inputPDF, Particle* outputNodes, const Mesh inputNodes,
+__global__ void customAssignToGpuArray(floatType* outputPDF, const floatType* inputPDF, Particle* outputNodes, const cartesianMesh inputNodes,
 	const uintType* nodeIdx, const intType elementNr) {
 	const int64_t globalId = blockDim.x * blockIdx.x + threadIdx.x;
 
@@ -144,7 +144,7 @@ __global__ void customAssignToGpuArray(floatType* outputPDF, const floatType* in
 			const intType myNodeIdx = nodeIdx[myIdx];
 
 			outputPDF[myIdx] = inputPDF[myNodeIdx];
-			outputNodes[myIdx] = inputNodes.Get_node(myNodeIdx);
+			outputNodes[myIdx] = inputNodes.get_node(myNodeIdx);
 		}
 	}
 }
@@ -155,55 +155,55 @@ __global__ void customAssignToGpuArray(floatType* outputPDF, const floatType* in
 /// @param AdaptPDF 
 /// @param AdaptGrid 
 /// @param Problem_Domain 
-/// @param Base_Mesh 
+/// @param Base_cartesianMesh 
 /// @param Supp_BBox 
 /// @return Error code (0 = good, -1 = something went wrong)
 int16_t setInitialParticles(const thrust::host_vector<floatType>& H_PDF,
 	thrust::device_vector<floatType>& D__PDF,
 	thrust::device_vector<floatType>& AdaptPDF,
 	thrust::device_vector<Particle>& AdaptGrid,
-	const Mesh& Problem_Domain,
-	const Mesh& Base_Mesh,
-	Mesh& Supp_BBox) {
+	const cartesianMesh& Problem_Domain,
+	const cartesianMesh& Base_cartesianMesh,
+	cartesianMesh& Supp_BBox) {
 
 
 	uintType rescaling = 2;
 
 	// Prepare the bounding box for the Wavelet-based AMR procedure! (We don't really care if it's off limits from the problem domain)
 	Supp_BBox.Squarify();	// Make it square
-	Supp_BBox.Nodes_per_Dim = (Supp_BBox.Boundary_sup.dim[0] - Supp_BBox.Boundary_inf.dim[0]) / Problem_Domain.Discr_length() + 1;
+	Supp_BBox.__nodes_per_dim = (Supp_BBox.__boundary_sup.dim[0] - Supp_BBox.__boundary_inf.dim[0]) / Problem_Domain.discr_length() + 1;
 
-	double refinementLvl = log2(Supp_BBox.Nodes_per_Dim);
+	double refinementLvl = log2(Supp_BBox.__nodes_per_dim);
 
 	if (fmod(refinementLvl, 1) != 0) {
-		Supp_BBox.Nodes_per_Dim = pow(2, ceil(refinementLvl));
+		Supp_BBox.__nodes_per_dim = pow(2, ceil(refinementLvl));
 
 		// Rewrite the refinement level value
-		refinementLvl = log2(Supp_BBox.Nodes_per_Dim);
+		refinementLvl = log2(Supp_BBox.__nodes_per_dim);
 
-		if (Supp_BBox.Nodes_per_Dim >= Problem_Domain.Nodes_per_Dim) { Supp_BBox = Problem_Domain; }
+		if (Supp_BBox.__nodes_per_dim >= Problem_Domain.__nodes_per_dim) { Supp_BBox = Problem_Domain; }
 		else {
-			Supp_BBox.Boundary_inf = Base_Mesh.Get_node(Base_Mesh.Get_binIdx(Supp_BBox.Boundary_inf));	// To make sure it falls into the mesh nodes
+			Supp_BBox.__boundary_inf = Base_cartesianMesh.get_node(Base_cartesianMesh.get_bin_idx(Supp_BBox.__boundary_inf));	// To make sure it falls into the mesh nodes
 
 #pragma unroll
 			for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-				Supp_BBox.Boundary_sup.dim[d] = Supp_BBox.Boundary_inf.dim[d] + (Supp_BBox.Nodes_per_Dim - 1) * Problem_Domain.Discr_length();
+				Supp_BBox.__boundary_sup.dim[d] = Supp_BBox.__boundary_inf.dim[d] + (Supp_BBox.__nodes_per_dim - 1) * Problem_Domain.discr_length();
 			}
 		}
 	}
 
-	thrust::device_vector<uintType> nodeIdxs(Supp_BBox.Total_Nodes(), 0);
-	thrust::device_vector<uintType> isAssignedNode(Supp_BBox.Total_Nodes(), 0);
+	thrust::device_vector<uintType> nodeIdxs(Supp_BBox.total_nodes(), 0);
+	thrust::device_vector<uintType> isAssignedNode(Supp_BBox.total_nodes(), 0);
 
 	for (uint16_t k = 0; k < refinementLvl; k++) {
 
-		uint16_t Threads = fmin(THREADS_P_BLK, Supp_BBox.Total_Nodes() / pow(rescaling, PHASE_SPACE_DIMENSIONS));
-		uintType	 Blocks = floor((Supp_BBox.Total_Nodes() / pow(rescaling, PHASE_SPACE_DIMENSIONS) - 1) / Threads) + 1;
+		uint16_t Threads = fmin(THREADS_P_BLK, Supp_BBox.total_nodes() / pow(rescaling, PHASE_SPACE_DIMENSIONS));
+		uintType	 Blocks = floor((Supp_BBox.total_nodes() / pow(rescaling, PHASE_SPACE_DIMENSIONS) - 1) / Threads) + 1;
 
 		D__Wavelet_Transform__F << <Blocks, Threads >> > (rpc(D__PDF, 0), rpc(nodeIdxs, 0), rpc(isAssignedNode, 0), Supp_BBox, Problem_Domain, rescaling);
 		gpuError_Check(cudaDeviceSynchronize());
 
-		rescaling *= 2;	// our Mesh will now have half the number of points
+		rescaling *= 2;	// our cartesianMesh will now have half the number of points
 	}
 
 	// Get the number of assigned nodes

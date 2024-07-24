@@ -20,7 +20,7 @@
 #include "utils/error_functs.cuh"
 #include "utils/numeric_defs.cuh"
 
-#include "Adapt_Mesh.cuh"
+#include "Adapt_cartesianMesh.cuh"
 #include "Domain.cuh"
 #include "Sim_data.cuh"
 #include "Probability.cuh"
@@ -34,7 +34,7 @@
 class ivpSolver{
 private:
 	//Domain where the PDF will evolve (positively invariant set)
-	Mesh __problem_domain;
+	cartesianMesh __problem_domain;
 	
 	// Distributions for the model parameters
 	Distributions __initial_condition_distributions[PHASE_SPACE_DIMENSIONS];

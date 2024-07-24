@@ -26,18 +26,18 @@ Distributions::Distributions() {
 
 /// @brief This function creates the IC PDF. We assume it is the tensor product of Normal Distributions
 /// @param Points_per_dimension 
-/// @param Mesh 
+/// @param cartesianMesh 
 /// @param PDF_value 
 /// @param IC_dist_parameters 
-int16_t PDF_INITIAL_CONDITION(const Mesh& Mesh, thrust::host_vector<floatType>& PDF_value, const Distributions* IC_dist_parameters) {
+int16_t PDF_INITIAL_CONDITION(const cartesianMesh& cartesianMesh, thrust::host_vector<floatType>& PDF_value, const Distributions* IC_dist_parameters) {
 
-	std::vector<floatType> temp_val(Mesh.Nodes_per_Dim * PHASE_SPACE_DIMENSIONS);
+	std::vector<floatType> temp_val(cartesianMesh.__nodes_per_dim * PHASE_SPACE_DIMENSIONS);
 
 	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
 		// Create the arrays for each dimension!
 		floatType expectation = IC_dist_parameters[d].params[0], std_dev = IC_dist_parameters[d].params[1],
-			x0 = fmax(Mesh.Boundary_inf.dim[d], expectation - 8 * std_dev),
-			xF = fmin(Mesh.Boundary_sup.dim[d], expectation + 8 * std_dev),
+			x0 = fmax(cartesianMesh.__boundary_inf.dim[d], expectation - 8 * std_dev),
+			xF = fmin(cartesianMesh.__boundary_sup.dim[d], expectation + 8 * std_dev),
 			rescale_CDF = 1;
 
 		if (IC_dist_parameters[d].Name == 'N' || IC_dist_parameters[d].Name == 'n') {
@@ -51,8 +51,8 @@ int16_t PDF_INITIAL_CONDITION(const Mesh& Mesh, thrust::host_vector<floatType>& 
 			}
 
 #pragma omp parallel for
-			for (intType k = Mesh.Nodes_per_Dim * d; k < Mesh.Nodes_per_Dim * (d + 1); k++) {
-				temp_val[k] = boost::math::pdf(dist, Mesh.Get_node((k - Mesh.Nodes_per_Dim * d) * pow(Mesh.Nodes_per_Dim, d)).dim[d]) / rescale_CDF;
+			for (intType k = cartesianMesh.__nodes_per_dim * d; k < cartesianMesh.__nodes_per_dim * (d + 1); k++) {
+				temp_val[k] = boost::math::pdf(dist, cartesianMesh.get_node((k - cartesianMesh.__nodes_per_dim * d) * pow(cartesianMesh.__nodes_per_dim, d)).dim[d]) / rescale_CDF;
 			}
 		}
 	}
@@ -60,12 +60,12 @@ int16_t PDF_INITIAL_CONDITION(const Mesh& Mesh, thrust::host_vector<floatType>& 
 	std::cout << "Filling initial density...\n";
 
 #pragma omp parallel for
-	for (intType k = 0; k < Mesh.Total_Nodes(); k++) {
+	for (intType k = 0; k < cartesianMesh.total_nodes(); k++) {
 		floatType val = 1;
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-			intType temp_idx = floor(positive_rem(k, pow(Mesh.Nodes_per_Dim, d + 1)) / pow(Mesh.Nodes_per_Dim, d));
+			intType temp_idx = floor(positive_rem(k, pow(cartesianMesh.__nodes_per_dim, d + 1)) / pow(cartesianMesh.__nodes_per_dim, d));
 
-			val *= temp_val[temp_idx + Mesh.Nodes_per_Dim * d];
+			val *= temp_val[temp_idx + cartesianMesh.__nodes_per_dim * d];
 		}
 		PDF_value[k] = val;
 	}
@@ -110,7 +110,7 @@ int16_t PARAMETER_VEC_BUILD(const int random_var_sample_count, Param_pair* PP, c
 			// Re-scaling for the truncation of the random variables
 			floatType rescale_cdf = boost::math::cdf(dist, xF) - boost::math::cdf(dist, x0);
 
-			// Mesh discretization
+			// cartesianMesh discretization
 			dx = (xF - x0) / (random_var_sample_count - 1);
 
 			for (int i = 0; i < random_var_sample_count; i++) {
@@ -164,7 +164,7 @@ int16_t PARAMETER_VEC_BUILD(const int random_var_sample_count, Param_pair* PP, c
 			// Re-scaling for the truncation of the random variables
 			floatType rescale_cdf = boost::math::cdf(dist, xF) - boost::math::cdf(dist, x0);
 
-			// Mesh discretization
+			// cartesianMesh discretization
 			dx = (xF - x0) / (random_var_sample_count - 1);
 
 			for (int i = 0; i < random_var_sample_count; i++) {
@@ -202,7 +202,7 @@ int16_t PARAMETER_VEC_BUILD(const int random_var_sample_count, Param_pair* PP, c
 			// Re-scaling for the truncation of the random variables
 			floatType rescale_cdf = boost::math::cdf(dist, xF) - boost::math::cdf(dist, x0);
 
-			// Mesh discretization
+			// cartesianMesh discretization
 			dx = (xF - x0) / (random_var_sample_count - 1);
 
 			for (int i = 0; i < random_var_sample_count; i++) {

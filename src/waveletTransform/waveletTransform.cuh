@@ -19,7 +19,7 @@ template<uint16_t elementsProcessedPerThread>
 class customAssignToGpuArray {
 public:
 	Particle* outputNodes;
-	const Mesh inputNodes;
+	const cartesianMesh inputNodes;
 	const uint64_t* nodeIdx;
 	const uint32_t elementNr;
 public:
@@ -31,7 +31,7 @@ public:
 
 			if (myIdx < elementNr) {
 				const intType myNodeIdx = nodeIdx[myIdx];
-				outputNodes[myIdx] = inputNodes.Get_node(myNodeIdx);
+				outputNodes[myIdx] = inputNodes.get_node(myNodeIdx);
 			}
 		}
 	};
@@ -54,8 +54,8 @@ public:
 		int64_t cube_app_IDX = 0;
 
 		// Compute the lowest corner node index
-		uint64_t multCounter = 1;	// auxiliary counter: => pow(BoundingBox.Nodes_per_Dim / rescaling, d)
-		uint64_t multCounter_2 = 1;	// For the BoundingBox: => pow(BoundingBox.Nodes_per_Dim, d)
+		uint64_t multCounter = 1;	// auxiliary counter: => pow(BoundingBox.__nodes_per_dim / rescaling, d)
+		uint64_t multCounter_2 = 1;	// For the BoundingBox: => pow(BoundingBox.__nodes_per_dim, d)
 		for (uint16_t d = 0; d < dimensions; d++) {
 			int64_t temp_idx = floorf(positive_rem(global_id, multCounter * (total_signal_nodes / rescaling)) / multCounter) * rescaling;
 
@@ -65,7 +65,7 @@ public:
 		}
 
 		multCounter = 1;	// Reinitialize for next computations: => pow(2, d)
-		multCounter_2 = 1;	// For the BoundingBox: => pow(BoundingBox.Nodes_per_Dim, d)
+		multCounter_2 = 1;	// For the BoundingBox: => pow(BoundingBox.__nodes_per_dim, d)
 
 		// 1 set of wavelets per dimension (1D: horizontal; 2D: Horizontal + Vertical; 3D: Horz + Vert + Deep; ...)
 		for (uint16_t d = 0; d < dimensions; d++) {
@@ -79,7 +79,7 @@ public:
 				uint64_t app_IDX_at_BBox = cube_app_IDX;
 
 				uint64_t multCounter_3 = 1;	// => pow(2, j)
-				uint64_t multCounter_4 = 1;	// => pow(BoundingBox.Nodes_per_Dim, j)
+				uint64_t multCounter_4 = 1;	// => pow(BoundingBox.__nodes_per_dim, j)
 
 				for (uint16_t j = 0; j < dimensions; j++) {
 					int64_t temp = floorf(positive_rem(k, multCounter_3 * 2) / multCounter_3) * rescaling / 2;	// j-th component index
@@ -122,8 +122,8 @@ public:
 		// Global index of the main approximation vertex at the bounding box
 		int64_t cube_app_IDX = 0;
 
-		uint64_t multCounter = 1;	// auxiliary counter: => pow(BoundingBox.Nodes_per_Dim / rescaling, d)
-		uint64_t multCounter_2 = 1;	// For the BoundingBox: => pow(BoundingBox.Nodes_per_Dim, d)
+		uint64_t multCounter = 1;	// auxiliary counter: => pow(BoundingBox.__nodes_per_dim / rescaling, d)
+		uint64_t multCounter_2 = 1;	// For the BoundingBox: => pow(BoundingBox.__nodes_per_dim, d)
 		for (uint16_t d = 0; d < dimensions; d++) {
 			int64_t temp_idx = floorf(
 				positive_rem(global_id, multCounter * (nodes_per_dimension / rescaling)) / multCounter
@@ -138,7 +138,7 @@ public:
 		assigned_node_markers[cube_app_IDX] = 0;
 
 		for (uint64_t k = 1; k < miniSquareNodes; k++) {
-			// Particle visit_node(BoundingBox.Get_node(cube_app_IDX));
+			// Particle visit_node(BoundingBox.get_node(cube_app_IDX));
 			uint64_t detail_idx = cube_app_IDX;
 
 			multCounter = 1;
@@ -168,15 +168,15 @@ class write_signal_in_bounding_box {
 public:
 	const floatType* input_signal;
 	floatType* output_signal;
-	const Mesh signal_domain;
-	const Mesh signal_bounding_box;
+	const cartesianMesh signal_domain;
+	const cartesianMesh signal_bounding_box;
 	const uint64_t max_nodes;
 public:
 	deviceFunction void operator()(const uint64_t global_id) const {
 		if (global_id >= max_nodes) { return; }
 
 		// First, find the node index at the problem domain:
-		uint64_t node_index_at_domain = signal_domain.Get_binIdx(signal_bounding_box.Get_node(global_id));
+		uint64_t node_index_at_domain = signal_domain.get_bin_idx(signal_bounding_box.get_node(global_id));
 
 		// Now, fill the value of the output_signal with the value of the input_signal
 		output_signal[global_id] = input_signal[node_index_at_domain];
@@ -185,11 +185,11 @@ public:
 
 
 template<typename floatType>
-class waveletMeshRefinement {
+class waveletcartesianMeshRefinement {
 public:
 	// Default constructor and destrucor
-	waveletMeshRefinement();
-	~waveletMeshRefinement();
+	waveletcartesianMeshRefinement();
+	~waveletcartesianMeshRefinement();
 
 private:
 	// Input signal for wavelet transform: 
@@ -266,6 +266,6 @@ hostFunction
 int setInitialParticles(
 	const floatType* input_signal_dvc,
 	Particle* output_active_nodes_dvc,
-	const Mesh& signal_bounding_box,
-	const Mesh& signal_domain
+	const cartesianMesh& signal_bounding_box,
+	const cartesianMesh& signal_domain
 );

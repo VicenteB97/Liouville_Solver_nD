@@ -30,7 +30,7 @@ inline floatType DIVERGENCE_FIELD(
 // Output the final point
 __device__ void runge_kutta_45(Particle& position, floatType& value, double t0, const double tF, const double time_step,
 	Param_vec<PARAM_SPACE_DIMENSIONS> parameter_realization, const double* extra_param, const uintType mode,
-	const Mesh domain_mesh);
+	const cartesianMesh domain_mesh);
 
 __device__ void lie_midpoint_mathieu(
 	Particle& position,
@@ -41,7 +41,7 @@ __device__ void lie_midpoint_mathieu(
 	Param_vec<PARAM_SPACE_DIMENSIONS> parameter_realization,
 	const double* extra_param,
 	const uintType mode,
-	const Mesh domain_mesh
+	const cartesianMesh domain_mesh
 );
 
 
@@ -67,6 +67,6 @@ __global__ void ODE_INTEGRATE(
 	const intType		Random_Samples,
 	const uintType		mode,
 	const double* extra_param,
-	const Mesh  	D_Mesh);
+	const cartesianMesh  	D_cartesianMesh);
 
 #endif

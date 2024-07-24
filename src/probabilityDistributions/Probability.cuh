@@ -56,10 +56,10 @@ public:
 
 /// @brief This function creates the IC PDF. We assume it is the tensor product of Normal Distributions
 /// @param Points_per_dimension 
-/// @param Mesh 
+/// @param cartesianMesh 
 /// @param PDF_value 
 /// @param IC_dist_parameters 
-int16_t PDF_INITIAL_CONDITION(const Mesh& Mesh, thrust::host_vector<floatType>& PDF_value, const Distributions* IC_dist_parameters);
+int16_t PDF_INITIAL_CONDITION(const cartesianMesh& cartesianMesh, thrust::host_vector<floatType>& PDF_value, const Distributions* IC_dist_parameters);
 
 
 // ----------------------------------------------------------------------------------- //
@@ -101,18 +101,18 @@ Param_vec<DIM> Gather_Param_Vec(const uintType index, const Param_pair* Paramete
 	return Output;
 }
 
-/// @brief This function builds the Parameter Mesh that will be used in the Liouville Solver 
+/// @brief This function builds the Parameter cartesianMesh that will be used in the Liouville Solver 
 /// @param n_samples: Array where the number of samples per parameter is stored 
-/// @param Parameter_Mesh: Parameter Mesh 
+/// @param Parameter_cartesianMesh: Parameter cartesianMesh 
 /// @param Dist_Parameters: Parameters' (hyper)parameters
 /// @param Dist_Names: Distributions that will be assigned (N = Normal, U = Uniform, etc.)
-/// @brief This function builds the Parameter Mesh that will be used in the Liouville Solver 
+/// @brief This function builds the Parameter cartesianMesh that will be used in the Liouville Solver 
 /// @param n_samples: Array where the number of samples per parameter is stored 
-/// @param Parameter_Mesh: Parameter Mesh 
+/// @param Parameter_cartesianMesh: Parameter cartesianMesh 
 /// @param Dist_Parameters: Parameters' (hyper)parameters
 /// @param Dist_Names: Distributions that will be assigned (N = Normal, U = Uniform, etc.)
 template<uint16_t DIM>
-int16_t RANDOMIZE(Param_pair* Parameter_Mesh,
+int16_t RANDOMIZE(Param_pair* Parameter_cartesianMesh,
 	const Distributions* Dist_Parameters) {
 
 	uintType aux = 0;
@@ -125,7 +125,7 @@ int16_t RANDOMIZE(Param_pair* Parameter_Mesh,
 
 		errorCheck(PARAMETER_VEC_BUILD(nSamples, PP, Dist_Parameters[d]));
 
-		std::copy_n(&PP[0], nSamples, &Parameter_Mesh[aux]);
+		std::copy_n(&PP[0], nSamples, &Parameter_cartesianMesh[aux]);
 
 		delete[] PP;
 		aux += nSamples;
