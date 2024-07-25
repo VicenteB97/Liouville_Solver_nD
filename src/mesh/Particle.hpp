@@ -1,5 +1,5 @@
-#ifndef __PARTICLE_CUH__
-#define __PARTICLE_CUH__
+#ifndef __PARTICLE_HPP__
+#define __PARTICLE_HPP__
 
 #include "headers.hpp"
 #include "cudaBase.cuh"

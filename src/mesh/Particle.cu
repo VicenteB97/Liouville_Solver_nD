@@ -1,4 +1,4 @@
-#include "Particle.cuh"
+#include "Particle.hpp"
 
 // Default constructor
 hostFunction deviceFunction

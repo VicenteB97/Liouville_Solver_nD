@@ -1,9 +1,9 @@
-#ifndef __DOMAIN_CUH__
-#define __DOMAIN_CUH__
+#ifndef __DOMAIN_HPP__
+#define __DOMAIN_HPP__
 
 #include "headers.hpp"
 #include "cudaBase.cuh"
-#include "Particle.cuh"
+#include "Particle.hpp"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -11,8 +11,8 @@
 
 class cartesianMesh{
 private:
-	Particle 	__boundary_inf, __boundary_sup;
-	uint32_t	__nodes_per_dim;
+	Particle __boundary_inf, __boundary_sup;
+	uint32_t __nodes_per_dim;
 
 public:
 	// Parametric constructors:
@@ -83,7 +83,7 @@ public:
 	/// @param globalIdx Global index in the current cartesianMesh
 	/// @return point in space
 	hostFunction deviceFunction	
-		Particle get_node(intType mesh_idx) const;
+		Particle get_node(int32_t mesh_idx) const;
 
 	/// @brief This method decides whether Particle is inside the cartesianMesh or not
 	/// @param Particle 
@@ -93,17 +93,17 @@ public:
 	
 	// Returns the bin (or ID of the closest node) where Particle belongs to, adding bin_offset.
 	hostFunction deviceFunction
-		intType get_bin_idx(const Particle& particle, intType bin_offset = 0) const;
+		intType get_bin_idx(const Particle& particle, int32_t bin_offset = 0) const;
 
 	// Compute the global index at your mesh, given the global index in "other" mesh.
 	hostFunction 
-		intType idx_here_from_other_mesh(intType indx_at_other, const cartesianMesh& other) const;
+		intType idx_here_from_other_mesh(int32_t indx_at_other, const cartesianMesh& other) const;
 
 	/// @brief This function expands a fixed cartesianMesh "other" by a length of  "expansion_length" in each direction/dimension
 	/// @param other The base cartesianMesh from which we will expand
 	/// @param expansion_nodes Number of nodes we will expand in every direction
 	hostFunction deviceFunction	
-		void Expand_From(const cartesianMesh& other, intType expansion_nodes);
+		void Expand_From(const cartesianMesh& other, int32_t expansion_nodes = 0);
 
 	/// @brief This function makes you domain a square (same Lebesgue-length in every direction)
 	hostFunction deviceFunction 
