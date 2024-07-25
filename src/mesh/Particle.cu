@@ -62,6 +62,15 @@ bool Particle::operator==(const Particle& other) const {
 }
 
 hostFunction deviceFunction
+Particle Particle::operator*(floatType scalar) {
+	Particle out(*this);
+	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
+		out.dim[d] *= scalar;
+	}
+	return out;
+}
+
+hostFunction deviceFunction
 floatType Particle::distance(const Particle& other) const {
 	floatType dist = 0;
 	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
@@ -70,25 +79,11 @@ floatType Particle::distance(const Particle& other) const {
 	return sqrtf(dist);
 }
 
-
-hostFunction deviceFunction
-Particle Particle::mult_by_scalar(floatType scalar) const {
-	Particle out;
-
-	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-		out.dim[d] = scalar * dim[d];
-	}
-
-	return out;
-}
-
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Grid class ----------------------------------------------------------------------------------------------------------------- //
-
-// This function is defined aside because CUDA does not allow defining __global__ functions inside class definitions! (At least not statically)
 
 void find_projection::operator()(const uint64_t global_id) {
 	if (global_id >= in_total_particles) { return; }

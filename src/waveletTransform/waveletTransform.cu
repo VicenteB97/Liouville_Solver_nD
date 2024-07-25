@@ -115,13 +115,13 @@ floatType* waveletcartesianMeshRefinement::initial_signal_dvc() const {
 };
 
 hostFunction deviceFunction
-uint32_t waveletcartesianMeshRefinement::nodes_per_dimension() const {
+uint32_t waveletcartesianMeshRefinement::nodes_per_dim() const {
 	return pow(2, __max_refinement_level);
 };
 
 hostFunction deviceFunction
 uint64_t waveletcartesianMeshRefinement::total_signal_nodes() const {
-	return pow(this->nodes_per_dimension(), __signal_dimension);
+	return pow(this->nodes_per_dim(), __signal_dimension);
 };
 
 hostFunction
@@ -149,7 +149,7 @@ void waveletcartesianMeshRefinement::compute_wavelet_transform() {
 
 	uint32_t rescaling{ 2 };
 	const uint64_t total_signal_nodes{ this->total_signal_nodes() };
-	const uint32_t nodes_per_dimension{ this->nodes_per_dimension() };
+	const uint32_t nodes_per_dim{ this->nodes_per_dim() };
 	const double tolerance{ 1E-5 };
 
 	for (uint16_t k = 0; k < __max_refinement_level - __min_refinement_level + 1; k++) {
@@ -161,7 +161,7 @@ void waveletcartesianMeshRefinement::compute_wavelet_transform() {
 			single_block_single_level_wavelet_transform{
 				__transformed_signal,
 				rescaling,
-				nodes_per_dimension,
+				nodes_per_dim,
 				total_signal_nodes
 			}
 		);
@@ -176,7 +176,7 @@ void waveletcartesianMeshRefinement::compute_wavelet_transform() {
 				__assigned_node_indeces,
 				__assigned_node_markers,
 				rescaling,
-				nodes_per_dimension,
+				nodes_per_dim,
 				total_signal_nodes,
 				tolerance
 			}

@@ -50,27 +50,27 @@ __device__ void runge_kutta_45(
 		// Particle flow
 		k0 = VECTOR_FIELD(position, t0, parameter_realization, mode, extra_param);
 
-		temp = k0.Mult_by_Scalar(time_step / 2.00f);
+		temp = k0*(time_step / 2.00f);
 		k1 = VECTOR_FIELD(position + temp, t0 + time_step / 2.00f, parameter_realization, mode, extra_param);
 
-		temp = k1.Mult_by_Scalar(time_step / 2.00f);
+		temp = k1*(time_step / 2.00f);
 		k2 = VECTOR_FIELD(position + temp, t0 + time_step / 2.00f, parameter_realization, mode, extra_param);
 
-		temp = k2.Mult_by_Scalar(time_step);
+		temp = k2*(time_step);
 		k3 = VECTOR_FIELD(position + temp, t0 + time_step, parameter_realization, mode, extra_param);
 
-		k1 = k1.Mult_by_Scalar(2.00f);
-		k2 = k2.Mult_by_Scalar(2.00f);
+		k1 = k1*(2.00f);
+		k2 = k2*(2.00f);
 
 		temp = k0 + k3 + k1 + k2;
-		temp = position + temp.Mult_by_Scalar((floatType)time_step / 6); // New particle dim
+		temp = position + temp*((floatType)time_step / 6); // New particle dim
 
 		// Integration of PDF: The following line corresponds to computing the approximation via a Hermite interpolation (we know initial and final points and their velocities)
 		Int1 = DIVERGENCE_FIELD(position, t0, parameter_realization, mode, extra_param);
 
 		k_final = VECTOR_FIELD(temp, t0 + time_step, parameter_realization, mode, extra_param);
-		position = (position + temp).Mult_by_Scalar(0.5);
-		position = position + (k0 + k_final).Mult_by_Scalar(0.125);
+		position = (position + temp)*(0.5);
+		position = position + (k0 + k_final)*(0.125);
 		Int2 = DIVERGENCE_FIELD(position, (floatType)(2 * t0 + time_step) / 2, parameter_realization, mode, extra_param);
 
 		Int3 = DIVERGENCE_FIELD(temp, (floatType)t0 + time_step, parameter_realization, mode, extra_param);
@@ -130,8 +130,8 @@ __device__ void lie_euler_mathieu(
 		Particle k0 {VECTOR_FIELD(position, t0, parameter_realization, mode, extra_param)};
 		Particle k_final {VECTOR_FIELD(temp_position, t0 + time_step, parameter_realization, mode, extra_param)};
 
-		position = (position + temp_position).Mult_by_Scalar(0.5);
-		position = position + (k0 + k_final).Mult_by_Scalar(0.125);
+		position = (position + temp_position)*(0.5);
+		position = position + (k0 + k_final)*(0.125);
 
 		floatType Int2 {DIVERGENCE_FIELD(position, (floatType)(2 * t0 + time_step) / 2, parameter_realization, mode, extra_param)};
 

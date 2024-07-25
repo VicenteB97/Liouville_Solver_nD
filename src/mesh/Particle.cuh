@@ -34,10 +34,10 @@ public:
 		void operator=(const Particle& other);
 
 	hostFunction deviceFunction
-		floatType distance(const Particle& other) const;
+		Particle operator*(floatType scalar);
 
 	hostFunction deviceFunction
-		Particle mult_by_scalar(floatType scalar) const;
+		floatType distance(const Particle& other) const;
 };
 
 
@@ -50,7 +50,7 @@ public:
 // This function is defined aside because CUDA does not allow defining __global__ functions inside class definitions! (At least not statically)
 class find_projection {
 public:
-	Particle* in_particles;
+	const Particle* in_particles;
 	floatType* out_projections;
 	uint64_t in_total_particles;
 	uint64_t in_project_dimension;

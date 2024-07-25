@@ -42,7 +42,7 @@ class single_block_single_level_wavelet_transform {
 public:
 	floatType* signal;
 	uint64_t rescaling;
-	uint32_t nodes_per_dimension;
+	uint32_t nodes_per_dim;
 	uint64_t total_signal_nodes;
 	uint16_t dimensions;
 public:
@@ -94,7 +94,7 @@ public:
 				haar_wavelet(signal[app_IDX_at_BBox], signal[det_IDX_at_BBox]);
 			}
 			multCounter *= 2;
-			multCounter_2 *= nodes_per_dimension;
+			multCounter_2 *= nodes_per_dim;
 		}
 	};
 };
@@ -107,7 +107,7 @@ public:
 	uint64_t* assigned_node_indeces;
 	uint32_t* assigned_node_markers;
 	const uint64_t rescaling;
-	const uint64_t nodes_per_dimension;
+	const uint64_t nodes_per_dim;
 	const uint64_t total_signal_nodes;
 	const double tolerance;
 	const uint16_t dimensions;
@@ -126,12 +126,12 @@ public:
 		uint64_t multCounter_2 = 1;	// For the BoundingBox: => pow(BoundingBox.__nodes_per_dim, d)
 		for (uint16_t d = 0; d < dimensions; d++) {
 			int64_t temp_idx = floorf(
-				positive_rem(global_id, multCounter * (nodes_per_dimension / rescaling)) / multCounter
+				positive_rem(global_id, multCounter * (nodes_per_dim / rescaling)) / multCounter
 			) * rescaling;
 
 			cube_app_IDX += temp_idx * multCounter_2;
-			multCounter *= nodes_per_dimension / rescaling;
-			multCounter_2 *= nodes_per_dimension;
+			multCounter *= nodes_per_dim / rescaling;
+			multCounter_2 *= nodes_per_dim;
 		}
 
 		// Now we have to go see what happens with the outputs
@@ -212,7 +212,7 @@ private:
 	uint32_t* __assigned_node_markers;
 	uint32_t* __assigned_node_markers_dvc;*/
 
-	// Other signal definitions:
+	// other signal definitions:
 	uint16_t __signal_dimension;
 
 public:
@@ -241,7 +241,7 @@ public:
 		void set_initial_signal_dvc2dvc(floatType* input_signal_dvc);
 
 	hostFunction deviceFunction
-		uint32_t nodes_per_dimension() const;
+		uint32_t nodes_per_dim() const;
 
 	hostFunction deviceFunction
 		uint64_t total_signal_nodes() const;

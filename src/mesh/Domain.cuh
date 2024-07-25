@@ -20,7 +20,7 @@ public:
 	/// @param nodes_per_dim 
 	/// @return 
 	hostFunction deviceFunction	
-		cartesianMesh(intType nodes_per_dim = 2);
+		cartesianMesh(int32_t nodes_per_dim = 2);
 
 	/// @brief Create a cartesianMesh knowing the discretization length
 	/// @param discretization_length 
@@ -34,7 +34,7 @@ public:
 	/// @param nodes_per_dim 
 	/// @return 
 	hostFunction deviceFunction	
-		cartesianMesh(const Particle& bnd_inf, const Particle& bnd_sup, intType nodes_per_dim = 2);
+		cartesianMesh(const Particle& bnd_inf, const Particle& bnd_sup, int32_t nodes_per_dim = 2);
 
 	/// @brief Create a cartesianMesh specifying all the parameters (discr. length instead of the nodes per dimension)
 	/// @param bnd_inf 
@@ -49,19 +49,19 @@ public:
 		void set_boundary_inf(const Particle& boundary_inf);
 
 	hostFunction deviceFunction
-		Particle& boundary_inf() const;
+		Particle boundary_inf() const;
 
 	hostFunction deviceFunction
 		void set_boundary_sup(const Particle& boundary_sup);
 
 	hostFunction deviceFunction
-		Particle& boundary_sup() const;
+		Particle boundary_sup() const;
 
 	hostFunction deviceFunction
-		void set_nodes_per_dimension(uint32_t nodes_per_dimension);
+		void set_nodes_per_dimension(uint32_t nodes_per_dim = 2);
 
 	hostFunction deviceFunction
-		uint32_t nodes_per_dimension() const;
+		uint32_t nodes_per_dim() const;
 
 	/// @brief Compute the total number of nodes
 	hostFunction deviceFunction 
@@ -99,11 +99,11 @@ public:
 	hostFunction 
 		intType idx_here_from_other_mesh(intType indx_at_other, const cartesianMesh& other) const;
 
-	/// @brief This function expands a fixed cartesianMesh "Other" by a length of  "expansion_length" in each direction/dimension
-	/// @param Other The base cartesianMesh from which we will expand
+	/// @brief This function expands a fixed cartesianMesh "other" by a length of  "expansion_length" in each direction/dimension
+	/// @param other The base cartesianMesh from which we will expand
 	/// @param expansion_nodes Number of nodes we will expand in every direction
 	hostFunction deviceFunction	
-		void Expand_From(const cartesianMesh& Other, intType expansion_nodes);
+		void Expand_From(const cartesianMesh& other, intType expansion_nodes);
 
 	/// @brief This function makes you domain a square (same Lebesgue-length in every direction)
 	hostFunction deviceFunction 

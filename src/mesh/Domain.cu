@@ -1,4 +1,4 @@
-#include <Domain.cuh>
+#include "Domain.cuh"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -7,7 +7,7 @@
 	/// @brief Create a cartesianMesh knowing the nodes per dimension
 	/// @param nodes_per_dim 
 	/// @return 
-hostFunction deviceFunction	cartesianMesh::cartesianMesh(intType nodes_per_dim) {
+hostFunction deviceFunction	cartesianMesh::cartesianMesh(int32_t nodes_per_dim) {
 
 	__nodes_per_dim = nodes_per_dim;
 	__boundary_inf = Particle(DOMAIN_INF);
@@ -29,7 +29,7 @@ hostFunction deviceFunction	cartesianMesh::cartesianMesh(floatType discretizatio
 /// @param bnd_sup 
 /// @param nodes_per_dim 
 /// @return 
-hostFunction deviceFunction	cartesianMesh::cartesianMesh(const Particle& bnd_inf, const Particle& bnd_sup, intType nodes_per_dim) {
+hostFunction deviceFunction	cartesianMesh::cartesianMesh(const Particle& bnd_inf, const Particle& bnd_sup, int32_t nodes_per_dim) {
 
 	__nodes_per_dim = nodes_per_dim;
 	__boundary_inf = bnd_inf;
@@ -55,7 +55,7 @@ void cartesianMesh::set_boundary_inf(const Particle& boundary_inf) {
 };
 
 hostFunction deviceFunction
-Particle& cartesianMesh::boundary_inf() const {
+Particle cartesianMesh::boundary_inf() const {
 	return __boundary_inf;
 };
 
@@ -65,23 +65,23 @@ void cartesianMesh::set_boundary_sup(const Particle& boundary_sup) {
 };
 
 hostFunction deviceFunction
-Particle& cartesianMesh::boundary_sup() const {
+Particle cartesianMesh::boundary_sup() const {
 	return __boundary_sup;
 };
 
 hostFunction deviceFunction
-void cartesianMesh::set_nodes_per_dimension(uint32_t nodes_per_dimension) {
-	__nodes_per_dimension = nodes_per_dimension;
+void cartesianMesh::set_nodes_per_dimension(uint32_t nodes_per_dim) {
+	__nodes_per_dim = nodes_per_dim;
 };
 
 hostFunction deviceFunction
-uint32_t cartesianMesh::nodes_per_dimension() const {
-	return __nodes_per_dimension;
+uint32_t cartesianMesh::nodes_per_dim() const {
+	return __nodes_per_dim;
 };
 
 	/// @brief Compute the total number of nodes
 hostFunction deviceFunction	 
-intType cartesianMesh::total_nodes() const {
+int32_t cartesianMesh::total_nodes() const {
 	return pow(__nodes_per_dim, PHASE_SPACE_DIMENSIONS);
 }
 
@@ -94,7 +94,7 @@ floatType cartesianMesh::edge_size() const {
 /// @brief Gives the center node of the cartesianMesh
 hostFunction deviceFunction	 
 Particle cartesianMesh::center() const {
-	return (__boundary_sup + __boundary_inf).Mult_by_Scalar(0.5);
+	return (__boundary_sup + __boundary_inf)*(0.5);
 }
 
 /// @brief Gives the discretization length (distance between two consecutive nodes in the same dimension) 
@@ -109,14 +109,14 @@ floatType cartesianMesh::discr_length() const {
 /// @param globalIdx Global index in the current cartesianMesh
 /// @return point in space
 hostFunction deviceFunction	 
-Particle cartesianMesh::get_node(intType globalIdx) const {
+Particle cartesianMesh::get_node(int32_t globalIdx) const {
 
 	Particle out(__boundary_inf);
-	intType temp = 1;
+	int32_t temp = 1;
 	floatType discretizationLength = this->discr_length();
 
 	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-		intType j = floorf((floatType)positive_rem(globalIdx, temp * __nodes_per_dim) / temp);	// This line gives the index at each dimension
+		int32_t j = floorf((floatType)positive_rem(globalIdx, temp * __nodes_per_dim) / temp);	// This line gives the index at each dimension
 
 		out.dim[d] += j * discretizationLength; temp *= __nodes_per_dim;			// This line gives the cartesianMesh node per se
 	}
@@ -127,21 +127,21 @@ Particle cartesianMesh::get_node(intType globalIdx) const {
 /// @param Particle 
 /// @return bool. True if particle is inside cartesianMesh, false otherwise
 hostFunction deviceFunction	 
-bool cartesianMesh::contains_particle(const Particle& Particle) const {
+bool cartesianMesh::contains_particle(const Particle& particle) const {
 	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-		if (Particle.dim[d] < __boundary_inf.dim[d] || Particle.dim[d] > __boundary_sup.dim[d]) { return false; }
+		if (particle.dim[d] < __boundary_inf.dim[d] || particle.dim[d] > __boundary_sup.dim[d]) { return false; }
 	}
 	return true;
 }
 
 // Returns the bin (or ID of the closest node) where Particle belongs to, adding bin_offset.
 hostFunction deviceFunction  
-intType cartesianMesh::get_bin_idx(const Particle& Particle, intType bin_offset) const {
-	intType bin_idx = 0, accPower = 1;
+int32_t cartesianMesh::get_bin_idx(const Particle& particle, int32_t bin_offset) const {
+	int32_t bin_idx = 0, accPower = 1;
 	floatType discretizationLength = this->discr_length();
 
 	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-		intType temp_idx = roundf((floatType)(Particle.dim[d] - __boundary_inf.dim[d]) / discretizationLength) + bin_offset;
+		int32_t temp_idx = roundf((floatType)(particle.dim[d] - __boundary_inf.dim[d]) / discretizationLength) + bin_offset;
 
 		bin_idx += temp_idx * accPower;
 		accPower *= __nodes_per_dim;
@@ -151,23 +151,23 @@ intType cartesianMesh::get_bin_idx(const Particle& Particle, intType bin_offset)
 
 // Compute the global index at your mesh, given the global index in "other" mesh.
 hostFunction  
-intType cartesianMesh::idx_here_from_other_mesh(intType indx_at_other, const cartesianMesh& other) const {
+int32_t cartesianMesh::idx_here_from_other_mesh(int32_t indx_at_other, const cartesianMesh& other) const {
 	return this->get_bin_idx(other.get_node(indx_at_other));
 }
 
-/// @brief This function expands a fixed cartesianMesh "Other" by a length of  "expansion_length" in each direction/dimension
-/// @param Other The base cartesianMesh from which we will expand
+/// @brief This function expands a fixed cartesianMesh "other" by a length of  "expansion_length" in each direction/dimension
+/// @param other The base cartesianMesh from which we will expand
 /// @param expansion_nodes Number of nodes we will expand in every direction
 hostFunction deviceFunction	 
-void cartesianMesh::Expand_From(const cartesianMesh& Other, intType expansion_nodes) {
+void cartesianMesh::Expand_From(const cartesianMesh& other, int32_t expansion_nodes) {
 
 	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
 		// To make sure that the points fall into the cartesianMesh nodes
-		__boundary_inf.dim[d] = Other.__boundary_inf.dim[d] - Other.discr_length() * expansion_nodes;
-		__boundary_sup.dim[d] = Other.__boundary_sup.dim[d] + Other.discr_length() * expansion_nodes;
+		__boundary_inf.dim[d] = other.boundary_inf().dim[d] - other.discr_length() * expansion_nodes;
+		__boundary_sup.dim[d] = other.boundary_sup().dim[d] + other.discr_length() * expansion_nodes;
 	}
 
-	__nodes_per_dim = Other.__nodes_per_dim + 2 * expansion_nodes;
+	__nodes_per_dim = other.nodes_per_dim() + 2 * expansion_nodes;
 }
 
 /// @brief This function makes you domain a square (same Lebesgue-length in every direction)
@@ -189,16 +189,24 @@ void cartesianMesh::Squarify() {
 /// @brief This function updates a cartesianMesh-defined bounding box
 /// @param D_Particle_Locations GPU array storing the positions of the particles
 /// @returns Nothing
-	void cartesianMesh::update_bounding_box(const thrust::device_vector<Particle>& D_Particle_Locations) {
+void cartesianMesh::update_bounding_box(const thrust::device_vector<Particle>& D_Particle_Locations) {
 
-	intType Threads = fmin(THREADS_P_BLK, D_Particle_Locations.size());
-	intType Blocks = floor((D_Particle_Locations.size() - 1) / Threads) + 1;
+	int32_t threads = fmin(THREADS_P_BLK, D_Particle_Locations.size());
+	int32_t blocks = floor((D_Particle_Locations.size() - 1) / threads) + 1;
+
+	gpuDevice device;
 
 	// Temporary vector storing the particles' projections in each dimension 
 	thrust::device_vector<floatType> projection(D_Particle_Locations.size(), (floatType)0);
 
 	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-		findProjection << <Blocks, Threads >> > (rpc(D_Particle_Locations, 0), rpc(projection, 0), D_Particle_Locations.size(), d);
+
+		device.launch_kernel(blocks, threads, find_projection{
+			rpc(D_Particle_Locations, 0),
+			rpc(projection, 0),
+			D_Particle_Locations.size(),
+			d
+		});
 
 		floatType temp_1 = *(thrust::min_element(thrust::device, projection.begin(), projection.end())); // min element from the projection in that direction
 		floatType temp_2 = *(thrust::max_element(thrust::device, projection.begin(), projection.end()));
