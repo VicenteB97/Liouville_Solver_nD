@@ -1,4 +1,4 @@
-#include "Adapt_Mesh.cuh"
+#include "adaptiveMeshRefinement/Adapt_Mesh.cuh"
 
 gpuDevice device;
 
@@ -33,16 +33,16 @@ int32_t setInitialParticles(
 	);
 
 	// Create amr_handle
-	waveletTransform amr_handle;
+	waveletTransform amr_engine;
 
-	amr_handle.set_min_refinement_level(0);
-	amr_handle.set_max_refinement_level(log2(signal_bounding_box.__nodes_per_dim));
-	amr_handle.set_initial_signal(signal_in_bounding_box_dvc);
+	amr_engine.set_min_refinement_level(0);
+	amr_engine.set_max_refinement_level(log2(signal_bounding_box.__nodes_per_dim));
+	amr_engine.set_initial_signal_dvc2dvc(rpc(signal_in_bounding_box_dvc, 0));
+	amr_engine.compute_wavelet_transform();
 
-	amr_handle.compute_wavelet_transform();
-	amr_handle.get_detail_above_threshold_nodes(output_active_nodes_dvc, signal_bounding_box);
+	get_detail_above_threshold_nodes(output_active_nodes_dvc, signal_bounding_box);
 
-	return amr_handle.transformed_signal();
+	return amr_engine.transformed_signal();
 };
 
 hostFunction

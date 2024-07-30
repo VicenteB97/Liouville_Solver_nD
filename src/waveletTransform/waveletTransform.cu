@@ -1,10 +1,7 @@
-#include "waveletTransform.hpp"
+#include "waveletTransform/waveletTransform.hpp"
 
-/// @brief (DEVICE FUNCTION) Compute a 1D Haar wavelet transform
-/// @param s1 
-/// @param s2 
-/// @return
-deviceFunction inline void haar_wavelet(floatType& s1, floatType& s2) {
+deviceFunction 
+inline void haar_wavelet(floatType& s1, floatType& s2) {
 	floatType aux = 0.5 * (s1 + s2);
 	s2 = s1 - s2;
 	s1 = aux;
@@ -114,10 +111,57 @@ void get_nodes_above_threshold::operator()(const uint64_t global_id) const {
 };
 
 hostFunction
-waveletTransform::waveletTransform() {};	// Instantiate all pointers as nullptrs
+waveletTransform::waveletTransform() {
+	// Instantiate host pointers as null pointers
+	__initial_signal = nullptr;
+	__transformed_signal = nullptr;
+	__threshold_cutoff_transformed_signal = nullptr;
+	__assigned_node_indeces = nullptr;
+	__assigned_node_markers = nullptr;
+
+	// Instantiate device pointers as null pointers
+	__initial_signal_dvc = nullptr;
+	__transformed_signal_dvc = nullptr;
+	__threshold_cutoff_transformed_signal_dvc = nullptr;
+	__assigned_node_indeces_dvc = nullptr;
+	__assigned_node_markers_dvc = nullptr;
+
+};
 
 hostFunction
-waveletTransform::~waveletTransform() { delete this; };		// Delete and free all raw_pointers, so no memory is leaked
+waveletTransform::~waveletTransform() {
+	// Delete dynamically-allocated host pointers
+	if (__initial_signal != nullptr) {
+		delete[] __initial_signal;
+		__initial_signal == nullptr;
+	};
+	if (__transformed_signal != nullptr) {
+		delete[] __transformed_signal;
+		__transformed_signal == nullptr;
+	};
+	if (__threshold_cutoff_transformed_signal != nullptr) {
+		delete[] __threshold_cutoff_transformed_signal;
+		__threshold_cutoff_transformed_signal == nullptr;
+	};
+	if (__assigned_node_indeces != nullptr) {
+		delete[] __assigned_node_indeces;
+		__assigned_node_indeces == nullptr;
+	};
+	if (__assigned_node_markers != nullptr) {
+		delete[] __assigned_node_markers;
+		__assigned_node_markers == nullptr;
+	};
+
+	// Delete device pointers
+	gpu_device.device_free(__initial_signal_dvc);
+	gpu_device.device_free(__transformed_signal_dvc);
+	gpu_device.device_free(__threshold_cutoff_transformed_signal_dvc);
+	gpu_device.device_free(__assigned_node_indeces_dvc);
+	gpu_device.device_free(__assigned_node_markers_dvc);
+
+	// Destroy object
+	delete this; 
+};
 
 hostFunction
 void waveletTransform::set_signal_dimension(uint16_t input) {
@@ -225,14 +269,22 @@ hostFunction
 void waveletTransform::compute_wavelet_transform() {
 	// Here, you've got to compute the wavelet transformation of the initial signal.
 	// Pass the wavelet transform as a function pointer (future)
-	__transformed_signal_dvc = __initial_signal_dvc;
-
 	uint32_t rescaling{ 2 };
 	const uint64_t total_signal_nodes{ this->total_signal_nodes() };
 	const uint32_t nodes_per_dim{ this->nodes_per_dim() };
-	const double tolerance{ 1E-5 };
+	const double tolerance{ TOLERANCE_AMR }; 
+	
+	gpu_device.memCpy_device_to_device(
+		__transformed_signal_dvc,
+		__initial_signal_dvc,
+		sizeof(floatType) * total_signal_nodes
+	);
 
-	for (uint16_t k = 0; k < __max_refinement_level - __min_refinement_level + 1; k++) {
+	// Allocate memory for the assigned node stuff
+	gpu_device.device_malloc((void**)&__assigned_node_indeces_dvc, sizeof(uint64_t) * total_signal_nodes);
+	gpu_device.device_malloc((void**)&__assigned_node_markers_dvc, sizeof(uint32_t) * total_signal_nodes);
+
+	for (uint16_t k = 0; k < __max_refinement_level - __min_refinement_level + 1; ++k) {
 
 		uint16_t Threads = fmin(THREADS_P_BLK, total_signal_nodes / pow(rescaling, PHASE_SPACE_DIMENSIONS));
 		uint64_t Blocks = floor((total_signal_nodes / pow(rescaling, PHASE_SPACE_DIMENSIONS) - 1) / Threads) + 1;
@@ -245,10 +297,6 @@ void waveletTransform::compute_wavelet_transform() {
 				total_signal_nodes
 			}
 		);
-
-		//// Resize the arrays!!
-		//device.resize<uint32_t>(__assigned_node_markers, total_signal_nodes);
-		//device.resize<uint64_t>(__assigned_node_indeces, total_signal_nodes);
 
 		gpu_device.launch_kernel(Blocks, Threads,
 			get_nodes_above_threshold{

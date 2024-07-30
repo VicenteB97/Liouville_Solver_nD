@@ -42,8 +42,8 @@ public:
 class waveletTransform {
 public:
 	// Default constructor and destrucor
-	waveletTransform();
-	~waveletTransform();
+	hostFunction waveletTransform();
+	hostFunction ~waveletTransform();
 
 private:
 	// Input signal for wavelet transform: 
