@@ -114,10 +114,10 @@ void get_nodes_above_threshold::operator()(const uint64_t global_id) const {
 };
 
 hostFunction
-waveletTransform::waveletTransform() {};
+waveletTransform::waveletTransform() {};	// Instantiate all pointers as nullptrs
 
 hostFunction
-waveletTransform::~waveletTransform() { delete this; };
+waveletTransform::~waveletTransform() { delete this; };		// Delete and free all raw_pointers, so no memory is leaked
 
 hostFunction
 void waveletTransform::set_signal_dimension(uint16_t input) {
@@ -153,6 +153,7 @@ hostFunction
 void waveletTransform::set_initial_signal_host2dvc(const floatType* input_signal) {
 	// malloc and memcopy
 	uint64_t copy_size_bytes = sizeof(floatType) * this->total_signal_nodes();
+	gpu_device.device_malloc((void**)&__initial_signal_dvc, copy_size_bytes);
 	gpu_device.memCpy_host_to_device(__initial_signal_dvc, (void*) input_signal, copy_size_bytes);
 };
 
@@ -160,6 +161,7 @@ hostFunction
 void waveletTransform::set_initial_signal_dvc2dvc(const floatType* input_signal_dvc) {
 	// malloc and memcopy
 	uint64_t copy_size_bytes = sizeof(floatType) * this->total_signal_nodes();
+	gpu_device.device_malloc((void**)&__initial_signal_dvc, copy_size_bytes);
 	gpu_device.memCpy_device_to_device(__initial_signal_dvc, (void*)input_signal_dvc, copy_size_bytes);
 };
 
