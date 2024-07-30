@@ -17,9 +17,10 @@
 #include <atomic>		// For multithreading atomic functions
 
 #include "Case_definition.cuh"
-#include "utils/others.cuh"
-#include "utils/numeric_defs.cuh"
-#include "utils/error_functs.cuh"
-#include "utils/error_msgs.cuh"
+#include "cudaBase.cuh"
+
+static constexpr uint16_t THREADS_P_BLK = 128;
+
+static const gpuDevice gpu_device;
 
 #endif

@@ -1,230 +1,80 @@
-#include <Adapt_Mesh.cuh>
+#include "Adapt_Mesh.cuh"
 
-/// @brief (DEVICE FUNCTION) Compute a 1D Haar wavelet transform
-/// @param s1 
-/// @param s2 
-/// @return 
-__device__ inline void _1D_WVLET(floatType& s1, floatType& s2) {
+gpuDevice device;
 
-	floatType aux = 0.5 * (s1 + s2);
-	s2 = s1 - s2;
-	s1 = aux;
-}
+hostFunction
+int32_t setInitialParticles(
+	const floatType* input_signal_dvc,
+	Particle* output_active_nodes_dvc,
+	const cartesianMesh& signal_bounding_box,
+	const cartesianMesh& signal_domain
+) {
 
-/// @brief (GLOBAL FUNCTION) Compute 1 level of the multidimensional wavelet transform in the GPU
-/// @tparam PHASE_SPACE_DIMENSIONS
-/// @tparam floatType
-/// @param PDF Our "signal". The multidimensional signal we want to compress
-/// @param Activate_node An array with the nodes and the indication whether the node is chosen or not
-/// @param BoundingBox The "smallest" cartesianMesh where the support of the PDF is contained
-/// @param Problem_Domain Problem domain
-/// @param rescaling Rescaling value that indicates the level of the wavelet transform
-/// @return 
-__global__ void D__Wavelet_Transform__F(floatType* PDF,
-	uintType* nodeIdxs,
-	uintType* isActiveNode,
-	const cartesianMesh 	BoundingBox,
-	const cartesianMesh	Problem_Domain,
-	const floatType	rescaling) {
+	// Create the signal in the bounding box. Initialized to 0
+	const uint64_t size_input_signal = signal_domain.total_nodes();
+	const uint64_t size_signal_in_bounding_box = signal_bounding_box.total_nodes();
 
-	const uint64_t globalID = blockDim.x * blockIdx.x + threadIdx.x;
+	// Create and fill with 0 the signal_in_bounding_box array (remember to free memory afterwards):
+	thrust::device_vector<floatType> signal_in_bounding_box_dvc(size_signal_in_bounding_box);
 
-	// Range guard for out-of-bounds nodes
-	if (globalID >= BoundingBox.total_nodes() / powf(rescaling, PHASE_SPACE_DIMENSIONS)) { return; }
+	std::cout << "Size of initial PDF after memory allocation: " << signal_in_bounding_box_dvc.size() << std::endl;
 
-	const uintType		totalNodes = Problem_Domain.total_nodes();		// Total nodes in the problem domain
-	const uint16_t	miniSquareNodes = pow(2, PHASE_SPACE_DIMENSIONS);	// Total nodes in each simple wavelet transform (per GPU thread)
+	//Fill the signal_in_bounding_box
+	uint16_t threads = fmin(THREADS_P_BLK, size_signal_in_bounding_box);
+	uint64_t blocks = floor((size_signal_in_bounding_box - 1) / threads) + 1;
 
-	// Global index of the main approximation vertex at the bounding box
-	intType cube_app_IDX = 0;
-
-	// Compute the index and the node per se
-
-	uintType multCounter = 1;	// auxiliary counter: => pow(BoundingBox.__nodes_per_dim / rescaling, d)
-	uintType multCounter_2 = 1;	// For the BoundingBox: => pow(BoundingBox.__nodes_per_dim, d)
-	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-		intType temp_idx = floorf(positive_rem(globalID, multCounter * (BoundingBox.__nodes_per_dim / rescaling)) / multCounter) * rescaling;
-
-		cube_app_IDX += temp_idx * multCounter_2;
-		multCounter *= BoundingBox.__nodes_per_dim / rescaling;
-		multCounter_2 *= BoundingBox.__nodes_per_dim;
-	}
-
-	multCounter = 1;	// Reinitialize for next computations: => pow(2, d)
-	multCounter_2 = 1;	// For the BoundingBox: => pow(BoundingBox.__nodes_per_dim, d)
-
-	// 1 set of wavelets per dimension (1D: horizontal; 2D: Horizontal + Vertical; 3D: Horz + Vert + Deep; ...)
-	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-
-		// Go through all the vertices that are defined by the main cube approximation vertex
-		for (uintType k = 0; k < miniSquareNodes; k++) {
-
-			// If we are at the current approximation vertex:
-			if (floorf(positive_rem(k, 2 * multCounter) / multCounter) == 0) {		// here, multCounter == pow(2, d)
-
-				// Copmute approximation node
-				uintType app_IDX_at_BBox = cube_app_IDX;
-
-				uintType multCounter_3 = 1;	// => pow(2, j)
-				uintType multCounter_4 = 1;	// => pow(BoundingBox.__nodes_per_dim, j)
-
-				for (uint16_t j = 0; j < PHASE_SPACE_DIMENSIONS; j++) {
-					intType temp = floorf(positive_rem(k, multCounter_3 * 2) / multCounter_3) * rescaling / 2;	// j-th component index
-
-					app_IDX_at_BBox += temp * multCounter_4;
-					multCounter_3 *= 2;
-					multCounter_4 *= BoundingBox.__nodes_per_dim;
-				}
-
-				// Compute corresponding detail node
-				intType det_IDX_at_BBox = app_IDX_at_BBox + multCounter_2 * rescaling / 2;
-
-				Particle app_node(BoundingBox.get_node(app_IDX_at_BBox));
-				Particle det_node(BoundingBox.get_node(det_IDX_at_BBox));
-
-				// Check which ones are in the problem domain!
-				if (Problem_Domain.contains_particle(app_node) && Problem_Domain.contains_particle(det_node)) {
-
-					// Calculate the indeces for the problem domain
-					intType app_node_at_PD(Problem_Domain.get_bin_idx(app_node));
-					intType det_node_at_PD(Problem_Domain.get_bin_idx(det_node));
-
-					_1D_WVLET(PDF[app_node_at_PD], PDF[det_node_at_PD]);
-				}
-			}
+	gpu_device.launch_kernel(blocks, threads, write_signal_in_bounding_box{
+		   input_signal_dvc,
+		   rpc(signal_in_bounding_box_dvc, 0),
+		   signal_domain,
+		   signal_bounding_box,
+		   size_signal_in_bounding_box
 		}
-		multCounter *= 2;
-		multCounter_2 *= BoundingBox.__nodes_per_dim;
-	}
+	);
 
-	// Now we have to go see what happens with the outputs
-	nodeIdxs[cube_app_IDX] = 0;
+	// Create amr_handle
+	waveletTransform amr_handle;
 
-	for (uintType k = 1; k < miniSquareNodes; k++) {
+	amr_handle.set_min_refinement_level(0);
+	amr_handle.set_max_refinement_level(log2(signal_bounding_box.__nodes_per_dim));
+	amr_handle.set_initial_signal(signal_in_bounding_box_dvc);
 
-		Particle visit_node(BoundingBox.get_node(cube_app_IDX));
+	amr_handle.compute_wavelet_transform();
+	amr_handle.get_detail_above_threshold_nodes(output_active_nodes_dvc, signal_bounding_box);
 
-		multCounter = 1;	// restart the counter
+	return amr_handle.transformed_signal();
+};
 
-		// Get the indeces at the bounding box:
-		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-			intType temp = floorf(positive_rem(k, multCounter * 2) / multCounter) * rescaling / 2;	// j-th component index
+hostFunction
+void get_detail_above_threshold_nodes(Particle* particle_locations, const cartesianMesh& signal_domain) const {
 
-			visit_node.dim[d] += temp * BoundingBox.discr_length();
-			multCounter *= 2;
-		}
-
-		if (Problem_Domain.contains_particle(visit_node)) {
-			// These two indeces can be obtained in the previous loop
-			intType temp = Problem_Domain.get_bin_idx(visit_node);
-			intType temp_IDX_at_BBox = BoundingBox.get_bin_idx(visit_node);
-
-			nodeIdxs[temp_IDX_at_BBox] = temp;
-
-			if (abs(PDF[temp]) >= TOLERANCE_AMR) {
-				isActiveNode[temp_IDX_at_BBox] = 1;
-			}
-		}
-	}
-}
-
-
-
-template<uint16_t elementsProcessedPerThread>
-__global__ void customAssignToGpuArray(floatType* outputPDF, const floatType* inputPDF, Particle* outputNodes, const cartesianMesh inputNodes,
-	const uintType* nodeIdx, const intType elementNr) {
-	const int64_t globalId = blockDim.x * blockIdx.x + threadIdx.x;
-
-#pragma unroll
-	for (uint16_t k = 0; k < elementsProcessedPerThread; k++) {
-
-		const uintType myIdx = globalId * elementsProcessedPerThread + k;
-
-		if (myIdx < elementNr) {
-			const intType myNodeIdx = nodeIdx[myIdx];
-
-			outputPDF[myIdx] = inputPDF[myNodeIdx];
-			outputNodes[myIdx] = inputNodes.get_node(myNodeIdx);
-		}
-	}
-}
-
-/// @brief (HOST FUNCTION)
-/// @param H_PDF 
-/// @param D__PDF 
-/// @param AdaptPDF 
-/// @param AdaptGrid 
-/// @param Problem_Domain 
-/// @param Base_cartesianMesh 
-/// @param Supp_BBox 
-/// @return Error code (0 = good, -1 = something went wrong)
-int16_t setInitialParticles(const thrust::host_vector<floatType>& H_PDF,
-	thrust::device_vector<floatType>& D__PDF,
-	thrust::device_vector<floatType>& AdaptPDF,
-	thrust::device_vector<Particle>& AdaptGrid,
-	const cartesianMesh& Problem_Domain,
-	const cartesianMesh& Base_cartesianMesh,
-	cartesianMesh& Supp_BBox) {
-
-
-	uintType rescaling = 2;
-
-	// Prepare the bounding box for the Wavelet-based AMR procedure! (We don't really care if it's off limits from the problem domain)
-	Supp_BBox.Squarify();	// Make it square
-	Supp_BBox.__nodes_per_dim = (Supp_BBox.__boundary_sup.dim[0] - Supp_BBox.__boundary_inf.dim[0]) / Problem_Domain.discr_length() + 1;
-
-	double refinementLvl = log2(Supp_BBox.__nodes_per_dim);
-
-	if (fmod(refinementLvl, 1) != 0) {
-		Supp_BBox.__nodes_per_dim = pow(2, ceil(refinementLvl));
-
-		// Rewrite the refinement level value
-		refinementLvl = log2(Supp_BBox.__nodes_per_dim);
-
-		if (Supp_BBox.__nodes_per_dim >= Problem_Domain.__nodes_per_dim) { Supp_BBox = Problem_Domain; }
-		else {
-			Supp_BBox.__boundary_inf = Base_cartesianMesh.get_node(Base_cartesianMesh.get_bin_idx(Supp_BBox.__boundary_inf));	// To make sure it falls into the mesh nodes
-
-#pragma unroll
-			for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-				Supp_BBox.__boundary_sup.dim[d] = Supp_BBox.__boundary_inf.dim[d] + (Supp_BBox.__nodes_per_dim - 1) * Problem_Domain.discr_length();
-			}
-		}
-	}
-
-	thrust::device_vector<uintType> nodeIdxs(Supp_BBox.total_nodes(), 0);
-	thrust::device_vector<uintType> isAssignedNode(Supp_BBox.total_nodes(), 0);
-
-	for (uint16_t k = 0; k < refinementLvl; k++) {
-
-		uint16_t Threads = fmin(THREADS_P_BLK, Supp_BBox.total_nodes() / pow(rescaling, PHASE_SPACE_DIMENSIONS));
-		uintType	 Blocks = floor((Supp_BBox.total_nodes() / pow(rescaling, PHASE_SPACE_DIMENSIONS) - 1) / Threads) + 1;
-
-		D__Wavelet_Transform__F << <Blocks, Threads >> > (rpc(D__PDF, 0), rpc(nodeIdxs, 0), rpc(isAssignedNode, 0), Supp_BBox, Problem_Domain, rescaling);
-		gpuError_Check(cudaDeviceSynchronize());
-
-		rescaling *= 2;	// our cartesianMesh will now have half the number of points
-	}
-
+	// Here we assume that the compute_wavelet transform function has already been called
 	// Get the number of assigned nodes
-	const uintType nrSelectedNodes = thrust::reduce(thrust::device, isAssignedNode.begin(), isAssignedNode.end());
-	if (nrSelectedNodes == 0) { std::cout << "\nError: AMR-selected points is 0...cannot continue\n"; return -1; }
+	uint64_t total_nr_of_nodes = sizeof(__assigned_node_markers) / sizeof(uint32_t);
+	std::cout << "Total nr of nodes " << sizeof(__assigned_node_markers) << ".\n";
+
+	const uintType nrSelectedNodes = thrust::reduce(thrust::device, __assigned_node_markers, __assigned_node_markers + total_nr_of_nodes);
 
 	// Set the selected nodes first
-	thrust::sort_by_key(thrust::device, isAssignedNode.begin(), isAssignedNode.end(), nodeIdxs.begin(), thrust::greater<intType>());
+	thrust::sort_by_key(
+		thrust::device,
+		__assigned_node_markers,
+		__assigned_node_markers + total_nr_of_nodes,
+		__assigned_node_indeces,
+		thrust::greater<intType>()
+	);
 
-	// Reinitialize values to the PDF (we'll need it)
-	D__PDF = H_PDF;
-
-	AdaptGrid.resize(nrSelectedNodes); AdaptPDF.resize(nrSelectedNodes);
+	//device.resize<Particle>(particle_locations, nrSelectedNodes);
 
 	const intType Threads = fmin(THREADS_P_BLK, nrSelectedNodes);
 	const intType Blocks = floor((nrSelectedNodes - 1) / Threads) + 1;
 
-	const uint16_t elementsAtATime = ELEMENTS_AT_A_TIME;
-
-	customAssignToGpuArray<elementsAtATime> << <Threads, Blocks >> > (rpc(AdaptPDF, 0), rpc(D__PDF, 0), rpc(AdaptGrid, 0),
-		Problem_Domain, rpc(nodeIdxs, 0), nrSelectedNodes);
-	gpuError_Check(cudaDeviceSynchronize());
-	return 0;
-}
+	device.launch_kernel(Blocks, Threads,
+		customAssignToGpuArray<ELEMENTS_AT_A_TIME>{
+			particle_locations,
+				signal_domain,
+				__assigned_node_indeces,
+				nrSelectedNodes
+		}
+	);
+};

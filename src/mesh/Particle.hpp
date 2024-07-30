@@ -1,8 +1,7 @@
 #ifndef __PARTICLE_HPP__
 #define __PARTICLE_HPP__
 
-#include "headers.hpp"
-#include "cudaBase.cuh"
+#include "include/headers.hpp"
 
 class Particle {
 public:

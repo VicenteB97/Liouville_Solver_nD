@@ -1,13 +1,15 @@
-set(LIBRARY_INCLUDES "${CMAKE_CURRENT_SOURCE_DIR}/include")
+set(LIBRARY_INCLUDES "${CMAKE_CURRENT_SOURCE_DIR}")
 
 set(LIBRARY_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/mesh/Particle.cu"
     "${CMAKE_CURRENT_SOURCE_DIR}/mesh/Domain.cu"
+    "${CMAKE_CURRENT_SOURCE_DIR}/waveletTransform/waveletTransform.cu"
 )
 
 set(LIBRARY_HEADERS
-    "${CMAKE_CURRENT_SOURCE_DIR}/mesh/Domain.cuh"
-    "${CMAKE_CURRENT_SOURCE_DIR}/mesh/Particle.cuh"
+    "${CMAKE_CURRENT_SOURCE_DIR}/mesh/Domain.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/mesh/Particle.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/waveletTransform/waveletTransform.hpp"
 )
 
 add_library(${LIB_NAME} STATIC ${LIBRARY_HEADERS} ${LIBRARY_SOURCES})
