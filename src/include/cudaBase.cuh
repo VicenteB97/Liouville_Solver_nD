@@ -49,6 +49,11 @@ public:
 		cudaMemcpy(dst_dvc, src_dvc, size_bytes, cudaMemcpyDeviceToDevice);
 	};
 
+	void device_memSet(void* ptr, int32_t value, uint64_t size_bytes) {
+		cudaDeviceSynchronize();
+		cudaMemset(ptr, value, size_bytes);
+	}
+
 	void device_free(void* ptr) const {
 		cudaFree(ptr);
 	};
@@ -56,6 +61,7 @@ public:
 	template<typename T>
 	void launch_kernel(uint64_t n_blocks, uint32_t n_threads, const T& functor) const {
 		device_launch_function_wrapper <<< n_blocks, n_threads >>> (functor);
+		cudaDeviceSynchronize();
 	};
 };
 

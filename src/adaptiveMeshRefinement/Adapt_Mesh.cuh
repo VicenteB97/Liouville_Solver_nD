@@ -1,3 +1,6 @@
+#ifndef __ADAPT_MESH_CUH__
+#define __ADAPT_MESH_CUH__
+
 #include "waveletTransform/waveletTransform.hpp"
 #include "include/headers.hpp"
 #include "mesh/Domain.hpp"
@@ -11,7 +14,7 @@ int32_t setInitialParticles(
 );
 
 hostFunction
-void get_detail_above_threshold_nodes(Particle* particle_locations, const cartesianMesh& signal_domain) const;
+void get_detail_above_threshold_nodes(waveletTransform& amr_engine, Particle* particle_locations, const cartesianMesh& signal_domain);
 
 
 class write_signal_in_bounding_box {
@@ -27,7 +30,7 @@ public:
 
 
 template<uint16_t elementsProcessedPerThread>
-class customAssignToGpuArray {
+class get_nodes_from_indeces {
 public:
 	Particle* outputNodes;
 	const cartesianMesh inputNodes;
@@ -35,15 +38,17 @@ public:
 	const uint32_t elementNr;
 public:
 	deviceFunction void operator()(const uint64_t global_id) const {
-#pragma unroll
+		#pragma unroll
 		for (uint16_t k = 0; k < elementsProcessedPerThread; k++) {
 
 			const uintType myIdx = global_id * elementsProcessedPerThread + k;
 
 			if (myIdx < elementNr) {
-				const intType myNodeIdx = nodeIdx[myIdx];
+				const uint64_t myNodeIdx = nodeIdx[myIdx];
 				outputNodes[myIdx] = inputNodes.get_node(myNodeIdx);
 			}
 		}
 	};
 };
+
+#endif

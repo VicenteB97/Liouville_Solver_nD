@@ -153,11 +153,11 @@ waveletTransform::~waveletTransform() {
 	};
 
 	// Delete device pointers
-	gpu_device.device_free(__initial_signal_dvc);
-	gpu_device.device_free(__transformed_signal_dvc);
-	gpu_device.device_free(__threshold_cutoff_transformed_signal_dvc);
-	gpu_device.device_free(__assigned_node_indeces_dvc);
-	gpu_device.device_free(__assigned_node_markers_dvc);
+	if (__initial_signal_dvc != nullptr) { gpu_device.device_free(__initial_signal_dvc); }
+	if (__transformed_signal_dvc != nullptr) { gpu_device.device_free(__transformed_signal_dvc); }
+	if (__threshold_cutoff_transformed_signal_dvc != nullptr) { gpu_device.device_free(__threshold_cutoff_transformed_signal_dvc); }
+	if (__assigned_node_indeces_dvc != nullptr) { gpu_device.device_free(__assigned_node_indeces_dvc); }
+	if (__assigned_node_markers_dvc != nullptr) { gpu_device.device_free(__assigned_node_markers_dvc); }
 
 	// Destroy object
 	delete this; 
@@ -268,21 +268,21 @@ uint32_t* waveletTransform::assigned_node_markers_dvc() const {
 hostFunction
 void waveletTransform::compute_wavelet_transform() {
 	// Here, you've got to compute the wavelet transformation of the initial signal.
-	// Pass the wavelet transform as a function pointer (future)
 	uint32_t rescaling{ 2 };
 	const uint64_t total_signal_nodes{ this->total_signal_nodes() };
 	const uint32_t nodes_per_dim{ this->nodes_per_dim() };
 	const double tolerance{ TOLERANCE_AMR }; 
-	
+
+	// Allocate memory 
+	gpu_device.device_malloc((void**)&__assigned_node_indeces_dvc, sizeof(uint64_t) * total_signal_nodes);
+	gpu_device.device_malloc((void**)&__assigned_node_markers_dvc, sizeof(uint32_t) * total_signal_nodes);
+	gpu_device.device_malloc((void**)&__transformed_signal_dvc, sizeof(floatType) * total_signal_nodes);
+
 	gpu_device.memCpy_device_to_device(
 		__transformed_signal_dvc,
 		__initial_signal_dvc,
 		sizeof(floatType) * total_signal_nodes
 	);
-
-	// Allocate memory for the assigned node stuff
-	gpu_device.device_malloc((void**)&__assigned_node_indeces_dvc, sizeof(uint64_t) * total_signal_nodes);
-	gpu_device.device_malloc((void**)&__assigned_node_markers_dvc, sizeof(uint32_t) * total_signal_nodes);
 
 	for (uint16_t k = 0; k < __max_refinement_level - __min_refinement_level + 1; ++k) {
 
@@ -311,4 +311,29 @@ void waveletTransform::compute_wavelet_transform() {
 		);
 		rescaling *= 2;	// our cartesianMesh will now have half the number of points
 	}
+};
+
+
+hostFunction
+uint32_t waveletTransform::sorted_assigned_nodes() {
+	uint64_t total_nr_of_nodes(this->total_signal_nodes());
+
+	const uint32_t nr_selected_nodes(
+		thrust::reduce(
+			thrust::device,
+			__assigned_node_markers_dvc,
+			__assigned_node_markers_dvc + total_nr_of_nodes
+		)
+	);
+
+	// Set the selected nodes first, so that we collect the first nr_selected_nodes mesh indeces
+	thrust::sort_by_key(
+		thrust::device,
+		__assigned_node_markers,
+		__assigned_node_markers + total_nr_of_nodes,
+		__assigned_node_indeces,
+		thrust::greater<uint32_t>()
+	);
+
+	return nr_selected_nodes;
 };

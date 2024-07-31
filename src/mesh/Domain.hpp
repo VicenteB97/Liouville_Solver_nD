@@ -1,8 +1,7 @@
 #ifndef __DOMAIN_HPP__
 #define __DOMAIN_HPP__
 
-#include "headers.hpp"
-#include "cudaBase.cuh"
+#include "include/headers.hpp"
 #include "Particle.hpp"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -65,7 +64,7 @@ public:
 
 	/// @brief Compute the total number of nodes
 	hostFunction deviceFunction 
-		intType total_nodes() const;
+		int32_t total_nodes() const;
 
 	/// @brief Gives the edge length (side length of a cube)
 	hostFunction deviceFunction	
@@ -93,11 +92,11 @@ public:
 	
 	// Returns the bin (or ID of the closest node) where Particle belongs to, adding bin_offset.
 	hostFunction deviceFunction
-		intType get_bin_idx(const Particle& particle, int32_t bin_offset = 0) const;
+		uint64_t get_bin_idx(const Particle& particle, int32_t bin_offset = 0) const;
 
 	// Compute the global index at your mesh, given the global index in "other" mesh.
 	hostFunction 
-		intType idx_here_from_other_mesh(int32_t indx_at_other, const cartesianMesh& other) const;
+		uint64_t idx_here_from_other_mesh(int32_t indx_at_other, const cartesianMesh& other) const;
 
 	/// @brief This function expands a fixed cartesianMesh "other" by a length of  "expansion_length" in each direction/dimension
 	/// @param other The base cartesianMesh from which we will expand

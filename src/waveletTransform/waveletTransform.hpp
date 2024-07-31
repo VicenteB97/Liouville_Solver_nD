@@ -42,8 +42,10 @@ public:
 class waveletTransform {
 public:
 	// Default constructor and destrucor
-	hostFunction waveletTransform();
-	hostFunction ~waveletTransform();
+	hostFunction 
+		waveletTransform();
+	hostFunction 
+		~waveletTransform();
 
 private:
 	// Input signal for wavelet transform: 
@@ -126,6 +128,9 @@ public:
 
 	hostFunction
 		void compute_wavelet_transform();
+
+	hostFunction
+		uint32_t sorted_assigned_nodes();
 };
 
 #endif

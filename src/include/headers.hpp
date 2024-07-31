@@ -10,7 +10,7 @@
 #include <algorithm>    // OPTIONAL?
 #include <cstdint>      // C library. Allows the use of specific int and unsigned int types, such as uint16_t
 #include <string>       // For strings
-#include <omp.h>        // For simple use of thread-parallel computations
+#include <omp.h>        // C library for simple use of thread-parallel computations
 #include <chrono>       // Timing the execution of functions
 #include <limits>		// To get limits from variables
 #include <thread>		// For multithreading
@@ -23,14 +23,13 @@ static constexpr uint16_t THREADS_P_BLK = 128;
 
 static const gpuDevice gpu_device;
 
-// This is for the thrust library
+// raw_pointer_cast from the thrust library
 #define rpc(ans,offset) raw_pointer_cast(&ans[offset])
 
-// This function is widely used throughout the code so...quite effective
 /// @brief Host/Device function that computes the positive remainder (mod) between two integers
-/// @param a This is the numerator
-/// @param b This is the denominator
-/// @return Returns mod(a,b)
+/// @param a numerator
+/// @param b denominator
+/// @return positive mod(a,b) value
 hostFunction deviceFunction
 inline uint64_t positive_rem(const uint64_t a, const uint64_t b) {
 	return (a % b + b) % b;
