@@ -11,30 +11,32 @@
 //////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////
 
-#ifndef __IVPSOLVER_CUH__
-#define __IVPSOLVER_CUH__
+#ifndef __IVPSOLVER_HPP__
+#define __IVPSOLVER_HPP__
 
-#include "config.hpp"
-#include "headers.cuh"
-#include "utils/others.cuh"
-#include "utils/error_functs.cuh"
-#include "utils/numeric_defs.cuh"
+#include "include/headers.hpp"
+#include "include/utils/others.cuh"
+#include "include/utils/error_functs.cuh"
+#include "include/utils/numeric_defs.hpp"
+#include "include/indicators/progress_bar.hpp"
 
-#include "Adapt_cartesianMesh.cuh"
-#include "Domain.cuh"
+#include "adaptiveMeshRefinement/Adapt_Mesh.cuh"
+#include "mesh/Domain.hpp"
+#include "mesh/Particle.hpp"
 #include "Sim_data.cuh"
-#include "Probability.cuh"
+#include "probabilityDistributions/Probability.cuh"
 #include "Simulation_parameters.cuh"
-#include "Interpolation.cuh"
-#include "PointSearch.cuh"
-#include "Impulse_transformations.cuh"
-#include "Integrator.cuh"
+#include "interpolation/Interpolation.cuh"
+#include "include/PointSearch.cuh"
+#include "integrators/Impulse_transformations.cuh"
+#include "integrators/Integrator.cuh"
 #include "Sim_data.cuh"
 
 class ivpSolver{
 private:
 	//Domain where the PDF will evolve (positively invariant set)
 	cartesianMesh __problem_domain;
+	cartesianMesh __particle_bounding_box;
 	
 	// Distributions for the model parameters
 	Distributions __initial_condition_distributions[PHASE_SPACE_DIMENSIONS];

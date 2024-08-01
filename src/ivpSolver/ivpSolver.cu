@@ -11,7 +11,7 @@
 //////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////
 
-#include <ivpSolver.cuh>
+#include "ivpSolver.hpp"
 
 using namespace thrust::placeholders;
 
@@ -22,26 +22,8 @@ ivpSolver::~ivpSolver() {};
 // This method is used to build the domain in which the simulation will take place
 int16_t ivpSolver::buildDomain() {
 
-	int16_t LvlFine;
-
-	#if TERMINAL_INPUT_ALLOWED
-	bool getAnswer = true;
-	std::string inputTerminal;
-
-	while (getAnswer) {
-		std::cout << "Finest level in the domain?: ";
-		std::cin >> inputTerminal;
-
-		errorCheck(intCheck(getAnswer, inputTerminal, DOMAIN_ERR_MSG, 1, 0))
-	}
-
-	LvlFine = std::stoi(inputTerminal);
-	#else
-	LvlFine = FINEST_DISCR_LVL;
-	#endif
-
 	// This variable represents the problem domain, which is NOT going to be the one used for computations
-	__problem_domain.__nodes_per_dim = pow(2, LvlFine);
+	__problem_domain.set_nodes_per_dimension(pow(2, FINEST_DISCR_LVL));
 
 	return 0;
 };
@@ -50,28 +32,13 @@ int16_t ivpSolver::buildDomain() {
 int16_t ivpSolver::buildTimeVec() {
 
 	errorCheck(BuildTimeVector(__reinitialization_info, __delta_t, __reinitialization_steps))
-
-	#if TERMINAL_INPUT_ALLOWED
-	// Build saving array
-	bool get_answer = true; std::string terminalInput;
-	while (get_answer) {
-
-		std::cout << "Saving steps? (applied to the time vector, not the timestep): ";
-		std::cin >> terminalInput;
-
-		errorCheck(intCheck(get_answer, terminalInput, REINIT_ERR_MSG, 0, 1))
-	}
-
-	__storage_steps = std::stoi(terminalInput);
-	#else
 	__storage_steps = SAVING_STEPS;
-	#endif
 
 	const uintType savingArraySize = ceil((double) __reinitialization_info.size() / __storage_steps);
 
 	__simulation_storage.resize(__problem_domain.total_nodes() * savingArraySize);
 
-	return 0;
+	return EXIT_SUCCESS;
 };
 
 // Build the Distribution information for all random parameters
@@ -97,28 +64,10 @@ int16_t ivpSolver::buildDistributions() {
 		__parameter_distributions[p].trunc_interval[1] = _DIST_SupTVAL[p]; 	// max. of trunc. interval (if chosen large enough, automatically bounds to 6 std. deviations)
 		__parameter_distributions[p].params[0] = _DIST_MEAN[p];		// mean
 		__parameter_distributions[p].params[1] = _DIST_STD[p];			// std
-
-		#if TERMINAL_INPUT_ALLOWED
-		// Read number of samples from terminal
-		bool get_answer = true;
-		std::string inputTerminal;
-
-		while (get_answer) {
-
-			std::cout << "How many samples for parameter " << p + 1 << " ? ";
-			std::cin >> inputTerminal;
-
-			errorCheck(intCheck(get_answer, inputTerminal, DISTR_ERR_MSG, 0, 1))
-		}
-		__parameter_distributions[p].num_Samples = std::stoi(inputTerminal);
-		#else
 		__parameter_distributions[p].num_Samples = _DIST_N_SAMPLES[p];
-		#endif
 	}
 
-	
-
-	return 0;
+	return EXIT_SUCCESS;
 };
 
 // This function contains the most important function of them all: The full numerical method!
@@ -127,7 +76,6 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// 	PARAMETERS
-
 	intType totalSampleCount = 1, sum_sampleNum = 0;
 	intType Samples_per_Param[PARAM_SPACE_DIMENSIONS];
 
@@ -144,27 +92,36 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 		Samples_per_Param[i] = temp;
 	}
 
-	// Full parameter array
+	// Full parameter array (make shared/unique ptr?)
 	Param_pair* Parameter_cartesianMesh = new Param_pair[sum_sampleNum];
 
-	// Build the parameter mesh from previous info
-	if (RANDOMIZE<PARAM_SPACE_DIMENSIONS>(Parameter_cartesianMesh, __parameter_distributions) == -1) { delete[] Parameter_cartesianMesh; return -1; }
+	try {
+		// Build the parameter mesh from previous info
+		if (RANDOMIZE<PARAM_SPACE_DIMENSIONS>(Parameter_cartesianMesh, __parameter_distributions) == -1) { delete[] Parameter_cartesianMesh; return -1; }
 
-	// Small vector containing the number of samples per parameter
-	thrust::device_vector<intType>	D_sampVec(Samples_per_Param, Samples_per_Param + PARAM_SPACE_DIMENSIONS);
+		// Small vector containing the number of samples per parameter
+		thrust::device_vector<intType>	D_sampVec(Samples_per_Param, Samples_per_Param + PARAM_SPACE_DIMENSIONS);
 
-	// Parameter __problem_domain array (for the GPU)
-	thrust::device_vector<Param_pair> D_Parameter_cartesianMesh(Parameter_cartesianMesh, Parameter_cartesianMesh + sum_sampleNum);
+		// Parameter __problem_domain array (for the GPU)
+		thrust::device_vector<Param_pair> D_Parameter_cartesianMesh(Parameter_cartesianMesh, Parameter_cartesianMesh + sum_sampleNum);
 
-	// auxiliary variable that will be used for ensemble mean computation
-	floatType sum_sample_val = 0;
-	for (uintType i = 0; i < totalSampleCount; i++) {
-		Param_vec<PARAM_SPACE_DIMENSIONS> temp = Gather_Param_Vec<PARAM_SPACE_DIMENSIONS>(i, Parameter_cartesianMesh, Samples_per_Param);
-		sum_sample_val += temp.Joint_PDF;
+		// auxiliary variable that will be used for ensemble mean computation
+		floatType sum_sample_val = 0;
+		for (uintType i = 0; i < totalSampleCount; i++) {
+			Param_vec<PARAM_SPACE_DIMENSIONS> temp = Gather_Param_Vec<PARAM_SPACE_DIMENSIONS>(i, Parameter_cartesianMesh, Samples_per_Param);
+			sum_sample_val += temp.Joint_PDF;
+		}
+
+		// Memory management
+		delete[] Parameter_cartesianMesh;
 	}
-
-	// Memory management
-	delete[] Parameter_cartesianMesh;
+	catch (std::exception& e) {
+		std::cout << "Caught exception: " << e.what() << std::endl;
+		if (Parameter_cartesianMesh) {
+			delete[] Parameter_cartesianMesh;
+		}
+		return EXIT_FAILURE;
+	}
 
 	// Output to the CLI
 	std::cout << "Total number of random samples: " << totalSampleCount << ".\n";
@@ -174,14 +131,15 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// PROBLEM DOMAIN AND INITIAL PDF
 
-		// This cartesianMesh will be defined by the support bounding box of the data.
-	cartesianMesh PDF_Support(IC_InfTVAL, IC_SupTVAL);
+	// This cartesianMesh will be defined by the support bounding box of the data.
+	__particle_bounding_box.set_boundary_inf((Particle)IC_InfTVAL);
+	__particle_bounding_box.set_boundary_sup((Particle)IC_SupTVAL);
 
 	// Make it square for AMR-purposes
-	PDF_Support.Squarify();
+	__particle_bounding_box.Squarify();
 
 	// Update the number of pts per dimension
-	PDF_Support.__nodes_per_dim = round((IC_SupTVAL[0] - IC_InfTVAL[0]) / __problem_domain.discr_length());
+	__particle_bounding_box.set_nodes_per_dimension(round((IC_SupTVAL[0] - IC_InfTVAL[0]) / __problem_domain.discr_length()));
 
 	// PDF values at the fixed, high-res cartesianMesh (CPU)
 	thrust::host_vector<floatType> PDF_ProbDomain(__problem_domain.total_nodes(), 0);
@@ -222,11 +180,11 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 
 	// Full array storing appended particles for all parameter samples
 	std::vector<Particle>	Full_Particle_Locations;
-	std::vector<floatType>		Full_Particle_Values;
+	std::vector<floatType>	Full_Particle_Values;
 
 	thrust::device_vector<floatType> D_lambdas;
-	thrust::device_vector<floatType>	D_Mat_Vals;
-	thrust::device_vector<intType>	D_Mat_Indx;
+	thrust::device_vector<floatType> D_Mat_Vals;
+	thrust::device_vector<intType>	 D_Mat_Indx;
 	InterpHandle interpVectors;
 	thrust::device_vector<Particle> D_fixedParticles;
 
@@ -252,8 +210,9 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 	// START OF SIMULATION STEPS AS SUCH
 
 	// Simulation steps
-	uintType simStepCount = 0;
-	std::atomic<uintType> saveStepCount = 0;
+	uintType iteration_count = 0;
+	// Saved frames
+	std::atomic<uintType> saved_frames = 0;
 	double t0, tF;
 
 	// Aux variable to switch between step functions (Heaviside forcing) 
@@ -274,25 +233,25 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 
 
 	// Define concurrent saving lambda function
-	auto concurrentSaving = [&saveStepCount](const thrust::host_vector<floatType>& vSrc, std::vector<floatType>& vDst, const uintType simStepCount, const uintType __storage_steps, const uintType nrNodesPerFrame) {
-		if ((simStepCount == 0 || simStepCount % __storage_steps == 0) && saveStepCount < vDst.size() / nrNodesPerFrame - 1) {
+	auto concurrentSaving = [&saved_frames](const thrust::host_vector<floatType>& vSrc, std::vector<floatType>& vDst, const uintType iteration_count, const uintType __storage_steps, const uintType nrNodesPerFrame) {
+		if ((iteration_count == 0 || iteration_count % __storage_steps == 0) && saved_frames < vDst.size() / nrNodesPerFrame - 1) {
 			// Store info in cumulative variable
-			thrust::copy(vSrc.begin(), vSrc.end(), &vDst[saveStepCount * nrNodesPerFrame]);
-			saveStepCount++;
+			thrust::copy(vSrc.begin(), vSrc.end(), &vDst[saved_frames * nrNodesPerFrame]);
+			saved_frames++;
 		}
 	};
 
 	// IN THIS LINE WE START WITH THE ACTUAL ITERATIONS OF THE LIOUVILLE EQUATION
-	while (simStepCount < __reinitialization_info.size() - 1) {
+	while (iteration_count < __reinitialization_info.size() - 1) {
 
 		// Save previous frame concurrently, so no time is used for this
-		std::thread storeFrame_worker(concurrentSaving, std::ref(PDF_ProbDomain), std::ref(__simulation_storage), simStepCount, __storage_steps, nrNodesPerFrame);
+		std::thread storeFrame_worker(concurrentSaving, std::ref(PDF_ProbDomain), std::ref(__simulation_storage), iteration_count, __storage_steps, nrNodesPerFrame);
 
-		__simulation_log.LogFrames[simStepCount].simIteration = simStepCount;
-		__simulation_log.LogFrames[simStepCount].simTime = __reinitialization_info[simStepCount].time;
+		__simulation_log.LogFrames[iteration_count].simIteration = iteration_count;
+		__simulation_log.LogFrames[iteration_count].simTime = __reinitialization_info[iteration_count].time;
 
 		// select the first and last time value of the current iteration
-		t0 = __reinitialization_info[simStepCount].time; tF = __reinitialization_info[simStepCount + 1].time;
+		t0 = __reinitialization_info[iteration_count].time; tF = __reinitialization_info[iteration_count + 1].time;
 
 		/////////////////////////////////////////////////////////////////////////////////////////
 		/////////////////////////////////////////////////////////////////////////////////////////
@@ -304,9 +263,13 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 
 		errorCheck(
 			setInitialParticles(
-				PDF_ProbDomain, D_PDF_ProbDomain,				// Initial, gridded PDF
-				D_Particle_Values, D_Particle_Locations, 		// Output vectors that will give the relevant nodes
-				__problem_domain, Expanded_Domain, PDF_Support
+				rpc(PDF_ProbDomain, 0), 
+				D_PDF_ProbDomain,			// Initial, gridded PDF
+				D_Particle_Values, 
+				D_Particle_Locations, 		// Output vectors that will give the relevant nodes
+				__problem_domain, 
+				Expanded_Domain, 
+				__particle_bounding_box
 			)
 		);	// Domain information
 
@@ -317,8 +280,8 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 		uintType AMR_ActiveNodeCount = D_Particle_Locations.size();
 
 		// To the Log file
-		__simulation_log.LogFrames[simStepCount].log_AMR_Time = durationSeconds.count();
-		__simulation_log.LogFrames[simStepCount].log_AMR_RelevantParticles = AMR_ActiveNodeCount;
+		__simulation_log.LogFrames[iteration_count].log_AMR_Time = durationSeconds.count();
+		__simulation_log.LogFrames[iteration_count].log_AMR_RelevantParticles = AMR_ActiveNodeCount;
 
 		#if ERASE_dPDF
 		// Clear the GPU-stored PDF for better memory availability
@@ -350,7 +313,7 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 			D_Mat_Vals,
 			AMR_ActiveNodeCount,
 			MaxNeighborNum,
-			PDF_Support,
+			__particle_bounding_box,
 			RBF_SupportRadius));
 
 		endTimeSeconds = std::chrono::high_resolution_clock::now();
@@ -383,8 +346,8 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 
 
 		// To the Log file
-		__simulation_log.LogFrames[simStepCount].log_Interpolation_Time = durationSeconds.count();
-		__simulation_log.LogFrames[simStepCount].log_Interpolation_Iterations = iterations;
+		__simulation_log.LogFrames[iteration_count].log_Interpolation_Time = durationSeconds.count();
+		__simulation_log.LogFrames[iteration_count].log_Interpolation_Iterations = iterations;
 
 		#if ERASE_auxVectors == true
 		// Clear the vectors to save memory
@@ -394,7 +357,7 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 
 		D_Particle_Values = D_lambdas;
 
-		if (__reinitialization_info[simStepCount].impulse) {
+		if (__reinitialization_info[iteration_count].impulse) {
 			/////////////////////////////////////////////////////////////////////////////////////////
 			/////////////////////////////////////////////////////////////////////////////////////////
 			// -------------------------- DELTA/HEAVISIDE IMPULSE TERMS -------------------------- //
@@ -407,18 +370,18 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 			errorCheck(IMPULSE_TRANSFORM_PDF(D_PDF_ProbDomain,
 				D_Particle_Locations,
 				D_Particle_Values,
-				__reinitialization_info[simStepCount],
+				__reinitialization_info[iteration_count],
 				jumpCount,
 				__problem_domain,
 				Expanded_Domain,
-				PDF_Support));
+				__particle_bounding_box));
 
 			endTimeSeconds = std::chrono::high_resolution_clock::now();
 			durationSeconds = endTimeSeconds - startTimeSeconds;
 
 			// Enter the information into the log information
-			__simulation_log.LogFrames[simStepCount].log_Advection_Time = durationSeconds.count();
-			__simulation_log.LogFrames[simStepCount].log_Advection_TotalParticles = durationSeconds.count();
+			__simulation_log.LogFrames[iteration_count].log_Advection_Time = durationSeconds.count();
+			__simulation_log.LogFrames[iteration_count].log_Advection_TotalParticles = durationSeconds.count();
 
 			jumpCount++;
 
@@ -445,6 +408,7 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 			break;
 
 		#endif
+			continue;
 		}
 		else {
 			/////////////////////////////////////////////////////////////////////////////////////////
@@ -515,10 +479,10 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 				durationSeconds = endTimeSeconds - startTimeSeconds;
 
 				// To the Log file
-				__simulation_log.LogFrames[simStepCount].log_Advection_Time = durationSeconds.count();
-				__simulation_log.LogFrames[simStepCount].log_Advection_TotalParticles = ActiveNodes_PerBlk;
+				__simulation_log.LogFrames[iteration_count].log_Advection_Time = durationSeconds.count();
+				__simulation_log.LogFrames[iteration_count].log_Advection_TotalParticles = ActiveNodes_PerBlk;
 
-				PDF_Support.update_bounding_box(D_Particle_Locations);
+				__particle_bounding_box.update_bounding_box(D_Particle_Locations);
 
 				// COMPUTE THE SOLUTION "PROJECTION" INTO THE L1 SUBSPACE. THIS WAY, REINITIALIZATION CONSERVES VOLUME (=1)
 				if (PHASE_SPACE_DIMENSIONS < 5) {
@@ -558,7 +522,7 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 				durationSeconds = endTimeSeconds - startTimeSeconds;
 
 				// To the Log file
-				__simulation_log.LogFrames[simStepCount].log_Reinitialization_Time = durationSeconds.count();
+				__simulation_log.LogFrames[iteration_count].log_Reinitialization_Time = durationSeconds.count();
 			}
 
 			/////////////////////////////////////////////////////////////////////////////////////////
@@ -583,15 +547,15 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 		}
 
 		// Upadte simulation step
-		simStepCount++;
+		iteration_count++;
 
 		storeFrame_worker.join();
 
-		statusBar.set_option(indicators::option::PostfixText{ "Iterations: " + std::to_string(simStepCount) + "/" + std::to_string(__reinitialization_info.size() - 1) });
-		statusBar.set_progress((float)simStepCount / (__reinitialization_info.size() - 1) * 100);
+		statusBar.set_option(indicators::option::PostfixText{ "Iterations: " + std::to_string(iteration_count) + "/" + std::to_string(__reinitialization_info.size() - 1) });
+		statusBar.set_progress((float)iteration_count / (__reinitialization_info.size() - 1) * 100);
 	}
 
-	thrust::copy(PDF_ProbDomain.begin(), PDF_ProbDomain.end(), &__simulation_storage[saveStepCount * nrNodesPerFrame]);
+	thrust::copy(PDF_ProbDomain.begin(), PDF_ProbDomain.end(), &__simulation_storage[saved_frames * nrNodesPerFrame]);
 
 	std::cout << termcolor::bold << termcolor::green << "[INFO] Completed successfully!" << std::endl;
 	std::cout << termcolor::reset;
@@ -768,10 +732,10 @@ int16_t ivpSolver::writeFramesToFile(const double& simulationDuration) {
 			std::ofstream file1(relative_pth, std::ios::out);
 			assert(file1.is_open());
 
-			file1 << nrNodesPerFrame << "," << __problem_domain.__nodes_per_dim << ",";
+			file1 << nrNodesPerFrame << "," << __problem_domain.nodes_per_dim() << ",";
 
 			for (uintType d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-				file1 << __problem_domain.__boundary_inf.dim[d] << "," << __problem_domain.__boundary_sup.dim[d] << ",";
+				file1 << __problem_domain.boundary_inf().dim[d] << "," << __problem_domain.boundary_sup().dim[d] << ",";
 			}
 			for (uint16_t d = 0; d < PARAM_SPACE_DIMENSIONS; d++) {
 				file1 << __parameter_distributions[d].num_Samples << ",";
