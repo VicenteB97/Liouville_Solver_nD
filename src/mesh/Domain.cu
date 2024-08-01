@@ -7,7 +7,7 @@
 	/// @brief Create a cartesianMesh knowing the nodes per dimension
 	/// @param nodes_per_dim 
 	/// @return 
-hostFunction deviceFunction	cartesianMesh::cartesianMesh(int32_t nodes_per_dim) {
+hostFunction deviceFunction	cartesianMesh::cartesianMesh(intType nodes_per_dim) {
 
 	__nodes_per_dim = nodes_per_dim;
 	__boundary_inf = Particle(DOMAIN_INF);
@@ -29,7 +29,7 @@ hostFunction deviceFunction	cartesianMesh::cartesianMesh(floatType discretizatio
 /// @param bnd_sup 
 /// @param nodes_per_dim 
 /// @return 
-hostFunction deviceFunction	cartesianMesh::cartesianMesh(const Particle& bnd_inf, const Particle& bnd_sup, int32_t nodes_per_dim) {
+hostFunction deviceFunction	cartesianMesh::cartesianMesh(const Particle& bnd_inf, const Particle& bnd_sup, intType nodes_per_dim) {
 
 	__nodes_per_dim = nodes_per_dim;
 	__boundary_inf = bnd_inf;
@@ -70,18 +70,18 @@ Particle cartesianMesh::boundary_sup() const {
 };
 
 hostFunction deviceFunction
-void cartesianMesh::set_nodes_per_dimension(uint32_t nodes_per_dim) {
+void cartesianMesh::set_nodes_per_dimension(uintType nodes_per_dim) {
 	__nodes_per_dim = nodes_per_dim;
 };
 
 hostFunction deviceFunction
-uint32_t cartesianMesh::nodes_per_dim() const {
+uintType cartesianMesh::nodes_per_dim() const {
 	return __nodes_per_dim;
 };
 
 	/// @brief Compute the total number of nodes
 hostFunction deviceFunction	 
-int32_t cartesianMesh::total_nodes() const {
+intType cartesianMesh::total_nodes() const {
 	return pow(__nodes_per_dim, PHASE_SPACE_DIMENSIONS);
 }
 
@@ -109,14 +109,14 @@ floatType cartesianMesh::discr_length() const {
 /// @param globalIdx Global index in the current cartesianMesh
 /// @return point in space
 hostFunction deviceFunction	 
-Particle cartesianMesh::get_node(int32_t globalIdx) const {
+Particle cartesianMesh::get_node(intType globalIdx) const {
 
 	Particle out(__boundary_inf);
-	int32_t temp = 1;
+	intType temp = 1;
 	floatType discretizationLength = this->discr_length();
 
 	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-		int32_t j = floorf((floatType)positive_rem(globalIdx, temp * __nodes_per_dim) / temp);	// This line gives the index at each dimension
+		intType j = floorf((floatType)positive_rem(globalIdx, temp * __nodes_per_dim) / temp);	// This line gives the index at each dimension
 
 		out.dim[d] += j * discretizationLength; temp *= __nodes_per_dim;			// This line gives the cartesianMesh node per se
 	}
@@ -136,12 +136,12 @@ bool cartesianMesh::contains_particle(const Particle& particle) const {
 
 // Returns the bin (or ID of the closest node) where Particle belongs to, adding bin_offset.
 hostFunction deviceFunction  
-int32_t cartesianMesh::get_bin_idx(const Particle& particle, int32_t bin_offset) const {
-	int32_t bin_idx = 0, accPower = 1;
+intType cartesianMesh::get_bin_idx(const Particle& particle, intType bin_offset) const {
+	intType bin_idx = 0, accPower = 1;
 	floatType discretizationLength = this->discr_length();
 
 	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-		int32_t temp_idx = roundf((floatType)(particle.dim[d] - __boundary_inf.dim[d]) / discretizationLength) + bin_offset;
+		intType temp_idx = roundf((floatType)(particle.dim[d] - __boundary_inf.dim[d]) / discretizationLength) + bin_offset;
 
 		bin_idx += temp_idx * accPower;
 		accPower *= __nodes_per_dim;
@@ -151,7 +151,7 @@ int32_t cartesianMesh::get_bin_idx(const Particle& particle, int32_t bin_offset)
 
 // Compute the global index at your mesh, given the global index in "other" mesh.
 hostFunction  
-int32_t cartesianMesh::idx_here_from_other_mesh(int32_t indx_at_other, const cartesianMesh& other) const {
+intType cartesianMesh::idx_here_from_other_mesh(intType indx_at_other, const cartesianMesh& other) const {
 	return this->get_bin_idx(other.get_node(indx_at_other));
 }
 
@@ -159,7 +159,7 @@ int32_t cartesianMesh::idx_here_from_other_mesh(int32_t indx_at_other, const car
 /// @param other The base cartesianMesh from which we will expand
 /// @param expansion_nodes Number of nodes we will expand in every direction
 hostFunction deviceFunction	 
-void cartesianMesh::Expand_From(const cartesianMesh& other, int32_t expansion_nodes) {
+void cartesianMesh::Expand_From(const cartesianMesh& other, intType expansion_nodes) {
 
 	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
 		// To make sure that the points fall into the cartesianMesh nodes
@@ -191,8 +191,8 @@ void cartesianMesh::Squarify() {
 /// @returns Nothing
 void cartesianMesh::update_bounding_box(const thrust::device_vector<Particle>& D_Particle_Locations) {
 
-	int32_t threads = fmin(THREADS_P_BLK, D_Particle_Locations.size());
-	int32_t blocks = floor((D_Particle_Locations.size() - 1) / threads) + 1;
+	intType threads = fmin(THREADS_P_BLK, D_Particle_Locations.size());
+	intType blocks = floor((D_Particle_Locations.size() - 1) / threads) + 1;
 
 	gpuDevice device;
 

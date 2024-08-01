@@ -43,7 +43,7 @@ private:
 	// Time vector, impulse information, timestep and effective timestep
 	std::vector<Time_instants> __reinitialization_info;
 	double __delta_t;
-	int32_t __reinitialization_steps, __storage_steps;
+	intType __reinitialization_steps, __storage_steps;
 
 	LogSimulation __simulation_log;
 

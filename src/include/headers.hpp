@@ -17,11 +17,10 @@
 #include <atomic>		// For multithreading atomic functions
 
 #include "Case_definition.cuh"
+#include "utils/numeric_defs.hpp"
 #include "cudaBase.cuh"
 
-static constexpr uint16_t THREADS_P_BLK = 128;
-
-static const gpuDevice gpu_device;
+static const gpuDevice gpu_device;	// We declare the gpu_device at the beggining
 
 // raw_pointer_cast from the thrust library
 #define rpc(ans,offset) raw_pointer_cast(&ans[offset])

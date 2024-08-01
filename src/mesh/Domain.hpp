@@ -11,7 +11,7 @@
 class cartesianMesh{
 private:
 	Particle __boundary_inf, __boundary_sup;
-	uint32_t __nodes_per_dim;
+	uintType __nodes_per_dim;
 
 public:
 	// Parametric constructors:
@@ -19,7 +19,7 @@ public:
 	/// @param nodes_per_dim 
 	/// @return 
 	hostFunction deviceFunction	
-		cartesianMesh(int32_t nodes_per_dim = 2);
+		cartesianMesh(intType nodes_per_dim = 2);
 
 	/// @brief Create a cartesianMesh knowing the discretization length
 	/// @param discretization_length 
@@ -33,7 +33,7 @@ public:
 	/// @param nodes_per_dim 
 	/// @return 
 	hostFunction deviceFunction	
-		cartesianMesh(const Particle& bnd_inf, const Particle& bnd_sup, int32_t nodes_per_dim = 2);
+		cartesianMesh(const Particle& bnd_inf, const Particle& bnd_sup, intType nodes_per_dim = 2);
 
 	/// @brief Create a cartesianMesh specifying all the parameters (discr. length instead of the nodes per dimension)
 	/// @param bnd_inf 
@@ -57,14 +57,14 @@ public:
 		Particle boundary_sup() const;
 
 	hostFunction deviceFunction
-		void set_nodes_per_dimension(uint32_t nodes_per_dim = 2);
+		void set_nodes_per_dimension(uintType nodes_per_dim = 2);
 
 	hostFunction deviceFunction
-		uint32_t nodes_per_dim() const;
+		uintType nodes_per_dim() const;
 
 	/// @brief Compute the total number of nodes
 	hostFunction deviceFunction 
-		int32_t total_nodes() const;
+		intType total_nodes() const;
 
 	/// @brief Gives the edge length (side length of a cube)
 	hostFunction deviceFunction	
@@ -82,7 +82,7 @@ public:
 	/// @param globalIdx Global index in the current cartesianMesh
 	/// @return point in space
 	hostFunction deviceFunction	
-		Particle get_node(int32_t mesh_idx) const;
+		Particle get_node(intType mesh_idx) const;
 
 	/// @brief This method decides whether Particle is inside the cartesianMesh or not
 	/// @param Particle 
@@ -92,17 +92,17 @@ public:
 	
 	// Returns the bin (or ID of the closest node) where Particle belongs to, adding bin_offset.
 	hostFunction deviceFunction
-		uint64_t get_bin_idx(const Particle& particle, int32_t bin_offset = 0) const;
+		uint64_t get_bin_idx(const Particle& particle, intType bin_offset = 0) const;
 
 	// Compute the global index at your mesh, given the global index in "other" mesh.
 	hostFunction 
-		uint64_t idx_here_from_other_mesh(int32_t indx_at_other, const cartesianMesh& other) const;
+		uint64_t idx_here_from_other_mesh(intType indx_at_other, const cartesianMesh& other) const;
 
 	/// @brief This function expands a fixed cartesianMesh "other" by a length of  "expansion_length" in each direction/dimension
 	/// @param other The base cartesianMesh from which we will expand
 	/// @param expansion_nodes Number of nodes we will expand in every direction
 	hostFunction deviceFunction	
-		void Expand_From(const cartesianMesh& other, int32_t expansion_nodes = 0);
+		void Expand_From(const cartesianMesh& other, intType expansion_nodes = 0);
 
 	/// @brief This function makes you domain a square (same Lebesgue-length in every direction)
 	hostFunction deviceFunction 

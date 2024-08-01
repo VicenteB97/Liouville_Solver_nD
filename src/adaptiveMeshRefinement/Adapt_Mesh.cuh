@@ -6,7 +6,7 @@
 #include "mesh/Domain.hpp"
 
 hostFunction
-int32_t setInitialParticles(
+intType setInitialParticles(
 	const floatType* input_signal_dvc,
 	Particle* output_active_nodes_dvc,
 	const cartesianMesh& signal_bounding_box,
@@ -35,7 +35,7 @@ public:
 	Particle* outputNodes;
 	const cartesianMesh inputNodes;
 	const uint64_t* nodeIdx;
-	const uint32_t elementNr;
+	const uintType elementNr;
 public:
 	deviceFunction void operator()(const uint64_t global_id) const {
 		#pragma unroll

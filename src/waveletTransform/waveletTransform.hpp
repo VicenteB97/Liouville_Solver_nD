@@ -16,7 +16,7 @@ class single_block_single_level_wavelet_transform {
 public:
 	floatType* signal;
 	uint64_t in_rescaling;
-	uint32_t in_nodes_per_dim;
+	uintType in_nodes_per_dim;
 	uint64_t total_signal_nodes;
 	uint16_t dimensions;
 public:
@@ -28,7 +28,7 @@ class get_nodes_above_threshold {
 public:
 	floatType* signal;
 	uint64_t* assigned_node_indeces;
-	uint32_t* assigned_node_markers;
+	uintType* assigned_node_markers;
 	const uint64_t rescaling;
 	const uint64_t nodes_per_dim;
 	const uint64_t total_signal_nodes;
@@ -65,8 +65,8 @@ private:
 	// Output AMR arrays for indeces and assigned nodes. These are not externally-assigned, just here
 	uint64_t* __assigned_node_indeces;
 	uint64_t* __assigned_node_indeces_dvc;
-	uint32_t* __assigned_node_markers;
-	uint32_t* __assigned_node_markers_dvc;
+	uintType* __assigned_node_markers;
+	uintType* __assigned_node_markers_dvc;
 
 	// other signal definitions:
 	uint16_t __signal_dimension;
@@ -97,7 +97,7 @@ public:
 		void set_initial_signal_dvc2dvc(const floatType* input_signal_dvc);
 
 	hostFunction deviceFunction
-		uint32_t nodes_per_dim() const;
+		uintType nodes_per_dim() const;
 
 	hostFunction deviceFunction
 		uint64_t total_signal_nodes() const;
@@ -118,19 +118,19 @@ public:
 		uint64_t* assigned_node_indeces() const;
 
 	hostFunction
-		uint32_t* assigned_node_markers() const;
+		uintType* assigned_node_markers() const;
 
 	hostFunction
 		uint64_t* assigned_node_indeces_dvc() const;
 
 	hostFunction
-		uint32_t* assigned_node_markers_dvc() const;
+		uintType* assigned_node_markers_dvc() const;
 
 	hostFunction
 		void compute_wavelet_transform();
 
 	hostFunction
-		uint32_t sorted_assigned_nodes();
+		uintType sorted_assigned_nodes();
 };
 
 #endif

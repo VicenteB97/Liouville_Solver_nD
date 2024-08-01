@@ -220,7 +220,7 @@ floatType* waveletTransform::initial_signal_dvc() const {
 };
 
 hostFunction deviceFunction
-uint32_t waveletTransform::nodes_per_dim() const {
+uintType waveletTransform::nodes_per_dim() const {
 	return pow(2, __max_refinement_level);
 };
 
@@ -249,8 +249,8 @@ uint64_t* waveletTransform::assigned_node_indeces() const {
 };
 
 hostFunction
-uint32_t* waveletTransform::assigned_node_markers() const {
-	uint64_t copy_size_bytes = this->total_signal_nodes() * sizeof(uint32_t);
+uintType* waveletTransform::assigned_node_markers() const {
+	uint64_t copy_size_bytes = this->total_signal_nodes() * sizeof(uintType);
 	gpu_device.memCpy_device_to_host(__assigned_node_markers, __assigned_node_markers_dvc, copy_size_bytes);
 	return __assigned_node_markers;
 };
@@ -261,21 +261,21 @@ uint64_t* waveletTransform::assigned_node_indeces_dvc() const {
 };
 
 hostFunction
-uint32_t* waveletTransform::assigned_node_markers_dvc() const {
+uintType* waveletTransform::assigned_node_markers_dvc() const {
 	return __assigned_node_markers_dvc;
 };
 
 hostFunction
 void waveletTransform::compute_wavelet_transform() {
 	// Here, you've got to compute the wavelet transformation of the initial signal.
-	uint32_t rescaling{ 2 };
+	uintType rescaling{ 2 };
 	const uint64_t total_signal_nodes{ this->total_signal_nodes() };
-	const uint32_t nodes_per_dim{ this->nodes_per_dim() };
+	const uintType nodes_per_dim{ this->nodes_per_dim() };
 	const double tolerance{ TOLERANCE_AMR }; 
 
 	// Allocate memory 
 	gpu_device.device_malloc((void**)&__assigned_node_indeces_dvc, sizeof(uint64_t) * total_signal_nodes);
-	gpu_device.device_malloc((void**)&__assigned_node_markers_dvc, sizeof(uint32_t) * total_signal_nodes);
+	gpu_device.device_malloc((void**)&__assigned_node_markers_dvc, sizeof(uintType) * total_signal_nodes);
 	gpu_device.device_malloc((void**)&__transformed_signal_dvc, sizeof(floatType) * total_signal_nodes);
 
 	gpu_device.memCpy_device_to_device(
@@ -315,10 +315,10 @@ void waveletTransform::compute_wavelet_transform() {
 
 
 hostFunction
-uint32_t waveletTransform::sorted_assigned_nodes() {
+uintType waveletTransform::sorted_assigned_nodes() {
 	uint64_t total_nr_of_nodes(this->total_signal_nodes());
 
-	const uint32_t nr_selected_nodes(
+	const uintType nr_selected_nodes(
 		thrust::reduce(
 			thrust::device,
 			__assigned_node_markers_dvc,
@@ -332,7 +332,7 @@ uint32_t waveletTransform::sorted_assigned_nodes() {
 		__assigned_node_markers,
 		__assigned_node_markers + total_nr_of_nodes,
 		__assigned_node_indeces,
-		thrust::greater<uint32_t>()
+		thrust::greater<uintType>()
 	);
 
 	return nr_selected_nodes;

@@ -252,12 +252,12 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 	// START OF SIMULATION STEPS AS SUCH
 
 	// Simulation steps
-	uint32_t simStepCount = 0;
-	std::atomic<uint32_t> saveStepCount = 0;
+	uintType simStepCount = 0;
+	std::atomic<uintType> saveStepCount = 0;
 	double t0, tF;
 
 	// Aux variable to switch between step functions (Heaviside forcing) 
-	uint32_t mode = 0;
+	uintType mode = 0;
 
 	// IF THERE ARE DELTA TERMS
 	#if IMPULSE_TYPE == 1
@@ -302,9 +302,13 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 		/////////////////////////////////////////////////////////////////////////////////////////
 		auto startTimeSeconds = std::chrono::high_resolution_clock::now();
 
-		errorCheck(setInitialParticles(PDF_ProbDomain, D_PDF_ProbDomain,				// Initial, gridded PDF
-			D_Particle_Values, D_Particle_Locations, 		// Output vectors that will give the relevant nodes
-			__problem_domain, Expanded_Domain, PDF_Support));	// Domain information
+		errorCheck(
+			setInitialParticles(
+				PDF_ProbDomain, D_PDF_ProbDomain,				// Initial, gridded PDF
+				D_Particle_Values, D_Particle_Locations, 		// Output vectors that will give the relevant nodes
+				__problem_domain, Expanded_Domain, PDF_Support
+			)
+		);	// Domain information
 
 		auto endTimeSeconds = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<float> durationSeconds = endTimeSeconds - startTimeSeconds;
@@ -364,7 +368,7 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 		interpVectors.resize(AMR_ActiveNodeCount);
 
 		startTimeSeconds = std::chrono::high_resolution_clock::now();
-		int32_t iterations = CONJUGATE_GRADIENT_SOLVE(D_lambdas,
+		intType iterations = CONJUGATE_GRADIENT_SOLVE(D_lambdas,
 			D_Mat_Indx,
 			D_Mat_Vals,
 			D_Particle_Values,

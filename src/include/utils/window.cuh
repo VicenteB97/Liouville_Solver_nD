@@ -16,18 +16,18 @@
 
 inline void Intro_square_filler(
 	std::string& message, 
-	const uint32_t border_length, 
-	const uint32_t number_of_tabs, 
-	const uint32_t offset){
+	const uintType border_length, 
+	const uintType number_of_tabs, 
+	const uintType offset){
 
-	uint32_t msg_length = message.size() + number_of_tabs*8 - 1 - offset;
-	for (uint32_t k = 0; k < border_length - msg_length; k++){
+	uintType msg_length = message.size() + number_of_tabs*8 - 1 - offset;
+	for (uintType k = 0; k < border_length - msg_length; k++){
 		message.append(" ");
 	}
 	message.append("|\n");
 }
 
-inline int16_t SetGPU(int16_t& ChosenOne, const uint32_t& border_length){
+inline int16_t SetGPU(int16_t& ChosenOne, const uintType& border_length){
 
 	int deviceCount = 0;
 	cudaGetDeviceCount(&deviceCount);
@@ -78,7 +78,7 @@ inline int16_t SetGPU(int16_t& ChosenOne, const uint32_t& border_length){
 inline int16_t IntroDisplay(cudaDeviceProp& prop){
 	std::cout << border <<"\n";
 	std::cout << border_mid <<"\n";
-	const uint32_t border_length = windowLength;
+	const uintType border_length = windowLength;
 	const std::string str_project_version{project_version};
 
 	std::string temp = "|	Wecome to the Liouville Eq. simulator. You are using version number "; temp += str_project_version;
