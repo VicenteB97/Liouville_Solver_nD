@@ -1,18 +1,9 @@
-//-------------------------------------------------------------------------------------------------------------//
-//-------------------------------------------------------------------------------------------------------------//
-//-------------------------------------------------------------------------------------------------------------//
-// This part contains the definitions of the functions that will be used to build the parameter mesh + j-PDF   //
-// We STRONGLY RECOMMEND not changing absolutely anything if your only use of this program is to simulate	   //
-//-------------------------------------------------------------------------------------------------------------//
-//-------------------------------------------------------------------------------------------------------------//
-//-------------------------------------------------------------------------------------------------------------//
-
 #ifndef __PROBABILITY_CUH__
 #define __PROBABILITY_CUH__
 
-#include "headers.cuh"
-#include "Domain.cuh"
-#include "utils/numeric_defs.cuh"
+#include "include/headers.hpp"
+#include "Domain.hpp"
+#include "include/utils/numeric_defs.hpp"
 
 // These are ONLY used here
 #include <boost/math/distributions/gamma.hpp>
@@ -59,7 +50,7 @@ public:
 /// @param cartesianMesh 
 /// @param PDF_value 
 /// @param IC_dist_parameters 
-int16_t PDF_INITIAL_CONDITION(const cartesianMesh& cartesianMesh, thrust::host_vector<floatType>& PDF_value, const Distributions* IC_dist_parameters);
+int16_t PDF_INITIAL_CONDITION(const cartesianMesh& cartesianMesh, std::shared_ptr<floatType[]>& PDF_value, const Distributions* IC_dist_parameters);
 
 
 // ----------------------------------------------------------------------------------- //

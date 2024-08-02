@@ -142,19 +142,27 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 	__particle_bounding_box.set_nodes_per_dimension(round((IC_SupTVAL[0] - IC_InfTVAL[0]) / __problem_domain.discr_length()));
 
 	// PDF values at the fixed, high-res cartesianMesh (CPU)
-	thrust::host_vector<floatType> PDF_ProbDomain(__problem_domain.total_nodes(), 0);
+	std::shared_ptr<floatType[]> pdf_values_at_problem_domain(new floatType(__problem_domain.total_nodes());
 
 	// initialize the cartesianMesh and the PDF at the cartesianMesh nodes (change so as to change the parameters as well)
-	errorCheck(PDF_INITIAL_CONDITION(__problem_domain, PDF_ProbDomain, __initial_condition_distributions));
+	errorCheck(PDF_INITIAL_CONDITION(__problem_domain, pdf_values_at_problem_domain, __initial_condition_distributions));
 
-	// PDF values at fixed Grid Nodes (for the GPU)
-	thrust::device_vector<floatType> D_PDF_ProbDomain = PDF_ProbDomain;
-
-	// Particle positions (for the GPU)
-	thrust::device_vector<Particle> D_Particle_Locations;
-
-	// PDF value at Particle positions (for the GPU)
-	thrust::device_vector<floatType> D_Particle_Values;
+	// Pass the pdf_values_at_problem_domain to the gpu:
+	floatType* pdf_values_at_problem_domain_dvc;
+	gpu_device.device_malloc(pdf_values_at_problem_domain, sizeof(floatType) * __problem_domain.total_nodes());
+	try {
+		gpu_device.memCpy_host_to_device(
+			pdf_values_at_problem_domain_dvc,
+			pdf_values_at_problem_domain,
+			__problem_domain.total_nodes() * sizeof(floatType)
+		);
+	}
+	catch (std::exception& e) {
+		std::cout << "Caught exception: " << e.what() << std::endl;
+		if(pdf_values_at_problem_domain_dvc != nullptr){
+			gpu_device.device_free(pdf_values_at_problem_domain_dvc);
+		}
+	}
 
 	// Now we make a slightly larger domain for the computations:
 	cartesianMesh Expanded_Domain;
@@ -182,22 +190,18 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 	std::vector<Particle>	Full_Particle_Locations;
 	std::vector<floatType>	Full_Particle_Values;
 
-	thrust::device_vector<floatType> D_lambdas;
-	thrust::device_vector<floatType> D_Mat_Vals;
-	thrust::device_vector<intType>	 D_Mat_Indx;
-	InterpHandle interpVectors;
-	thrust::device_vector<Particle> D_fixedParticles;
-
-	indicators::ProgressBar statusBar{ indicators::option::BarWidth{35},
-										indicators::option::ForegroundColor{indicators::Color::yellow},
-										indicators::option::ShowElapsedTime{true},
-										indicators::option::ShowRemainingTime{false},
-										indicators::option::PrefixText{"[INFO] Running..."},
-										indicators::option::Start{"["},
-										indicators::option::Fill{"*"},
-										indicators::option::Lead{"*"},
-										indicators::option::Remainder{"-"},
-										indicators::option::End{"]"}, };
+	indicators::ProgressBar statusBar{ 
+		indicators::option::BarWidth{35},
+		indicators::option::ForegroundColor{indicators::Color::yellow},
+		indicators::option::ShowElapsedTime{true},
+		indicators::option::ShowRemainingTime{false},
+		indicators::option::PrefixText{"[INFO] Running..."},
+		indicators::option::Start{"["},
+		indicators::option::Fill{"*"},
+		indicators::option::Lead{"*"},
+		indicators::option::Remainder{"-"},
+		indicators::option::End{"]"}, 
+	};
 
 	// Resize the simulation logger
 	__simulation_log.resize(__reinitialization_info.size() - 1);
@@ -263,13 +267,6 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 
 		errorCheck(
 			setInitialParticles(
-				rpc(PDF_ProbDomain, 0), 
-				D_PDF_ProbDomain,			// Initial, gridded PDF
-				D_Particle_Values, 
-				D_Particle_Locations, 		// Output vectors that will give the relevant nodes
-				__problem_domain, 
-				Expanded_Domain, 
-				__particle_bounding_box
 			)
 		);	// Domain information
 

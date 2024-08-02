@@ -1,4 +1,4 @@
-#include <Probability.cuh>
+#include "Probability.cuh"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -29,15 +29,15 @@ Distributions::Distributions() {
 /// @param cartesianMesh 
 /// @param PDF_value 
 /// @param IC_dist_parameters 
-int16_t PDF_INITIAL_CONDITION(const cartesianMesh& cartesianMesh, thrust::host_vector<floatType>& PDF_value, const Distributions* IC_dist_parameters) {
+int16_t PDF_INITIAL_CONDITION(const cartesianMesh& problem_domain, std::shared_ptr<floatType[]>& PDF_value, const Distributions* IC_dist_parameters) {
 
-	std::vector<floatType> temp_val(cartesianMesh.__nodes_per_dim * PHASE_SPACE_DIMENSIONS);
+	std::vector<floatType> temp_val(problem_domain.nodes_per_dim() * PHASE_SPACE_DIMENSIONS);
 
 	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
 		// Create the arrays for each dimension!
 		floatType expectation = IC_dist_parameters[d].params[0], std_dev = IC_dist_parameters[d].params[1],
-			x0 = fmax(cartesianMesh.__boundary_inf.dim[d], expectation - 8 * std_dev),
-			xF = fmin(cartesianMesh.__boundary_sup.dim[d], expectation + 8 * std_dev),
+			x0 = fmax(problem_domain.boundary_inf().dim[d], expectation - 8 * std_dev),
+			xF = fmin(problem_domain.boundary_sup().dim[d], expectation + 8 * std_dev),
 			rescale_CDF = 1;
 
 		if (IC_dist_parameters[d].Name == 'N' || IC_dist_parameters[d].Name == 'n') {
@@ -50,26 +50,28 @@ int16_t PDF_INITIAL_CONDITION(const cartesianMesh& cartesianMesh, thrust::host_v
 				rescale_CDF = boost::math::cdf(dist, xF) - boost::math::cdf(dist, x0);
 			}
 
-#pragma omp parallel for
-			for (intType k = cartesianMesh.__nodes_per_dim * d; k < cartesianMesh.__nodes_per_dim * (d + 1); k++) {
-				temp_val[k] = boost::math::pdf(dist, cartesianMesh.get_node((k - cartesianMesh.__nodes_per_dim * d) * pow(cartesianMesh.__nodes_per_dim, d)).dim[d]) / rescale_CDF;
+			#pragma omp parallel for
+			for (intType k = problem_domain.nodes_per_dim() * d; k < problem_domain.nodes_per_dim() * (d + 1); k++) {
+				temp_val[k] = boost::math::pdf(dist, problem_domain.get_node((k - problem_domain.nodes_per_dim() * d) * pow(problem_domain.nodes_per_dim(), d)).dim[d]) / rescale_CDF;
 			}
 		}
 	}
 
 	std::cout << "Filling initial density...\n";
 
-#pragma omp parallel for
-	for (intType k = 0; k < cartesianMesh.total_nodes(); k++) {
+	#pragma omp parallel for
+	for (intType k = 0; k < problem_domain.total_nodes(); k++) {
 		floatType val = 1;
 		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-			intType temp_idx = floor(positive_rem(k, pow(cartesianMesh.__nodes_per_dim, d + 1)) / pow(cartesianMesh.__nodes_per_dim, d));
+			intType temp_idx = floor(positive_rem(k, pow(problem_domain.nodes_per_dim(), d + 1)) / pow(problem_domain.nodes_per_dim(), d));
 
-			val *= temp_val[temp_idx + cartesianMesh.__nodes_per_dim * d];
+			val *= temp_val[temp_idx + problem_domain.nodes_per_dim() * d];
 		}
 		PDF_value[k] = val;
 	}
-	return 0;
+
+	std::cout << "Initial density successfully filled!\n";
+	return EXIT_SUCCESS;
 }
 
 

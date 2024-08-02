@@ -69,6 +69,7 @@ intType setInitialParticles(
 	return EXIT_SUCCESS;
 };
 
+
 hostFunction
 int16_t get_detail_above_threshold_nodes(waveletTransform& amr_engine, Particle* particle_locations_dvc, const cartesianMesh& signal_domain) {
 
@@ -78,6 +79,7 @@ int16_t get_detail_above_threshold_nodes(waveletTransform& amr_engine, Particle*
 
 	try {
 		const uintType Threads = fmin(THREADS_P_BLK, nr_selected_nodes);
+		if(Threads == 0){throw std::invalid_argument("0 threads assigned in " + __FILE__ + "\nLine: " + __LINE__ + "\n") }
 		const uint64_t Blocks = floor((nr_selected_nodes - 1) / Threads) + 1;
 
 		device.launch_kernel(Blocks, Threads,

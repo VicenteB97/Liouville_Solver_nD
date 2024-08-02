@@ -15,6 +15,8 @@
 #include <limits>		// To get limits from variables
 #include <thread>		// For multithreading
 #include <atomic>		// For multithreading atomic functions
+#include <stdexcept>	// For handling C++ exceptions
+#include <memory>		// For unique, shared and weak pointers
 
 #include "Case_definition.cuh"
 #include "utils/numeric_defs.hpp"
