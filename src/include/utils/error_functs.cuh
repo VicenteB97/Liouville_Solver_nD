@@ -14,4 +14,4 @@ if (code != cudaSuccess) {
 #define gpuError_Check(ans) {gpuAssert((cudaError_t) ans, __FILE__, __LINE__);}
 
 // Error checking in the CPU code
-#define errorCheck(ans) {if(ans == -1){std::cout << "Error found at:\n" << __FILE__ << "\nLine: " << std::to_string(__LINE__) << ".\n"; return -1;}}
+#define errorCheck(ans) {if(ans != 0){std::cout << "Error found at:\n" << __FILE__ << "\nLine: " << std::to_string(__LINE__) << ".\n"; return EXIT_FAILURE;}}

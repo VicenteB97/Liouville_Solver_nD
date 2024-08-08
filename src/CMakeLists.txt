@@ -4,12 +4,16 @@ set(LIBRARY_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/mesh/Particle.cu"
     "${CMAKE_CURRENT_SOURCE_DIR}/mesh/Domain.cu"
     "${CMAKE_CURRENT_SOURCE_DIR}/waveletTransform/waveletTransform.cu"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ivpSolver/ivpSolver.cu"
+    "${CMAKE_CURRENT_SOURCE_DIR}/probabilityDistributions/probability.cu"
 )
 
 set(LIBRARY_HEADERS
     "${CMAKE_CURRENT_SOURCE_DIR}/mesh/Domain.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/mesh/Particle.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/waveletTransform/waveletTransform.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ivpSolver/ivpSolver.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/probabilityDistributions/probability.cuh"
 )
 
 add_library(${LIB_NAME} STATIC ${LIBRARY_HEADERS} ${LIBRARY_SOURCES})

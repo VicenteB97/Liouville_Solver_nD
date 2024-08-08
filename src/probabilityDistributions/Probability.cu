@@ -85,13 +85,13 @@ int16_t PDF_INITIAL_CONDITION(const cartesianMesh& problem_domain, std::shared_p
 /// @param random_var_sample_count 
 /// @param PP 
 /// @param Dist_params 
-int16_t PARAMETER_VEC_BUILD(const int random_var_sample_count, Param_pair* PP, const Distributions Dist_params) {
+int16_t PARAMETER_VEC_BUILD(const int random_var_sample_count, parameterPair* PP, const Distributions Dist_params) {
 
 	floatType expectation = Dist_params.params[0], std_dev = Dist_params.params[1];
 
 	if (random_var_sample_count == 1) {
 		*PP = { expectation, 1 };
-		return 0;
+		return EXIT_SUCCESS;
 	}
 
 	floatType x0, xF, dx;
@@ -119,7 +119,7 @@ int16_t PARAMETER_VEC_BUILD(const int random_var_sample_count, Param_pair* PP, c
 				floatType x = x0 + i * dx;
 				PP[i] = { x, boost::math::pdf(dist, x) / rescale_cdf }; // other distributions could be used
 			}
-			return 0;
+			return EXIT_SUCCESS;
 		}
 
 		dx = (xF - x0) / (random_var_sample_count - 1);
@@ -128,7 +128,7 @@ int16_t PARAMETER_VEC_BUILD(const int random_var_sample_count, Param_pair* PP, c
 			floatType x = x0 + i * dx;
 			PP[i] = { x, boost::math::pdf(dist, x) }; // other distributions could be used
 		}
-		return 0;
+		return EXIT_SUCCESS;
 	}
 
 	// Uniform case
@@ -144,7 +144,7 @@ int16_t PARAMETER_VEC_BUILD(const int random_var_sample_count, Param_pair* PP, c
 			PP[i] = { x , 1/(xF-x0)}; // other distributions could be used
 		}
 
-		return 0;
+		return EXIT_SUCCESS;
 	}
 
 	// Gamma case
@@ -173,7 +173,7 @@ int16_t PARAMETER_VEC_BUILD(const int random_var_sample_count, Param_pair* PP, c
 				floatType x = x0 + i * dx;
 				PP[i] = { x, boost::math::pdf(dist, x) / rescale_cdf }; // other distributions could be used
 			}
-			return 0;
+			return EXIT_SUCCESS;
 		}
 
 		dx = (xF - x0) / (random_var_sample_count - 1);
@@ -182,7 +182,7 @@ int16_t PARAMETER_VEC_BUILD(const int random_var_sample_count, Param_pair* PP, c
 			floatType x = x0 + i * dx;
 			PP[i] = { x, boost::math::pdf(dist, x) }; // other distributions could be used
 		}
-		return 0;
+		return EXIT_SUCCESS;
 	}
 
 	// Beta case
@@ -211,7 +211,7 @@ int16_t PARAMETER_VEC_BUILD(const int random_var_sample_count, Param_pair* PP, c
 				floatType x = x0 + i * dx;
 				PP[i] = { x, boost::math::pdf(dist, x) / rescale_cdf }; // other distributions could be used
 			}
-			return 0;
+			return EXIT_SUCCESS;
 		}
 
 		dx = (xF - x0) / (random_var_sample_count - 1);
@@ -220,9 +220,9 @@ int16_t PARAMETER_VEC_BUILD(const int random_var_sample_count, Param_pair* PP, c
 			floatType x = x0 + i * dx;
 			PP[i] = { x, boost::math::pdf(dist, x) }; // other distributions could be used
 		}
-		return 0;
+		return EXIT_SUCCESS;
 	}
 
 	std::cout << "Parameter distribution not recognized. Choose correctly please. \nExiting program...\n";
-	return -1;
+	return EXIT_FAILURE;
 }

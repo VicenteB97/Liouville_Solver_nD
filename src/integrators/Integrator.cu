@@ -164,7 +164,7 @@ __device__ void lie_euler_mathieu(
 __global__ void ODE_INTEGRATE(
 	Particle* Particles,
 	floatType* PDF,
-	const Param_pair* parameters,
+	const parameterPair* parameters,
 	const intType* n_Samples,
 	double t0,
 	const double time_step,

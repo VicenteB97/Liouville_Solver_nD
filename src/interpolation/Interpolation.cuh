@@ -104,7 +104,7 @@ __host__ intType CONJUGATE_GRADIENT_SOLVE(thrust::device_vector<floatType>& GPU_
 __global__ void RESTART_GRID_FIND_GN(Particle* Particle_Positions,
 	floatType* PDF,
 	floatType* lambdas,
-	const Param_pair* Parameter_cartesianMesh,
+	const parameterPair* parameter_mesh,
 	const intType* n_Samples,
 	const floatType 	 		search_radius,
 	const uintType	 		Adapt_Pts,

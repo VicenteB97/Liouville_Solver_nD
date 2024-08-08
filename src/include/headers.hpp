@@ -27,6 +27,14 @@ static const gpuDevice gpu_device;	// We declare the gpu_device at the beggining
 // raw_pointer_cast from the thrust library
 #define rpc(ans,offset) raw_pointer_cast(&ans[offset])
 
+#ifndef EXIT_SUCCESS
+#define EXIT_SUCCESS 0
+#endif
+
+#ifndef EXIT_FAILURE
+#define EXIT_FAILURE 1
+#endif
+
 /// @brief Host/Device function that computes the positive remainder (mod) between two integers
 /// @param a numerator
 /// @param b denominator

@@ -76,55 +76,42 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// 	PARAMETERS
-	intType totalSampleCount = 1, sum_sampleNum = 0;
-	intType Samples_per_Param[PARAM_SPACE_DIMENSIONS];
+	intType total_sample_count = 1, sum_samples_count = 0;
+	intType samples_per_parameter[PARAM_SPACE_DIMENSIONS];
 
 	for (uintType i = 0; i < PARAM_SPACE_DIMENSIONS; i++) {
 		uintType temp = __parameter_distributions[i].num_Samples;
 
 		// Total samples from the parameter space discretization
-		totalSampleCount *= temp;
+		total_sample_count *= temp;
 
 		// Length of the compressed parameter array
-		sum_sampleNum += temp;
+		sum_samples_count += temp;
 
 		// Array storing the number of samples for each parameter
-		Samples_per_Param[i] = temp;
+		samples_per_parameter[i] = temp;
 	}
 
-	// Full parameter array (make shared/unique ptr?)
-	Param_pair* Parameter_cartesianMesh = new Param_pair[sum_sampleNum];
+	// Full parameter array
+	std::unique_ptr<parameterPair[]> parameter_mesh = std::make_unique<parameterPair[]>(sum_samples_count);
+	// Build the parameter mesh from previous info
+	if (RANDOMIZE<PARAM_SPACE_DIMENSIONS>(parameter_mesh.get(), __parameter_distributions)) { return EXIT_FAILURE; }
+	
+	cuda_unique_ptr<parameterPair> parameter_mesh_dvc;
+	gpu_device.memCpy_host_to_device(parameter_mesh_dvc.get(), parameter_mesh.get(), sum_samples_count * sizeof(parameterPair));
 
-	try {
-		// Build the parameter mesh from previous info
-		if (RANDOMIZE<PARAM_SPACE_DIMENSIONS>(Parameter_cartesianMesh, __parameter_distributions) == -1) { delete[] Parameter_cartesianMesh; return -1; }
+	cuda_unique_ptr<intType> samples_per_parameter_dvc;
+	gpu_device.memCpy_host_to_device(samples_per_parameter_dvc.get(), &samples_per_parameter[0], PARAM_SPACE_DIMENSIONS * sizeof(intType));
 
-		// Small vector containing the number of samples per parameter
-		thrust::device_vector<intType>	D_sampVec(Samples_per_Param, Samples_per_Param + PARAM_SPACE_DIMENSIONS);
-
-		// Parameter __problem_domain array (for the GPU)
-		thrust::device_vector<Param_pair> D_Parameter_cartesianMesh(Parameter_cartesianMesh, Parameter_cartesianMesh + sum_sampleNum);
-
-		// auxiliary variable that will be used for ensemble mean computation
-		floatType sum_sample_val = 0;
-		for (uintType i = 0; i < totalSampleCount; i++) {
-			Param_vec<PARAM_SPACE_DIMENSIONS> temp = Gather_Param_Vec<PARAM_SPACE_DIMENSIONS>(i, Parameter_cartesianMesh, Samples_per_Param);
-			sum_sample_val += temp.Joint_PDF;
-		}
-
-		// Memory management
-		delete[] Parameter_cartesianMesh;
-	}
-	catch (std::exception& e) {
-		std::cout << "Caught exception: " << e.what() << std::endl;
-		if (Parameter_cartesianMesh) {
-			delete[] Parameter_cartesianMesh;
-		}
-		return EXIT_FAILURE;
+	// auxiliary variable that will be used for ensemble mean computation
+	floatType sum_sample_val = 0;
+	for (uintType i = 0; i < total_sample_count; i++) {
+		Param_vec<PARAM_SPACE_DIMENSIONS> temp = Gather_Param_Vec<PARAM_SPACE_DIMENSIONS>(i, parameter_mesh.get(), samples_per_parameter);
+		sum_sample_val += temp.Joint_PDF;
 	}
 
 	// Output to the CLI
-	std::cout << "Total number of random samples: " << totalSampleCount << ".\n";
+	std::cout << "Total number of random samples: " << total_sample_count << ".\n";
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -234,7 +221,6 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 	#else
 	thrust::device_vector<double> Extra_Parameter(0);
 	#endif
-
 
 	// Define concurrent saving lambda function
 	auto concurrentSaving = [&saved_frames](const thrust::host_vector<floatType>& vSrc, std::vector<floatType>& vDst, const uintType iteration_count, const uintType __storage_steps, const uintType nrNodesPerFrame) {
@@ -418,10 +404,10 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 			const uintType Bytes_per_sample = AMR_ActiveNodeCount * (sizeof(floatType) * 2 + sizeof(Particle));
 
 			// Set number of random samples to work with at the same time
-			uintType Samples_PerBlk = fmin((uintType)totalSampleCount, MAX_BYTES_USEABLE / Bytes_per_sample);
+			uintType Samples_PerBlk = fmin((uintType)total_sample_count, MAX_BYTES_USEABLE / Bytes_per_sample);
 
 			// Number of blocks to simulate
-			uintType total_simulation_blocks = ceil((double)totalSampleCount / Samples_PerBlk);
+			uintType total_simulation_blocks = ceil((double)total_sample_count / Samples_PerBlk);
 
 			// For correct reinitialization
 			D_fixedParticles = D_Particle_Locations;
@@ -430,7 +416,7 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 
 				// Parameter sample offset init. and final to account for the block position
 				uintType Sample_idx_offset_init = b * Samples_PerBlk;
-				uintType Sample_idx_offset_final = fmin((b + 1) * Samples_PerBlk, totalSampleCount);
+				uintType Sample_idx_offset_final = fmin((b + 1) * Samples_PerBlk, total_sample_count);
 
 				// Actual number of samples in current block
 				Samples_PerBlk = Sample_idx_offset_final - Sample_idx_offset_init;
@@ -462,7 +448,7 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 					rpc(D_Particle_Locations, 0),
 					rpc(D_Particle_Values, 0),
 					rpc(D_Parameter_cartesianMesh, Sample_idx_offset_init),
-					rpc(D_sampVec, 0),
+					rpc(samples_per_parameter_dvc, 0),
 					t0,
 					__delta_t,
 					tF,
@@ -507,7 +493,7 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 					rpc(D_PDF_ProbDomain, 0),
 					rpc(D_Particle_Values, 0),
 					rpc(D_Parameter_cartesianMesh, 0),
-					rpc(D_sampVec, 0),
+					rpc(samples_per_parameter_dvc, 0),
 					RBF_SupportRadius,
 					AMR_ActiveNodeCount,
 					Samples_PerBlk,

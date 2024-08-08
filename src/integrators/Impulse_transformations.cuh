@@ -17,8 +17,8 @@ __global__ void TRANSFORM_PARTICLES(Particle*					Particle_Locations,
 
 // This function is for the Delta-impulsive case!
 int16_t RANDOMIZE_II(const intType* 								n_samples, 
-					const intType 									totalSampleCount, 
-					std::vector<Param_vec<PHASE_SPACE_DIMENSIONS>>* Parameter_cartesianMesh,
+					const intType 									total_sample_count, 
+					std::vector<Param_vec<PHASE_SPACE_DIMENSIONS>>* parameter_mesh,
 					const Distributions* 						Dist_Parameters);
 
 int16_t IMPULSE_TRANSFORM_PDF(thrust::device_vector<floatType>&		GPU_PDF,				// PDF in cartesianMesh

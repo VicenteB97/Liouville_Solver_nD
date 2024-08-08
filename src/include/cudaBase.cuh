@@ -49,19 +49,65 @@ public:
 		cudaMemcpy(dst_dvc, src_dvc, size_bytes, cudaMemcpyDeviceToDevice);
 	};
 
-	void device_memSet(void* ptr, intType value, uint64_t size_bytes) {
+	void device_memSet(void* ptr, intType value, uint64_t size_bytes) const {
 		cudaDeviceSynchronize();
 		cudaMemset(ptr, value, size_bytes);
-	};
-
-	void device_free(void* ptr) const {
-		cudaFree(ptr);
 	};
 
 	template<typename T>
 	void launch_kernel(uint64_t n_blocks, uintType n_threads, const T& functor) const {
 		device_launch_function_wrapper <<< n_blocks, n_threads >>> (functor);
 		cudaDeviceSynchronize();
+	};
+};
+
+
+template<typename T>
+class cuda_unique_ptr {
+private:
+	T* __raw_dvc_pointer;
+	uint32_t __size_count;
+	T __init_value;
+
+public:
+	cuda_unique_ptr() : __raw_dvc_pointer(nullptr), __size_count(0), __init_value((T)0) {};
+
+	//cuda_unique_ptr(uint32_t size, T init_value) :
+	//	__raw_dvc_pointer(nullptr), __size_count(size), __init_value(init_value) {
+	//	this->allocate_and_init();
+	//};
+
+	~cuda_unique_ptr() {
+		this->free();
+	};
+
+	// Delete copy constructors and assignment operators for this class (I want to "implement" the uniquePtr from std)
+	cuda_unique_ptr(const cuda_unique_ptr&) = delete;
+	cuda_unique_ptr& operator=(const cuda_unique_ptr&) = delete;
+
+	/// @brief Returns the raw device pointer
+	hostFunction
+	T* get() const {
+		return __raw_dvc_pointer;
+	};
+
+	hostFunction
+	uint64_t size_count() const {
+		return __size_count;
+	};
+
+	hostFunction
+	uint64_t size_bytes() const {
+		return __size_count * sizeof(T);
+	};
+
+private:
+	hostFunction
+	void free() noexcept {
+		if (__raw_dvc_pointer != nullptr) {
+			cudaFree(__raw_dvc_pointer);
+			__raw_dvc_pointer = nullptr;
+		}
 	};
 };
 

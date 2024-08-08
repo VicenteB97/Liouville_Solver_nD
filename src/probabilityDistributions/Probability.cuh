@@ -2,7 +2,7 @@
 #define __PROBABILITY_CUH__
 
 #include "include/headers.hpp"
-#include "Domain.hpp"
+#include "mesh/Domain.hpp"
 #include "include/utils/numeric_defs.hpp"
 
 // These are ONLY used here
@@ -22,7 +22,7 @@ public:
 	floatType Joint_PDF;
 };
 
-class Param_pair {
+class parameterPair {
 public:
 	floatType sample, PDF;
 };
@@ -50,7 +50,7 @@ public:
 /// @param cartesianMesh 
 /// @param PDF_value 
 /// @param IC_dist_parameters 
-int16_t PDF_INITIAL_CONDITION(const cartesianMesh& cartesianMesh, std::shared_ptr<floatType[]>& PDF_value, const Distributions* IC_dist_parameters);
+int16_t PDF_INITIAL_CONDITION(const cartesianMesh& cartesianMesh, floatType* PDF_value, const Distributions* IC_dist_parameters);
 
 
 // ----------------------------------------------------------------------------------- //
@@ -63,12 +63,12 @@ int16_t PDF_INITIAL_CONDITION(const cartesianMesh& cartesianMesh, std::shared_pt
 /// @param random_var_sample_vec 
 /// @param PP 
 /// @param Dist_params 
-int16_t PARAMETER_VEC_BUILD(const int random_var_sample_vec, Param_pair* PP, const Distributions Dist_params);
+int16_t PARAMETER_VEC_BUILD(const int random_var_sample_vec, parameterPair* PP, const Distributions Dist_params);
 
 
 template<uint16_t DIM>
 __host__ __device__ 
-Param_vec<DIM> Gather_Param_Vec(const uintType index, const Param_pair* Parameter_Array, const intType* random_var_sample_vec) {
+Param_vec<DIM> Gather_Param_Vec(const uintType index, const parameterPair* Parameter_Array, const intType* random_var_sample_vec) {
 
 	Param_vec<DIM> Output;
 
@@ -94,16 +94,16 @@ Param_vec<DIM> Gather_Param_Vec(const uintType index, const Param_pair* Paramete
 
 /// @brief This function builds the Parameter cartesianMesh that will be used in the Liouville Solver 
 /// @param n_samples: Array where the number of samples per parameter is stored 
-/// @param Parameter_cartesianMesh: Parameter cartesianMesh 
+/// @param parameter_mesh: Parameter cartesianMesh 
 /// @param Dist_Parameters: Parameters' (hyper)parameters
 /// @param Dist_Names: Distributions that will be assigned (N = Normal, U = Uniform, etc.)
 /// @brief This function builds the Parameter cartesianMesh that will be used in the Liouville Solver 
 /// @param n_samples: Array where the number of samples per parameter is stored 
-/// @param Parameter_cartesianMesh: Parameter cartesianMesh 
+/// @param parameter_mesh: Parameter cartesianMesh 
 /// @param Dist_Parameters: Parameters' (hyper)parameters
 /// @param Dist_Names: Distributions that will be assigned (N = Normal, U = Uniform, etc.)
 template<uint16_t DIM>
-int16_t RANDOMIZE(Param_pair* Parameter_cartesianMesh,
+int16_t RANDOMIZE(parameterPair* parameter_mesh,
 	const Distributions* Dist_Parameters) {
 
 	uintType aux = 0;
@@ -112,17 +112,17 @@ int16_t RANDOMIZE(Param_pair* Parameter_cartesianMesh,
 		intType nSamples = Dist_Parameters[d].num_Samples;
 
 		// call the parameter pair vec. function
-		Param_pair* PP = new Param_pair[nSamples];
+		//parameterPair* PP = new parameterPair[nSamples];
+		std::unique_ptr<parameterPair[]> parameter_pair_array = std::make_unique<parameterPair[]>(nSamples);
 
-		errorCheck(PARAMETER_VEC_BUILD(nSamples, PP, Dist_Parameters[d]));
+		errorCheck(PARAMETER_VEC_BUILD(nSamples, parameter_pair_array.get(), Dist_Parameters[d]));
 
-		std::copy_n(&PP[0], nSamples, &Parameter_cartesianMesh[aux]);
+		std::copy_n(parameter_pair_array.get(), nSamples, &parameter_mesh[aux]);
 
-		delete[] PP;
 		aux += nSamples;
 	}
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 
 #endif

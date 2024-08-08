@@ -41,7 +41,7 @@ __global__ void MATRIX_VECTOR_MULTIPLICATION(floatType* X, const floatType* x0, 
 
 	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;	// For each i, which represents the matrix row, we read the index positions and multiply against the particle weights
 
-	if (i >= total_length) { return; }						// total length = adapt_points * totalSampleCount
+	if (i >= total_length) { return; }						// total length = adapt_points * total_sample_count
 
 	// 1.- Compute A*X0										
 		// 1.1.- Determine where my particles are!!
@@ -180,7 +180,7 @@ __host__ intType CONJUGATE_GRADIENT_SOLVE(
 __global__ void RESTART_GRID_FIND_GN(Particle* Particle_Positions,
 									floatType* PDF,
 									floatType* lambdas,
-									const Param_pair* Parameter_cartesianMesh,
+									const parameterPair* parameter_mesh,
 									const intType* n_Samples,
 									const floatType 	 		search_radius,
 									const uintType	 		Adapt_Pts,
@@ -194,7 +194,7 @@ __global__ void RESTART_GRID_FIND_GN(Particle* Particle_Positions,
 	if (i >= Adapt_Pts * Block_samples) { return; }
 
 	uintType Current_sample = offset + floor((double) i / Adapt_Pts);
-	Param_vec<PARAM_SPACE_DIMENSIONS>	aux = Gather_Param_Vec<PARAM_SPACE_DIMENSIONS>(Current_sample, Parameter_cartesianMesh, n_Samples);
+	Param_vec<PARAM_SPACE_DIMENSIONS>	aux = Gather_Param_Vec<PARAM_SPACE_DIMENSIONS>(Current_sample, parameter_mesh, n_Samples);
 
 	floatType weighted_lambda = lambdas[i] * aux.Joint_PDF;
 

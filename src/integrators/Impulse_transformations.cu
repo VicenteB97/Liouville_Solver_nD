@@ -130,15 +130,15 @@ for (uintType s = 0; s < Random_Samples; s++){
 
 // This function is for the Delta-impulsive case!
 int16_t RANDOMIZE_II(const intType* 								n_samples, 
-					const intType 									totalSampleCount, 
-					std::vector<Param_vec<PHASE_SPACE_DIMENSIONS>>* Parameter_cartesianMesh,
+					const intType 									total_sample_count, 
+					std::vector<Param_vec<PHASE_SPACE_DIMENSIONS>>* parameter_mesh,
 					const Distributions* 						Dist_Parameters) {
 
-	std::vector<Param_pair> aux_PM;
+	std::vector<parameterPair> aux_PM;
 
 	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++){
 		// call the parameter pair vec. function
-		Param_pair* PP = new Param_pair[n_samples[d]];
+		parameterPair* PP = new parameterPair[n_samples[d]];
 
 		intType err_check = PARAMETER_VEC_BUILD(n_samples[d], PP, Dist_Parameters[d]);
 		if (err_check == -1){ return -1; }
@@ -148,22 +148,22 @@ int16_t RANDOMIZE_II(const intType* 								n_samples,
 		delete[] PP;
 	}
 
-	for (uintType k = 0; k < totalSampleCount; k++){
+	for (uintType k = 0; k < total_sample_count; k++){
 		// 1st, find the parameter components
 		intType aux_num 	=  n_samples[0];
 		intType aux_num_2 	=  n_samples[0];
 
 		intType aux_idx = positive_rem(k, aux_num);
 
-		Parameter_cartesianMesh->at(k).sample_vec[0] = aux_PM[aux_idx].sample;
-		Parameter_cartesianMesh->at(k).Joint_PDF 	= aux_PM[aux_idx].PDF;
+		parameter_mesh->at(k).sample_vec[0] = aux_PM[aux_idx].sample;
+		parameter_mesh->at(k).Joint_PDF 	= aux_PM[aux_idx].PDF;
 
 		for (uint16_t d = 1; d < PHASE_SPACE_DIMENSIONS; d++){
 
 			aux_idx = floor(positive_rem(k, aux_num * n_samples[d]) / aux_num);
 
-			Parameter_cartesianMesh->at(k).sample_vec[d]  = aux_PM[aux_idx + aux_num_2].sample;
-			Parameter_cartesianMesh->at(k).Joint_PDF 	*= aux_PM[aux_idx + aux_num_2].PDF;
+			parameter_mesh->at(k).sample_vec[d]  = aux_PM[aux_idx + aux_num_2].sample;
+			parameter_mesh->at(k).Joint_PDF 	*= aux_PM[aux_idx + aux_num_2].PDF;
 
 			aux_num *= n_samples[d];
 			aux_num_2 += n_samples[d];
