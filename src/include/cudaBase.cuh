@@ -30,28 +30,22 @@ __global__ static void device_launch_function_wrapper(const T functor) {
 
 class cudaDevice {
 public:
-	int device_malloc(void** ptr, uint64_t size_bytes) const {
-		return cudaMalloc(ptr, size_bytes);
-	};
-
-	void memCpy_host_to_device(void* dst_dvc, void* src_hst, uint64_t size_bytes) const {
+	uint16_t memCpy_host_to_device(void* dst_dvc, void* src_hst, uint64_t size_bytes) const {
 		cudaDeviceSynchronize();
 		cudaMemcpy(dst_dvc, src_hst, size_bytes, cudaMemcpyHostToDevice);
 	};
 
-	void memCpy_device_to_host(void* dst_hst, void* src_dvc, uint64_t size_bytes) const {
+	uint16_t memCpy_device_to_host(void* dst_hst, void* src_dvc, uint64_t size_bytes) const {
 		cudaDeviceSynchronize();
 		cudaMemcpy(dst_hst, src_dvc, size_bytes, cudaMemcpyDeviceToHost);
 	};
 
-	void memCpy_device_to_device(void* dst_dvc, void* src_dvc, uint64_t size_bytes) const {
+	uint16_t memCpy_device_to_device(void* dst_dvc, void* src_dvc, uint64_t size_bytes) const {
 		cudaDeviceSynchronize();
-		cudaMemcpy(dst_dvc, src_dvc, size_bytes, cudaMemcpyDeviceToDevice);
-	};
-
-	void device_memSet(void* ptr, intType value, uint64_t size_bytes) const {
-		cudaDeviceSynchronize();
-		cudaMemset(ptr, value, size_bytes);
+		if (cudaSuccess != cudaMemcpy(dst_dvc, src_dvc, size_bytes, cudaMemcpyDeviceToDevice)) {
+			std::cout << "Error copying memory between device arrays.\n";
+			return EXIT_FAILURE;
+		};
 	};
 
 	template<typename T>
@@ -62,40 +56,97 @@ public:
 };
 
 
+// Rethink the error output for this class' methods, especially regarding memory allocation and memory value initialization
+// Read a little bit about exception vs return codes for performance!! And how/when to launch exceptions
+
 template<typename T>
 class cuda_unique_ptr {
 private:
 	T* __raw_dvc_pointer;
 	uint32_t __size_count;
-	T __init_value;
 
 public:
-	cuda_unique_ptr() : __raw_dvc_pointer(nullptr), __size_count(0), __init_value((T)0) {};
+	// Default constructor
+	cuda_unique_ptr() : __raw_dvc_pointer(nullptr), __size_count(0)) {};
 
-	//cuda_unique_ptr(uint32_t size, T init_value) :
-	//	__raw_dvc_pointer(nullptr), __size_count(size), __init_value(init_value) {
-	//	this->allocate_and_init();
-	//};
+	// Allocate and initialize constructor
+	cuda_unique_ptr(uint32_t size, T init_value = (T)0) : __raw_dvc_pointer(nullptr), __size_count(0) {
+		try {
+			this->malloc(size);
+			this->set_init_values(init_value);
+		}
+		catch (const std::exception& e) {
+			std::cerr << "Error in cuda unique pointer initialization: " << e.what();
+			throw;
+		}
 
-	~cuda_unique_ptr() {
-		this->free();
+		// Set size count only if allocation and initialization succeeded
+		__size_count = size;
 	};
 
-	// Delete copy constructors and assignment operators for this class (I want to "implement" the uniquePtr from std)
-	cuda_unique_ptr(const cuda_unique_ptr&) = delete;
-	cuda_unique_ptr& operator=(const cuda_unique_ptr&) = delete;
+	~cuda_unique_ptr() {	
+		try {
+			this->__free();
+		}
+		catch (const std::exception& e) {
+			std::cerr << "Error destroying cuda_unique_poitner object: " << e.what() << std::endl;
+			// Note that we don't throw errors here! Cannot allow exceptions to exit destructors
+		}
+	};
+
+	// Delete copy constructors and assignment operators for this class (equivalent to the uniquePtr from std::unique_ptr)
+	cuda_unique_ptr(const cuda_unique_ptr&) = delete;	// Copy constructor
+	cuda_unique_ptr& operator=(const cuda_unique_ptr&) = delete;	// Assignment operator
+
+	hostFunction
+	/// @brief This function allocates size_count elements of memory type given by the template parameter T of the unique_poitner.
+	/// This function returns a runtime exception if allocation fails.
+	/// @param size_count - The number of elements that the poitner will point to.
+	void malloc(uint64_t size_count = 1) {
+		if (size <= 0) { throw std::runtime_error("Cannot allocate 0 elements on array.\n") };
+		
+		// Allocate memory assuming the desired size is at least 1
+		if (cudaMalloc((void**)&__raw_dvc_pointer, sizeof(T) * size_count) != cudaSuccess) {
+			throw std::runtime_error("Error allocating device memory.\n");
+		};
+	};
+
+	hostFunction
+	/// @brief This function sets the initial values of the array the cuda pointer points to. Throws an exception if memory value setting goes wrong
+	/// @param value - Initial value set to the array
+	/// @param first_element - First array element pointed
+	/// @param last_element - Last array element poitned to
+	void set_init_values(T value = 0, uint64_t first_element = 0, uint64_t last_element = __size_count) {
+		if (value == (T)0) {
+			if (cudaMemset((void*)__raw_dvc_pointer, (int32_t)0, __size_count * sizeof(T)) != cudaSuccess) {
+				throw std::runtime_error("Failed to initialize device memory with cudaMemset");
+			}
+		}
+		else {
+			try {
+				thrust::device_ptr<T> aux_dev_ptr(__raw_dvc_pointer);
+				thrust::fill(aux_dev_ptr + first_element, aux_dev_ptr + last_element, value);
+			}
+			catch (const std::exception& e) {
+				std::cerr << "Cannot set initial value in device variable using thrust::fill.\n";
+				throw;
+			}
+		}
+	};
 
 	/// @brief Returns the raw device pointer
 	hostFunction
-	T* get() const {
+		T* get() const {
 		return __raw_dvc_pointer;
 	};
 
+	/// @brief Get the size (number of elements) of the pointed array
 	hostFunction
 	uint64_t size_count() const {
 		return __size_count;
 	};
 
+	/// @brief Get the size (in bytes) of the pointed array
 	hostFunction
 	uint64_t size_bytes() const {
 		return __size_count * sizeof(T);
@@ -103,11 +154,12 @@ public:
 
 private:
 	hostFunction
-	void free() noexcept {
-		if (__raw_dvc_pointer != nullptr) {
-			cudaFree(__raw_dvc_pointer);
-			__raw_dvc_pointer = nullptr;
+	void __free() {
+		__size_count = 0;
+		if (cudaFree(__raw_dvc_pointer) != cudaSuccess){ // cudaFree automatically manages the case of the nullptr, so no need to check here
+			throw std::exception("Error when deallocating device memory.\n");
 		}
+		__raw_dvc_pointer = nullptr;
 	};
 };
 

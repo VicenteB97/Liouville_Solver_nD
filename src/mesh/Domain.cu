@@ -136,7 +136,7 @@ bool cartesianMesh::contains_particle(const Particle& particle) const {
 
 // Returns the bin (or ID of the closest node) where Particle belongs to, adding bin_offset.
 hostFunction deviceFunction  
-intType cartesianMesh::get_bin_idx(const Particle& particle, intType bin_offset) const {
+uint64_t cartesianMesh::get_bin_idx(const Particle& particle, intType bin_offset) const {
 	intType bin_idx = 0, accPower = 1;
 	floatType discretizationLength = this->discr_length();
 
@@ -151,7 +151,7 @@ intType cartesianMesh::get_bin_idx(const Particle& particle, intType bin_offset)
 
 // Compute the global index at your mesh, given the global index in "other" mesh.
 hostFunction  
-intType cartesianMesh::idx_here_from_other_mesh(intType indx_at_other, const cartesianMesh& other) const {
+uint64_t cartesianMesh::idx_here_from_other_mesh(intType indx_at_other, const cartesianMesh& other) const {
 	return this->get_bin_idx(other.get_node(indx_at_other));
 }
 
