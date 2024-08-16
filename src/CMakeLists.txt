@@ -6,6 +6,7 @@ set(LIBRARY_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/waveletTransform/waveletTransform.cu"
     "${CMAKE_CURRENT_SOURCE_DIR}/ivpSolver/ivpSolver.cu"
     "${CMAKE_CURRENT_SOURCE_DIR}/probabilityDistributions/probability.cu"
+    "${CMAKE_CURRENT_SOURCE_DIR}/adaptiveMeshRefinement/Adapt_Mesh.cu"
 )
 
 set(LIBRARY_HEADERS
@@ -14,9 +15,13 @@ set(LIBRARY_HEADERS
     "${CMAKE_CURRENT_SOURCE_DIR}/waveletTransform/waveletTransform.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/ivpSolver/ivpSolver.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/probabilityDistributions/probability.cuh"
+    "${CMAKE_CURRENT_SOURCE_DIR}/adaptiveMeshRefinement/Adapt_Mesh.cuh"
 )
 
 add_library(${LIB_NAME} STATIC ${LIBRARY_HEADERS} ${LIBRARY_SOURCES})
+
+target_precompile_headers(${LIB_NAME} PUBLIC headers.hpp)
+# set(CMAKE_PCH_INSTANTIATE_TEMPLATES ON) ONLY WHEN USING CLANG COMPILER
 
 target_include_directories(
     ${LIB_NAME} PUBLIC 

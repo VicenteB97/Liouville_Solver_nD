@@ -49,24 +49,26 @@ public:
 
 private:
 	// Input signal for wavelet transform: 
-	floatType* __initial_signal;
-	floatType* __initial_signal_dvc;
-
+	std::unique_ptr<floatType> m_initialSignal;
+	cudaUniquePtr<floatType> m_initialSignal_dvc;
+	
 	// Parameters
 	uint16_t __min_refinement_level;
 	uint16_t __max_refinement_level;
 
 	// Output signals
-	floatType* __transformed_signal;
-	floatType* __transformed_signal_dvc;
-	floatType* __threshold_cutoff_transformed_signal;
-	floatType* __threshold_cutoff_transformed_signal_dvc;
+	std::unique_ptr<floatType> m_transformedSignal;
+	std::unique_ptr<floatType> m_thresholdCutoffTransformedSignal;
+
+	cudaUniquePtr<floatType> m_transformedSignal_dvc;
+	cudaUniquePtr<floatType> m_thresholdCutoffTransformedSignal_dvc;
 
 	// Output AMR arrays for indeces and assigned nodes. These are not externally-assigned, just here
-	uint64_t* __assigned_node_indeces;
-	uint64_t* __assigned_node_indeces_dvc;
-	uintType* __assigned_node_markers;
-	uintType* __assigned_node_markers_dvc;
+	std::unique_ptr<uint64_t> m_assignedNodeIndeces;
+	std::unique_ptr<uintType> m_assignedNodeMarkers;
+
+	cudaUniquePtr<uint64_t> m_assignedNodeIndeces_dvc;
+	cudaUniquePtr<uintType> m_assignedNodeMarkers_dvc;
 
 	// other signal definitions:
 	uint16_t __signal_dimension;
@@ -91,10 +93,10 @@ public:
 		uint16_t max_refinement_level() const;
 
 	hostFunction
-		void set_initial_signal_host2dvc(const floatType* input_signal);
+		uint16_t set_initial_signal_host2dvc(const floatType* input_signal);
 
 	hostFunction
-		void set_initial_signal_dvc2dvc(const floatType* input_signal_dvc);
+		uint16_t set_initial_signal_dvc2dvc(const floatType* input_signal_dvc);
 
 	hostFunction deviceFunction
 		uintType nodes_per_dim() const;
@@ -103,10 +105,10 @@ public:
 		uint64_t total_signal_nodes() const;
 
 	hostFunction
-		floatType* initial_signal() const;
+		floatType* initialSignal_ptr() const;
 
 	hostFunction
-		floatType* initial_signal_dvc() const;
+		floatType* initialSignal_dvcPtr() const;
 
 	hostFunction
 		floatType* transformed_signal() const;

@@ -66,7 +66,7 @@ public:
 		std::cout << print_buffer << std::endl;
 	};
 
-	void print_message(const std::string& print_message, const char message_color = __WRITING_COLOR) {
+	void print_message(const std::string& print_message, char message_color = __WRITING_COLOR) {
 		uint64_t message_length = print_message.length();
 		uint16_t max_allowed_message_length = __TERMINAL_WINDOW_SIZE - 2 - (__SEPARATION_FROM_BORDER * 2);
 

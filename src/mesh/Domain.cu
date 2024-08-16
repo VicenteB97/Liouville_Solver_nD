@@ -189,30 +189,30 @@ void cartesianMesh::Squarify() {
 /// @brief This function updates a cartesianMesh-defined bounding box
 /// @param D_Particle_Locations GPU array storing the positions of the particles
 /// @returns Nothing
-void cartesianMesh::update_bounding_box(const thrust::device_vector<Particle>& D_Particle_Locations) {
-
-	intType threads = fmin(THREADS_P_BLK, D_Particle_Locations.size());
-	intType blocks = floor((D_Particle_Locations.size() - 1) / threads) + 1;
-
-	gpuDevice device;
-
-	// Temporary vector storing the particles' projections in each dimension 
-	thrust::device_vector<floatType> projection(D_Particle_Locations.size(), (floatType)0);
-
-	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-
-		device.launch_kernel(blocks, threads, find_projection{
-			rpc(D_Particle_Locations, 0),
-			rpc(projection, 0),
-			D_Particle_Locations.size(),
-			d
-		});
-
-		floatType temp_1 = *(thrust::min_element(thrust::device, projection.begin(), projection.end())); // min element from the projection in that direction
-		floatType temp_2 = *(thrust::max_element(thrust::device, projection.begin(), projection.end()));
-
-		__boundary_inf.dim[d] = temp_1 - ceilf(DISC_RADIUS) * this->discr_length();
-		__boundary_sup.dim[d] = temp_2 + ceilf(DISC_RADIUS) * this->discr_length();
-	}
-	projection.clear();
-}
+//void cartesianMesh::update_bounding_box(const thrust::device_vector<Particle>& D_Particle_Locations) {
+//
+//	intType threads = fmin(THREADS_P_BLK, D_Particle_Locations.size());
+//	intType blocks = floor((D_Particle_Locations.size() - 1) / threads) + 1;
+//
+//	gpuDevice device;
+//
+//	// Temporary vector storing the particles' projections in each dimension 
+//	thrust::device_vector<floatType> projection(D_Particle_Locations.size(), (floatType)0);
+//
+//	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
+//
+//		device.launchKernel(blocks, threads, find_projection{
+//			rpc(D_Particle_Locations, 0),
+//			rpc(projection, 0),
+//			D_Particle_Locations.size(),
+//			d
+//		});
+//
+//		floatType temp_1 = *(thrust::min_element(thrust::device, projection.begin(), projection.end())); // min element from the projection in that direction
+//		floatType temp_2 = *(thrust::max_element(thrust::device, projection.begin(), projection.end()));
+//
+//		__boundary_inf.dim[d] = temp_1 - ceilf(DISC_RADIUS) * this->discr_length();
+//		__boundary_sup.dim[d] = temp_2 + ceilf(DISC_RADIUS) * this->discr_length();
+//	}
+//	projection.clear();
+//}

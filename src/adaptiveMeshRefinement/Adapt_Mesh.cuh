@@ -6,15 +6,15 @@
 #include "mesh/Domain.hpp"
 
 hostFunction
-intType setInitialParticles(
+void setInitialParticles(
 	const floatType* input_signal_dvc,
-	Particle* output_active_nodes_dvc,
+	cudaUniquePtr<Particle>& output_active_nodes_dvc,
 	const cartesianMesh& signal_bounding_box,
 	const cartesianMesh& signal_domain
 );
 
 hostFunction
-void get_detail_above_threshold_nodes(waveletTransform& amr_engine, Particle* particle_locations, const cartesianMesh& signal_domain);
+void get_detail_above_threshold_nodes(waveletTransform& amr_engine, cudaUniquePtr<Particle>& particle_locations, const cartesianMesh& signal_domain);
 
 
 class write_signal_in_bounding_box {

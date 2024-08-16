@@ -24,9 +24,6 @@
 
 static const gpuDevice gpu_device;	// We declare the gpu_device at the beggining
 
-// raw_pointer_cast from the thrust library
-#define rpc(ans,offset) raw_pointer_cast(&ans[offset])
-
 #ifndef EXIT_SUCCESS
 #define EXIT_SUCCESS 0
 #endif

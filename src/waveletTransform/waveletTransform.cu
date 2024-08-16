@@ -112,55 +112,27 @@ void get_nodes_above_threshold::operator()(const uint64_t global_id) const {
 
 hostFunction
 waveletTransform::waveletTransform() {
-	// Instantiate host pointers as null pointers
-	__initial_signal = nullptr;
-	__transformed_signal = nullptr;
-	__threshold_cutoff_transformed_signal = nullptr;
-	__assigned_node_indeces = nullptr;
-	__assigned_node_markers = nullptr;
+	// Change all of these for shared pointers? Or unique pointers and we pass ownership?
+	// Instantiate host pointers as null pointers (Or should I do raw_pointers?)
+	std::unique_ptr<floatType> m_initialSignal = std::make_unique<floatType>();
+	std::unique_ptr<floatType> m_transformedSignal = std::make_unique<floatType>();
+	std::unique_ptr<floatType> m_thresholdCutoffTransformedSignal = std::make_unique<floatType>();
+	std::unique_ptr<uint64_t> m_assignedNodeIndeces = std::make_unique<uint64_t>();
+	std::unique_ptr<uintType> m_assignedNodeMarkers = std::make_unique<uintType>();
 
 	// Instantiate device pointers as null pointers
-	__initial_signal_dvc = nullptr;
-	__transformed_signal_dvc = nullptr;
-	__threshold_cutoff_transformed_signal_dvc = nullptr;
-	__assigned_node_indeces_dvc = nullptr;
-	__assigned_node_markers_dvc = nullptr;
-
+	cudaUniquePtr<floatType> m_initialSignal_dvc;
+	cudaUniquePtr<floatType> m_transformedSignal_dvc;
+	cudaUniquePtr<floatType> m_thresholdCutoffTransformedSignal_dvc;
+	cudaUniquePtr<uint64_t> m_assignedNodeIndeces_dvc;
+	cudaUniquePtr<uintType> m_assignedNodeMarkers_dvc;
 };
 
 hostFunction
 waveletTransform::~waveletTransform() {
 	// Delete dynamically-allocated host pointers
-	if (__initial_signal != nullptr) {
-		delete[] __initial_signal;
-		__initial_signal == nullptr;
-	};
-	if (__transformed_signal != nullptr) {
-		delete[] __transformed_signal;
-		__transformed_signal == nullptr;
-	};
-	if (__threshold_cutoff_transformed_signal != nullptr) {
-		delete[] __threshold_cutoff_transformed_signal;
-		__threshold_cutoff_transformed_signal == nullptr;
-	};
-	if (__assigned_node_indeces != nullptr) {
-		delete[] __assigned_node_indeces;
-		__assigned_node_indeces == nullptr;
-	};
-	if (__assigned_node_markers != nullptr) {
-		delete[] __assigned_node_markers;
-		__assigned_node_markers == nullptr;
-	};
-
-	// Delete device pointers
-	if (__initial_signal_dvc != nullptr) { gpu_device.device_free(__initial_signal_dvc); }
-	if (__transformed_signal_dvc != nullptr) { gpu_device.device_free(__transformed_signal_dvc); }
-	if (__threshold_cutoff_transformed_signal_dvc != nullptr) { gpu_device.device_free(__threshold_cutoff_transformed_signal_dvc); }
-	if (__assigned_node_indeces_dvc != nullptr) { gpu_device.device_free(__assigned_node_indeces_dvc); }
-	if (__assigned_node_markers_dvc != nullptr) { gpu_device.device_free(__assigned_node_markers_dvc); }
-
-	// Destroy object
-	delete this; 
+	// No need to manually delete them because we're working with
+	// smart pointers in host and our smart unique_pointer in device!
 };
 
 hostFunction
@@ -194,29 +166,48 @@ uint16_t waveletTransform::max_refinement_level() const {
 };
 
 hostFunction
-void waveletTransform::set_initial_signal_host2dvc(const floatType* input_signal) {
+/// @brief We want to initialize the device signal from a signal living in host memory
+/// @return 0 if execution was error-free, 1 otherwise
+uint16_t waveletTransform::set_initial_signal_host2dvc(const floatType* input_signal) {
 	// malloc and memcopy
 	uint64_t copy_size_bytes = sizeof(floatType) * this->total_signal_nodes();
-	gpu_device.device_malloc((void**)&__initial_signal_dvc, copy_size_bytes);
-	gpu_device.memCpy_host_to_device(__initial_signal_dvc, (void*) input_signal, copy_size_bytes);
+	
+	try {
+		m_initialSignal_dvc.malloc(this->total_signal_nodes()); // allocate memory
+		gpu_device.memCpy_hst2dvc((void*)m_initialSignal_dvc.get(), (void*)input_signal, copy_size_bytes);
+	}
+	catch (const std::exception& except) {
+		std::cerr << "Caught exception at wavelet transform: " << except.what() << std::endl;
+		return EXIT_FAILURE;
+	}
+	return EXIT_SUCCESS;
 };
 
 hostFunction
-void waveletTransform::set_initial_signal_dvc2dvc(const floatType* input_signal_dvc) {
+uint16_t waveletTransform::set_initial_signal_dvc2dvc(const floatType* input_signal_dvc) {
 	// malloc and memcopy
 	uint64_t copy_size_bytes = sizeof(floatType) * this->total_signal_nodes();
-	gpu_device.device_malloc((void**)&__initial_signal_dvc, copy_size_bytes);
-	gpu_device.memCpy_device_to_device(__initial_signal_dvc, (void*)input_signal_dvc, copy_size_bytes);
+
+	try {
+		m_initialSignal_dvc.malloc(this->total_signal_nodes());
+		gpu_device.memCpy_dvc2dvc((void*)m_initialSignal_dvc.get(), (void*)input_signal_dvc, copy_size_bytes);
+	}
+	catch (const std::exception& except) {
+		std::cerr << "Exception thrown: " << except.what() << std::endl;	// That way we make sure that no exceptions escape these methods
+		return EXIT_FAILURE;
+	}
+	return EXIT_SUCCESS;
+};
+
+// Rethink all of this!
+hostFunction
+floatType* waveletTransform::initialSignal_ptr() const {
+	return m_initialSignal.get();
 };
 
 hostFunction
-floatType* waveletTransform::initial_signal() const {
-	return __initial_signal;
-};
-
-hostFunction
-floatType* waveletTransform::initial_signal_dvc() const {
-	return __initial_signal_dvc;
+floatType* waveletTransform::initialSignal_dvcPtr() const {
+	return m_initialSignal_dvc.get();
 };
 
 hostFunction deviceFunction
@@ -231,38 +222,40 @@ uint64_t waveletTransform::total_signal_nodes() const {
 
 hostFunction
 floatType* waveletTransform::transformed_signal_dvc() const {
-	return __transformed_signal_dvc;
+	return m_transformedSignal_dvc.get();
 };
 
 hostFunction
 floatType* waveletTransform::transformed_signal() const {
+	// Note that this will be read from the GPU!!
+
 	uint64_t copy_size_bytes = this->total_signal_nodes() * sizeof(floatType);
-	gpu_device.memCpy_device_to_host(__transformed_signal, __transformed_signal_dvc, copy_size_bytes);
-	return __transformed_signal;
+	gpu_device.memCpy_dvc2hst(m_transformedSignal.get(), m_transformedSignal_dvc.get(), copy_size_bytes);
+	return m_transformedSignal.get();
 };
 
 hostFunction
 uint64_t* waveletTransform::assigned_node_indeces() const {
 	uint64_t copy_size_bytes = this->total_signal_nodes() * sizeof(uint64_t);
-	gpu_device.memCpy_device_to_host(__assigned_node_indeces, __assigned_node_indeces_dvc, copy_size_bytes);
-	return __assigned_node_indeces;
+	gpu_device.memCpy_dvc2hst(m_assignedNodeIndeces.get(), m_assignedNodeIndeces_dvc.get(), copy_size_bytes);
+	return m_assignedNodeIndeces.get();
 };
 
 hostFunction
 uintType* waveletTransform::assigned_node_markers() const {
 	uint64_t copy_size_bytes = this->total_signal_nodes() * sizeof(uintType);
-	gpu_device.memCpy_device_to_host(__assigned_node_markers, __assigned_node_markers_dvc, copy_size_bytes);
-	return __assigned_node_markers;
+	gpu_device.memCpy_dvc2hst(m_assignedNodeMarkers.get(), m_assignedNodeMarkers_dvc.get(), copy_size_bytes);
+	return m_assignedNodeMarkers.get();
 };
 
 hostFunction
 uint64_t* waveletTransform::assigned_node_indeces_dvc() const {
-	return __assigned_node_indeces_dvc;
+	return m_assignedNodeIndeces_dvc.get();
 };
 
 hostFunction
 uintType* waveletTransform::assigned_node_markers_dvc() const {
-	return __assigned_node_markers_dvc;
+	return m_assignedNodeMarkers_dvc.get();
 };
 
 hostFunction
@@ -274,13 +267,13 @@ void waveletTransform::compute_wavelet_transform() {
 	const double tolerance{ TOLERANCE_AMR }; 
 
 	// Allocate memory 
-	gpu_device.device_malloc((void**)&__assigned_node_indeces_dvc, sizeof(uint64_t) * total_signal_nodes);
-	gpu_device.device_malloc((void**)&__assigned_node_markers_dvc, sizeof(uintType) * total_signal_nodes);
-	gpu_device.device_malloc((void**)&__transformed_signal_dvc, sizeof(floatType) * total_signal_nodes);
+	m_assignedNodeIndeces_dvc.malloc(total_signal_nodes);
+	m_assignedNodeMarkers_dvc.malloc(total_signal_nodes);
+	m_transformedSignal_dvc.malloc(total_signal_nodes);
 
-	gpu_device.memCpy_device_to_device(
-		__transformed_signal_dvc,
-		__initial_signal_dvc,
+	gpu_device.memCpy_dvc2dvc(
+		m_transformedSignal_dvc.get(),
+		m_initialSignal_dvc.get(),
 		sizeof(floatType) * total_signal_nodes
 	);
 
@@ -289,20 +282,20 @@ void waveletTransform::compute_wavelet_transform() {
 		uint16_t Threads = fmin(THREADS_P_BLK, total_signal_nodes / pow(rescaling, PHASE_SPACE_DIMENSIONS));
 		uint64_t Blocks = floor((total_signal_nodes / pow(rescaling, PHASE_SPACE_DIMENSIONS) - 1) / Threads) + 1;
 
-		gpu_device.launch_kernel(Blocks, Threads,
+		gpu_device.launchKernel(Blocks, Threads,
 			single_block_single_level_wavelet_transform{
-				__transformed_signal_dvc,
+				m_transformedSignal_dvc.get(),
 				rescaling,
 				nodes_per_dim,
 				total_signal_nodes
 			}
 		);
 
-		gpu_device.launch_kernel(Blocks, Threads,
+		gpu_device.launchKernel(Blocks, Threads,
 			get_nodes_above_threshold{
-				__transformed_signal_dvc,
-				__assigned_node_indeces_dvc,
-				__assigned_node_markers_dvc,
+				m_transformedSignal_dvc.get(),
+				m_assignedNodeIndeces_dvc.get(),
+				m_assignedNodeMarkers_dvc.get(),
 				rescaling,
 				nodes_per_dim,
 				total_signal_nodes,
@@ -318,20 +311,23 @@ hostFunction
 uintType waveletTransform::sorted_assigned_nodes() {
 	uint64_t total_nr_of_nodes(this->total_signal_nodes());
 
+	thrust::device_ptr<uintType> assignedNodeMarkers_auxPtr(m_assignedNodeMarkers_dvc.get());
+	thrust::device_ptr<uintType> assignedNodeIndeces_auxPtr(m_assignedNodeIndeces_dvc.get());
+
 	const uintType nr_selected_nodes(
 		thrust::reduce(
 			thrust::device,
-			__assigned_node_markers_dvc,
-			__assigned_node_markers_dvc + total_nr_of_nodes
+			assignedNodeMarkers_auxPtr,
+			assignedNodeMarkers_auxPtr + total_nr_of_nodes
 		)
 	);
 
 	// Set the selected nodes first, so that we collect the first nr_selected_nodes mesh indeces
 	thrust::sort_by_key(
 		thrust::device,
-		__assigned_node_markers,
-		__assigned_node_markers + total_nr_of_nodes,
-		__assigned_node_indeces,
+		assignedNodeMarkers_auxPtr,
+		assignedNodeMarkers_auxPtr + total_nr_of_nodes,
+		assignedNodeIndeces_auxPtr,
 		thrust::greater<uintType>()
 	);
 
