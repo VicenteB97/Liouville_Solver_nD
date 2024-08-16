@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-set(CMAKE_HOST_SYSTEM Windows)
+# set(CMAKE_HOST_SYSTEM Windows)
 
 # Enable Hot Reload for MSVC compilers if supported.
 if (POLICY CMP0141)
@@ -23,11 +23,13 @@ set(CMAKE_CUDA_ARCHITECTURES    60 70 80)
 
 find_package(OpenMP)
 
-if(CMAKE_HOST_SYSTEM MATCHES "Windows")
+if(CMAKE_HOST_SYSTEM MATCHES Windows)
     include_directories(${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
 endif()
 
-# SUPER IMPORTANT FOR CUDA PROJECTS
+message(STATUS "Building in ${CMAKE_HOST_SYSTEM_NAME}")
+
+# NEEDED FOR CUDA PROJECTS
 set(CMAKE_CUDA_SEPARABLE_COMPILATION ON)
 
 add_subdirectory(configured)
