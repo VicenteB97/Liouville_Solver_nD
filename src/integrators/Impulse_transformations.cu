@@ -87,7 +87,7 @@ int16_t IMPULSE_TRANSFORM_PDF(thrust::device_vector<floatType>&		GPU_PDF,				// 
 													rpc(Impulses,0), 
 													AMR_ActiveNodeCount, 
 													Total_Particles);
-	gpuError_Check( cudaDeviceSynchronize() );
+	if (cudaDeviceSynchronize() != cudaSuccess) { return EXIT_FAILURE; };
 
 
 // 3.- Reinitialization
@@ -112,7 +112,7 @@ for (uintType s = 0; s < Random_Samples; s++){
 												s,
 												Problem_Domain,
 												Expanded_Domain);
-	gpuError_Check(cudaDeviceSynchronize());
+if(cudaDeviceSynchronize()!=cudaSuccess){return EXIT_FAILURE;}
 }			
 
 // Correction of any possible negative PDF values
@@ -121,7 +121,7 @@ for (uintType s = 0; s < Random_Samples; s++){
 		Blocks  = floorf((Problem_Domain.total_nodes() - 1) / Threads) + 1;
 		
 		CORRECTION <<<Blocks, Threads>>>(rpc(GPU_PDF,0), Problem_Domain.total_nodes());
-		gpuError_Check(cudaDeviceSynchronize());
+	if(cudaDeviceSynchronize()!=cudaSuccess){return EXIT_FAILURE;}
 
 	thrust::transform(GPU_PDF.begin(), GPU_PDF.end(), GPU_PDF.begin(), 1.00f / Sum_Rand_Params * _1); // we use the thrust::placeholders here (@ the last input argument)
 

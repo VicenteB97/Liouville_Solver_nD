@@ -15,8 +15,6 @@
 #define __IVPSOLVER_HPP__
 
 #include "include/headers.hpp"
-#include "include/utils/others.cuh"
-#include "include/utils/error_functs.cuh"
 #include "include/utils/numeric_defs.hpp"
 #include "include/indicators/progress_bar.hpp"
 

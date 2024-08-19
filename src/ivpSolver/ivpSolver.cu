@@ -467,7 +467,7 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 //					mode,
 //					rpc(Extra_Parameter, 0),
 //					__problem_domain);
-//				gpuError_Check(cudaDeviceSynchronize());
+//			if(cudaDeviceSynchronize()!=cudaSuccess){return EXIT_FAILURE;}
 //				endTimeSeconds = std::chrono::high_resolution_clock::now();
 //				durationSeconds = endTimeSeconds - startTimeSeconds;
 //
@@ -510,7 +510,7 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 //					Sample_idx_offset_init,
 //					__problem_domain,
 //					Expanded_Domain);
-//				gpuError_Check(cudaDeviceSynchronize());
+//			if(cudaDeviceSynchronize()!=cudaSuccess){return EXIT_FAILURE;}
 //				endTimeSeconds = std::chrono::high_resolution_clock::now();
 //				durationSeconds = endTimeSeconds - startTimeSeconds;
 //
@@ -529,7 +529,7 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 //			uintType Blocks = floor((double)(nrNodesPerFrame / ELEMENTS_AT_A_TIME - 1) / Threads) + 1;
 //
 //			CORRECTION << <Blocks, Threads >> > (rpc(D_PDF_ProbDomain, 0), nrNodesPerFrame);
-//			gpuError_Check(cudaDeviceSynchronize());
+//		if(cudaDeviceSynchronize()!=cudaSuccess){return EXIT_FAILURE;}
 //
 //			// Divide by the sum of the values of the parameter mesh to obtain the weighted mean
 //			thrust::transform(D_PDF_ProbDomain.begin(), D_PDF_ProbDomain.end(), D_PDF_ProbDomain.begin(), 1.0f / sum_sample_val * _1); // we use the thrust::placeholders here (@ the last input argument)

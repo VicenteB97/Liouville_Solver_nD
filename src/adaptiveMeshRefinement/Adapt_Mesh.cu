@@ -59,7 +59,7 @@ void get_detail_above_threshold_nodes(waveletTransform& amr_engine, cudaUniquePt
 
 	// We get the number of selected nodes because we'll read the first nr_selected_nodes indeces in the bounding box mesh
 	uintType nr_selected_nodes = amr_engine.sorted_assigned_nodes();
-	particle_locations_dvc.malloc(nr_selected_nodes);
+	particle_locations_dvc.malloc(nr_selected_nodes, Particle());
 
 	try {
 		const uintType Threads = fmin(THREADS_P_BLK, nr_selected_nodes);

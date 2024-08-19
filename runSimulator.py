@@ -114,7 +114,7 @@ def write_header(sim_name: str, sim_data: dict[str, Any]):
         file.write(text_to_header)
 
 # 2.- Build, compile and execute tests
-def build_compile_execute(config: str, cores: str, clean_start: bool = True):
+def build_compile_execute(config: str = "Release", cores: str = "12", clean_start: bool = True):
     my_path = os.getcwd() + f"/build/app/{config}"
     
     commands = ["cmake -S ./ -B ./build"]
@@ -156,4 +156,5 @@ if __name__ == "__main__":
         for case_name, case_props in sim_cases.items():
             write_header(case_name, case_props)
             # Compile and execute each case
-            build_compile_execute("Release", "12", False)
+            build_compile_execute()
+

@@ -32,6 +32,9 @@ static const gpuDevice gpu_device;	// We declare the gpu_device at the beggining
 #define EXIT_FAILURE 1
 #endif
 
+// Error checking in the CPU code
+#define errorCheck(ans) {if(ans != EXIT_SUCCESS){std::cout << "Error found at:\n" << __FILE__ << "\nLine: " << std::to_string(__LINE__) << ".\n"; return EXIT_FAILURE;}}
+
 /// @brief Host/Device function that computes the positive remainder (mod) between two integers
 /// @param a numerator
 /// @param b denominator

@@ -111,11 +111,11 @@ __host__ intType CONJUGATE_GRADIENT_SOLVE(
 		// Compute A * X0
 	MATRIX_VECTOR_MULTIPLICATION << < Blocks, Threads >> > (rpc(interpVectors.GPU_temp, 0), rpc(GPU_lambdas, 0), rpc(GPU_Index_array, 0),
 		rpc(GPU_Mat_entries, 0), Total_Particles, MaxNeighborNum);
-	gpuError_Check(cudaDeviceSynchronize());
+if(cudaDeviceSynchronize()!=cudaSuccess){return EXIT_FAILURE;}
 
 	// Compute R=B-A*X0
 	UPDATE_VEC << <Blocks_2, Threads_2 >> > (rpc(interpVectors.GPU_R, 0), rpc(GPU_AdaptPDF, 0), (floatType)-1, rpc(interpVectors.GPU_temp, 0), Total_Particles);
-	gpuError_Check(cudaDeviceSynchronize());
+if(cudaDeviceSynchronize()!=cudaSuccess){return EXIT_FAILURE;}
 
 	floatType Alpha, R0_norm, r_squaredNorm, aux, beta;
 	// floatType Alpha, R0_norm, r_norm, aux, beta;
@@ -127,7 +127,7 @@ __host__ intType CONJUGATE_GRADIENT_SOLVE(
 			// 1.1.- Compute AP=A*P
 		MATRIX_VECTOR_MULTIPLICATION << < Blocks, Threads >> > (rpc(interpVectors.GPU_AP, 0), rpc(interpVectors.GPU_P, 0), rpc(GPU_Index_array, 0),
 			rpc(GPU_Mat_entries, 0), Total_Particles, MaxNeighborNum);
-		gpuError_Check(cudaDeviceSynchronize());
+	if(cudaDeviceSynchronize()!=cudaSuccess){return EXIT_FAILURE;}
 
 		// 1.2.- Compute P'*AP
 		aux = thrust::inner_product(thrust::device, interpVectors.GPU_P.begin(), interpVectors.GPU_P.end(), interpVectors.GPU_AP.begin(), 0.0f);
@@ -144,7 +144,7 @@ __host__ intType CONJUGATE_GRADIENT_SOLVE(
 
 		// 2.- Update residuals 
 		UPDATE_VEC << <Blocks_2, Threads_2 >> > (rpc(interpVectors.GPU_R, 0), rpc(interpVectors.GPU_R, 0), -Alpha, rpc(interpVectors.GPU_AP, 0), Total_Particles);
-		gpuError_Check(cudaDeviceSynchronize());
+	if(cudaDeviceSynchronize()!=cudaSuccess){return EXIT_FAILURE;}
 
 		// Compute residual l_2 norm
 		r_squaredNorm = thrust::inner_product(thrust::device, interpVectors.GPU_R.begin(), interpVectors.GPU_R.end(), interpVectors.GPU_R.begin(), 0.0f);
@@ -165,7 +165,7 @@ __host__ intType CONJUGATE_GRADIENT_SOLVE(
 			beta = r_squaredNorm / R0_norm;
 
 			UPDATE_VEC << <Blocks_2, Threads_2 >> > (rpc(interpVectors.GPU_P, 0), rpc(interpVectors.GPU_R, 0), beta, rpc(interpVectors.GPU_P, 0), Total_Particles);
-			gpuError_Check(cudaDeviceSynchronize());
+		if(cudaDeviceSynchronize()!=cudaSuccess){return EXIT_FAILURE;}
 			k++;
 		}
 	}

@@ -227,7 +227,7 @@ __host__ int16_t CS_Neighbor_Search(thrust::device_vector<Particle>& Search_Part
 			rpc(Search_Particles, offset),
 			CS_BBox,
 			Adapt_Points);
-		gpuError_Check(cudaDeviceSynchronize());
+	if(cudaDeviceSynchronize()!=cudaSuccess){return EXIT_FAILURE;}
 
 		// Prefix sum of the bin-count array, which gives the cumulative points in each bin (without including the bin itself; thus the name exclusive)
 		thrust::exclusive_scan(thrust::device, Bin_globalCount.begin(), Bin_globalCount.end(), Bin_globalCount.begin());
@@ -242,7 +242,7 @@ __host__ int16_t CS_Neighbor_Search(thrust::device_vector<Particle>& Search_Part
 			rpc(Bin_localCount, 0),
 			Adapt_Points,
 			offset);
-		gpuError_Check(cudaDeviceSynchronize());
+	if(cudaDeviceSynchronize()!=cudaSuccess){return EXIT_FAILURE;}
 
 		// Relabel the particles and their values
 		thrust::copy(temp_Particles.begin(), temp_Particles.end(), &Search_Particles[offset]);
@@ -258,7 +258,7 @@ __host__ int16_t CS_Neighbor_Search(thrust::device_vector<Particle>& Search_Part
 			offset,
 			search_radius,
 			CS_BBox);
-		gpuError_Check(cudaDeviceSynchronize());
+	if(cudaDeviceSynchronize()!=cudaSuccess){return EXIT_FAILURE;}
 	}
 	return 0;
 }
@@ -346,7 +346,7 @@ int16_t particleNeighborSearch(
 		Adapt_Points,
 		Adapt_Points,
 		search_radius);
-	gpuError_Check(cudaDeviceSynchronize());
+if(cudaDeviceSynchronize()!=cudaSuccess){return EXIT_FAILURE;}
 
 	// Dynamical choice of either exhaustive or counting sort-based point search
 	if (Adapt_Points < ptSEARCH_THRESHOLD) {
@@ -358,7 +358,7 @@ int16_t particleNeighborSearch(
 			Adapt_Points,
 			Adapt_Points,
 			search_radius);
-		gpuError_Check(cudaDeviceSynchronize());
+	if(cudaDeviceSynchronize()!=cudaSuccess){return EXIT_FAILURE;}
 	}
 	else {
 		errorCheck(CS_Neighbor_Search(Search_Particles,

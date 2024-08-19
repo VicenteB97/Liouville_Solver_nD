@@ -67,7 +67,7 @@ auto end = std::chrono::high_resolution_clock::now();
 // -------------------------------------------------------------------------------------------- //
 
 	errorCheck(Solver.writeFramesToFile(duration.count()))
-	gpuError_Check(cudaDeviceReset());
+	errorCheck_dvc(cudaDeviceReset());
 
 	return 0;
 }

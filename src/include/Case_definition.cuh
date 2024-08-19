@@ -1,6 +1,6 @@
 
     #pragma once
-    #define CASE "VDP_2"
+    #define CASE "VDP_1"
 
     // Choosing whether showing full or simplified timing information
     #define OUTPUT_INFO 0
@@ -30,15 +30,19 @@
     #define REINIT_STEPS 1
     #define SAVING_STEPS 4
 
-    // Vector field definition
-    // explanation: 
-    #define VF_1 X.dim[1]
-    #define D_1  0
-    #define VF_2 parameter.sample_vec[0]*(1 - powf(X.dim[0], 2))*X.dim[1] - parameter.sample_vec[1]*X.dim[0]
-    #define D_2  parameter.sample_vec[0]*(1 - powf(X.dim[0], 2))
+    // Use ad-hoc integrator? (ONLY FOR MATHIEU FOR NOW)
+    #define SPECIAL_INTEGRATOR false
 
+    // Vector field definition
+    // explanation:
+    #define VF_1 (floatType)X.dim[1]
+    #define D_1 0
+    
+    #define VF_2 (floatType)parameter.sample_vec[0]*(1 - powf(X.dim[0], 2))*X.dim[1] - parameter.sample_vec[1]*X.dim[0]
+    #define D_2 parameter.sample_vec[0]*(1 - powf(X.dim[0], 2))
+    
     #define VEC_FIELD {VF_1, VF_2}
-    #define DIVERGENCE D_1 + D_2
+    #define DIVERGENCE (floatType)D_1 + D_2
 
     static const char   IC_NAMES[PHASE_SPACE_DIMENSIONS] = {'N', 'N'};
     static const bool   IC_isTRUNC[PHASE_SPACE_DIMENSIONS] = {true, true};
@@ -57,5 +61,5 @@
     static floatType 		_DIST_STD[PARAM_SPACE_DIMENSIONS] = {sqrtf(0.09)};
     static floatType 		_DIST_N_SAMPLES[PARAM_SPACE_DIMENSIONS] = {50};
 
-            #define IMPULSE_TYPE 0
-            #define INCLUDE_XTRA_PARAMS false
+    #define IMPULSE_TYPE 0
+    #define INCLUDE_XTRA_PARAMS false
