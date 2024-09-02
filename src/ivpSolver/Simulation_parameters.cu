@@ -1,4 +1,4 @@
-#include <Simulation_parameters.cuh>
+#include "Simulation_parameters.hpp"
 
 bool Time_instants::operator < (const Time_instants& other) const {
 	return (time < other.time);

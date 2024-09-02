@@ -1,11 +1,14 @@
 #ifndef __CUDABASE_CUH__
 #define __CUDABASE_CUH__
 
+#ifdef USECUDA
+
 #define deviceFunction __device__
 #define hostFunction __host__
 #define gpuDevice cudaDevice
 
 // Headers for the CUDA libraries
+#include "headersCpp.hpp"
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 
@@ -49,8 +52,8 @@ public:
 	};
 
 	template<typename T>
-	void launchKernel(uint64_t n_blocks, uintType n_threads, const T& functor) const {
-		deviceLaunchFunctionWrapper <<< n_blocks, n_threads >>> (functor);
+	void launchKernel(uint64_t n_blocks, uint16_t n_threads, const T& functor) const {
+		deviceLaunchFunctionWrapper <<<n_blocks, n_threads>>> (functor);
 		if (cudaDeviceSynchronize() != cudaSuccess) { throw std::runtime_error("A device error has occurred."); }
 	};
 };
@@ -180,5 +183,7 @@ private:
 		__raw_dvc_pointer = nullptr;
 	};
 };
+
+#endif
 
 #endif

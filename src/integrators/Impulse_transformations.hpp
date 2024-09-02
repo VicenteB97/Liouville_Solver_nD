@@ -1,6 +1,6 @@
 #pragma once
 
-#include "headers.cuh"
+#include "include/headers.hpp"
 
 #if IMPULSE_TYPE == 1
 

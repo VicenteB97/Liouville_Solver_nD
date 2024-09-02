@@ -1,11 +1,10 @@
-#ifndef __SIM_DATA_CUH__
-#define __SIM_DATA_CUH__
+#ifndef __SIM_DATA_HPP__
+#define __SIM_DATA_HPP__
 
 #include "config.hpp"
-#include "utils/numeric_defs.cuh"
-#include "headers.cuh"
-#include "indicators/cursor_control.hpp"
-#include "indicators/progress_bar.hpp"
+#include "include/headers.hpp"
+#include "include/indicators/cursor_control.hpp"
+#include "include/indicators/progress_bar.hpp"
 
 // Simulation log for further analysis
 class LogFrames {

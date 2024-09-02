@@ -1,12 +1,9 @@
-#ifndef __SIMULATION_PARAMETERS_CUH__
-#define __SIMULATION_PARAMETERS_CUH__
+#ifndef __SIMULATION_PARAMETERS_HPP__
+#define __SIMULATION_PARAMETERS_HPP__
 
-#include "headers.cuh"
-#include "checkers/input_type_check.cuh"
-#include "utils/error_msgs.cuh"
-#include "utils/numeric_defs.cuh"
-#include "Case_definition.cuh"
-#include "Sim_data.cuh"
+#include "include/headers.hpp"
+#include "include/checkers/input_type_check.hpp"
+#include "Sim_data.hpp"
 
 // Time + impulse: ----------------------------------------------
 class Time_instants {

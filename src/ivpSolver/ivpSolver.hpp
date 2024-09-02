@@ -18,17 +18,17 @@
 #include "include/utils/numeric_defs.hpp"
 #include "include/indicators/progress_bar.hpp"
 
-#include "adaptiveMeshRefinement/Adapt_Mesh.cuh"
+#include "adaptiveMeshRefinement/Adapt_Mesh.hpp"
 #include "mesh/Domain.hpp"
 #include "mesh/Particle.hpp"
-#include "Sim_data.cuh"
-#include "probabilityDistributions/Probability.cuh"
-#include "Simulation_parameters.cuh"
-#include "interpolation/Interpolation.cuh"
+#include "probabilityDistributions/Probability.hpp"
+#include "interpolation/Interpolation.hpp"
 #include "include/PointSearch.cuh"
-#include "integrators/Impulse_transformations.cuh"
-#include "integrators/Integrator.cuh"
-#include "Sim_data.cuh"
+#include "integrators/Impulse_transformations.hpp"
+#include "integrators/Integrator.hpp"
+
+#include "Simulation_parameters.hpp"
+#include "Sim_data.hpp"
 
 class ivpSolver{
 private:

@@ -1,5 +1,5 @@
-#ifndef __PROBABILITY_CUH__
-#define __PROBABILITY_CUH__
+#ifndef __PROBABILITY_HPP__
+#define __PROBABILITY_HPP__
 
 #include "include/headers.hpp"
 #include "mesh/Domain.hpp"

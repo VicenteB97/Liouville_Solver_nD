@@ -1,13 +1,10 @@
 #ifndef __POINTSEARCH_CUH__
 #define __POINTSEARCH_CUH__
 
-#include "Case_definition.cuh"
-#include "headers.cuh"
-#include "utils/error_functs.cuh"
-#include "utils/others.cuh"
-#include "utils/numeric_defs.cuh"
-#include "Domain.cuh"
-#include "Interpolation.cuh"
+#include "include/headers.hpp"
+#include "include/utils/numeric_defs.hpp"
+#include "mesh/Domain.hpp"
+#include "interpolation/Interpolation.hpp"
 
 #if 0
 /// @brief 

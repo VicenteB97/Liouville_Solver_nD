@@ -1,14 +1,13 @@
-#ifndef __INTEGRATOR_CUH__
-#define __INTEGRATOR_CUH__
+#ifndef __INTEGRATOR_HPP__
+#define __INTEGRATOR_HPP__
 
-#include "headers.cuh"
-#include "Probability.cuh"
-#include "Domain.cuh"
-#include "utils/numeric_defs.cuh"
+#include "include/headers.hpp"
+#include "probabilityDistributions/Probability.hpp"
+#include "mesh/Domain.hpp"
 
 // Dynamics functions:
 // The following functions are not to be modified
-__device__
+deviceFunction
 inline Particle VECTOR_FIELD(
 	Particle X,
 	double      t,
@@ -18,7 +17,7 @@ inline Particle VECTOR_FIELD(
 //-------------------------------------------------------------------------
 
 //-------------------------------------------------------------------------
-__device__
+deviceFunction
 inline floatType DIVERGENCE_FIELD(
 	Particle X,
 	double      t,
@@ -28,11 +27,11 @@ inline floatType DIVERGENCE_FIELD(
 
 
 // Output the final point
-__device__ void runge_kutta_45(Particle& position, floatType& value, double t0, const double tF, const double time_step,
+deviceFunction void runge_kutta_45(Particle& position, floatType& value, double t0, const double tF, const double time_step,
 	Param_vec<PARAM_SPACE_DIMENSIONS> parameter_realization, const double* extra_param, const uintType mode,
 	const cartesianMesh domain_mesh);
 
-__device__ void lie_midpoint_mathieu(
+deviceFunction void lie_midpoint_mathieu(
 	Particle& position,
 	floatType& value,
 	double t0,

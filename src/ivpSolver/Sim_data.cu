@@ -1,4 +1,4 @@
-#include <Sim_data.cuh>
+#include "Sim_data.hpp"
 
 LogFrames::LogFrames() {
     log_AMR_Time = 0;

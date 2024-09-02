@@ -1,8 +1,8 @@
-#include <Integrator.cuh>
+#include "Integrator.hpp"
 
 // Dynamics functions:
 // The following functions are not to be modified
-__device__
+deviceFunction
 inline Particle VECTOR_FIELD(
 	Particle X,
 	double      t,
@@ -16,7 +16,7 @@ inline Particle VECTOR_FIELD(
 //-------------------------------------------------------------------------
 
 //-------------------------------------------------------------------------
-__device__
+deviceFunction
 inline floatType DIVERGENCE_FIELD(Particle X,
 	double      t,
 	const Param_vec<PARAM_SPACE_DIMENSIONS> parameter,
@@ -28,7 +28,7 @@ inline floatType DIVERGENCE_FIELD(Particle X,
 
 
 // Output the final point
-__device__ void runge_kutta_45(
+deviceFunction void runge_kutta_45(
 	Particle& position, 
 	floatType& value, 
 	double t0, 
@@ -98,7 +98,7 @@ __device__ void runge_kutta_45(
 /// @param mode 
 /// @param domain_mesh 
 /// @return 
-__device__ void lie_euler_mathieu(
+deviceFunction void lie_euler_mathieu(
 	Particle& position,
 	floatType& value,
 	double t0,

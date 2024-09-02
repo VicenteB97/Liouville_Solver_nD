@@ -10,18 +10,16 @@
 //////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////
-#ifndef __INTERPOLATION_CUH__
-#define __INTERPOLATION_CUH__
+#ifndef __INTERPOLATION_HPP__
+#define __INTERPOLATION_HPP__
 
-#include "headers.cuh"
-#include "Case_definition.cuh"
-#include "utils/numeric_defs.cuh"
-#include "utils/error_functs.cuh"
-#include "utils/others.cuh"
-#include "utils/window.cuh"
+#include "include/headers.hpp"
+#include "include/Case_definition.hpp"
+#include "include/utils/numeric_defs.hpp"
+#include "include/utils/window.cuh"
 
-#include "Probability.cuh"
-#include "Domain.cuh"
+#include "probabilityDistributions/Probability.hpp"
+#include "mesh/Domain.hpp"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -38,7 +36,7 @@ public:
 
 public:
 	// Constructor
-	__host__ InterpHandle(uintType size = 1);
+	hostFunction InterpHandle(uintType size = 1);
 
 	// Methods	
 	void resize(uintType size = 1);
@@ -46,7 +44,7 @@ public:
 };
 
 
-__device__ inline floatType RBF(const floatType& SuppRBF, const floatType& inputNormalized) {
+deviceFunction inline floatType RBF(const floatType& SuppRBF, const floatType& inputNormalized) {
 
 #if PHASE_SPACE_DIMENSIONS == 1
 	const double Mass_RBF = 0.333383333333333;
@@ -86,7 +84,7 @@ __global__ void MATRIX_VECTOR_MULTIPLICATION(
 	floatType* X, const floatType* x0, const intType* Matrix_idxs, const floatType* Matrix_entries, const intType total_length, const intType Max_Neighbors);
 
 
-__host__ intType CONJUGATE_GRADIENT_SOLVE(thrust::device_vector<floatType>& GPU_lambdas,
+hostFunction intType CONJUGATE_GRADIENT_SOLVE(thrust::device_vector<floatType>& GPU_lambdas,
 	thrust::device_vector<intType>& GPU_Index_array,
 	thrust::device_vector<floatType>& GPU_Mat_entries,
 	thrust::device_vector<floatType>& GPU_AdaptPDF,

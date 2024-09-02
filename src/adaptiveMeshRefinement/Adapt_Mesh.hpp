@@ -1,5 +1,5 @@
-#ifndef __ADAPT_MESH_CUH__
-#define __ADAPT_MESH_CUH__
+#ifndef __ADAPT_MESH_HPP__
+#define __ADAPT_MESH_HPP__
 
 #include "waveletTransform/waveletTransform.hpp"
 #include "include/headers.hpp"

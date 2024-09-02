@@ -109,7 +109,7 @@ def write_header(sim_name: str, sim_data: dict[str, Any]):
     #define INCLUDE_XTRA_PARAMS false
     '''
 
-    with open('./src/include/Case_definition.cuh', 'w') as file:
+    with open('./src/include/Case_definition.hpp', 'w+') as file:
         # Write the C++/CUDA header content into the file
         file.write(text_to_header)
 
@@ -117,7 +117,7 @@ def write_header(sim_name: str, sim_data: dict[str, Any]):
 def build_compile_execute(config: str = "Release", cores: str = "12", clean_start: bool = True):
     my_path = os.getcwd() + f"/build/app/{config}"
     
-    commands = ["cmake -S ./ -B ./build"]
+    commands = ["cmake -S ./ -B ./build -DBUILD_CUDA=ON"]
 
     if os.path.exists(f"{my_path}") and clean_start:
         shutil.rmtree(f"{my_path}")
@@ -126,8 +126,7 @@ def build_compile_execute(config: str = "Release", cores: str = "12", clean_star
         commands.append(f"cmake --build ./build --target clean --config {config}")
         
     commands.extend([
-            f"cmake --build ./build --config {config} --parallel {cores}",
-            "cls"
+            f"cmake --build ./build --config {config} --parallel {cores}"
         ])
     
     for command in commands:

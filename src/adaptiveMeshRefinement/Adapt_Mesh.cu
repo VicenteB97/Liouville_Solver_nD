@@ -1,5 +1,4 @@
-#include "Adapt_Mesh.cuh"
-
+#include "Adapt_Mesh.hpp"
 
 deviceFunction
 void write_signal_in_bounding_box::operator()(const uint64_t global_id) const {
