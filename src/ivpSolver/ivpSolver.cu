@@ -23,7 +23,7 @@ ivpSolver::~ivpSolver() {};
 int16_t ivpSolver::buildDomain() {
 
 	// This variable represents the problem domain, which is NOT going to be the one used for computations
-	__problem_domain.set_nodes_per_dimension(pow(2, FINEST_DISCR_LVL));
+	__problem_domain.setNodesPerDimension(pow(2, FINEST_DISCR_LVL));
 
 	return 0;
 };
@@ -127,7 +127,7 @@ int16_t ivpSolver::evolvePDF(const cudaDeviceProp& D_Properties) {
 	__particle_bounding_box.Squarify();
 
 	// Update the number of pts per dimension
-	__particle_bounding_box.set_nodes_per_dimension(round((IC_SupTVAL[0] - IC_InfTVAL[0]) / __problem_domain.discr_length()));
+	__particle_bounding_box.setNodesPerDimension(round((IC_SupTVAL[0] - IC_InfTVAL[0]) / __problem_domain.discr_length()));
 
 	// PDF values at the fixed, high-res cartesianMesh (CPU)
 	std::unique_ptr<floatType[]> pdf_values_at_problem_domain = std::make_unique<floatType[]>(__problem_domain.total_nodes()); /*new floatType(__problem_domain.total_nodes());*/

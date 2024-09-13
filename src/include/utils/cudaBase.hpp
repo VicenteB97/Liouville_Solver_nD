@@ -1,8 +1,6 @@
 #ifndef __CUDABASE_CUH__
 #define __CUDABASE_CUH__
 
-#ifdef USECUDA
-
 #define deviceFunction __device__
 #define hostFunction __host__
 #define gpuDevice cudaDevice
@@ -105,7 +103,7 @@ public:
 	/// @brief This function allocates size_count elements of memory type given by the template parameter T of the unique_poitner.
 	/// This function returns a runtime exception if allocation fails.
 	/// @param size_count - The number of elements that the poitner will point to.
-	void malloc(uint64_t size_count = 1, T value = 0) {
+	void malloc(uint64_t size_count, T value) {
 		if (size_count <= 0) { throw std::runtime_error("Cannot allocate 0 elements on array.\n"); }
 		
 		// Allocate memory assuming the desired size is at least 1
@@ -130,25 +128,18 @@ public:
 	/// @param value - Initial value set to the array
 	/// @param first_element - First array element pointed
 	/// @param last_element - Last array element poitned to
-	void set_init_values(T value = 0, int64_t last_element = -1, uint64_t first_element = 0) {
+	void set_init_values(T value, int64_t last_element = -1, uint64_t first_element = 0) {
 		if (last_element == -1) {
 			last_element = __size_count;
 		}
 
-		if (value == (T)0) {
-			if (cudaMemset((void*)__raw_dvc_pointer, (int32_t)0, __size_count * sizeof(T)) != cudaSuccess) {
-				throw std::runtime_error("Failed to initialize device memory with cudaMemset");
-			}
+		try {
+			thrust::device_ptr<T> aux_dev_ptr(__raw_dvc_pointer);
+			thrust::fill(aux_dev_ptr + first_element, aux_dev_ptr + last_element, value);
 		}
-		else {
-			try {
-				thrust::device_ptr<T> aux_dev_ptr(__raw_dvc_pointer);
-				thrust::fill(aux_dev_ptr + first_element, aux_dev_ptr + last_element, value);
-			}
-			catch (const std::exception& e) {
-				std::cerr << "Cannot set initial value in device variable using thrust::fill.\n";
-				throw;
-			}
+		catch (const std::exception& e) {
+			std::cerr << "Cannot set initial value in device variable using thrust::fill.\n";
+			throw;
 		}
 	};
 
@@ -186,4 +177,4 @@ private:
 
 #endif
 
-#endif
+// #endif

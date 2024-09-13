@@ -70,7 +70,7 @@ Particle cartesianMesh::boundary_sup() const {
 };
 
 hostFunction deviceFunction
-void cartesianMesh::set_nodes_per_dimension(uintType nodes_per_dim) {
+void cartesianMesh::setNodesPerDimension(uintType nodes_per_dim) {
 	__nodes_per_dim = nodes_per_dim;
 };
 

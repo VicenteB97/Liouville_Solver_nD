@@ -53,8 +53,8 @@ private:
 	cudaUniquePtr<floatType> m_initialSignal_dvc;
 	
 	// Parameters
-	uint16_t __min_refinement_level;
-	uint16_t __max_refinement_level;
+	uint16_t m_minRefinementLevel;
+	uint16_t m_maxRefinementLevel;
 
 	// Output signals
 	std::unique_ptr<floatType> m_transformedSignal;

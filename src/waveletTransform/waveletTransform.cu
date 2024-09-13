@@ -147,22 +147,22 @@ uint16_t waveletTransform::signal_dimension() const {
 
 hostFunction
 void waveletTransform::set_min_refinement_level(uint16_t input) {
-	__min_refinement_level = input;
+	m_minRefinementLevel = input;
 };
 
 hostFunction deviceFunction
 uint16_t waveletTransform::min_refinement_level() const {
-	return __min_refinement_level;
+	return m_minRefinementLevel;
 };
 
 hostFunction
 void waveletTransform::set_max_refinement_level(uint16_t input) {
-	__max_refinement_level = input;
+	m_maxRefinementLevel = input;
 };
 
 hostFunction deviceFunction
 uint16_t waveletTransform::max_refinement_level() const {
-	return __max_refinement_level;
+	return m_maxRefinementLevel;
 };
 
 hostFunction
@@ -173,7 +173,7 @@ uint16_t waveletTransform::set_initial_signal_host2dvc(const floatType* input_si
 	uint64_t copy_size_bytes = sizeof(floatType) * this->total_signal_nodes();
 	
 	try {
-		m_initialSignal_dvc.malloc(this->total_signal_nodes()); // allocate memory
+		m_initialSignal_dvc.malloc(this->total_signal_nodes(), (floatType)0); // allocate memory
 		gpu_device.memCpy_hst2dvc((void*)m_initialSignal_dvc.get(), (void*)input_signal, copy_size_bytes);
 	}
 	catch (const std::exception& except) {
@@ -189,7 +189,7 @@ uint16_t waveletTransform::set_initial_signal_dvc2dvc(const floatType* input_sig
 	uint64_t copy_size_bytes = sizeof(floatType) * this->total_signal_nodes();
 
 	try {
-		m_initialSignal_dvc.malloc(this->total_signal_nodes());
+		m_initialSignal_dvc.malloc(this->total_signal_nodes(), (floatType)0);
 		gpu_device.memCpy_dvc2dvc((void*)m_initialSignal_dvc.get(), (void*)input_signal_dvc, copy_size_bytes);
 	}
 	catch (const std::exception& except) {
@@ -212,7 +212,7 @@ floatType* waveletTransform::initialSignal_dvcPtr() const {
 
 hostFunction deviceFunction
 uintType waveletTransform::nodes_per_dim() const {
-	return pow(2, __max_refinement_level);
+	return pow(2, m_maxRefinementLevel);
 };
 
 hostFunction deviceFunction
@@ -267,9 +267,9 @@ void waveletTransform::compute_wavelet_transform() {
 	const double tolerance{ TOLERANCE_AMR }; 
 
 	// Allocate memory 
-	m_assignedNodeIndeces_dvc.malloc(total_signal_nodes);
-	m_assignedNodeMarkers_dvc.malloc(total_signal_nodes);
-	m_transformedSignal_dvc.malloc(total_signal_nodes);
+	m_assignedNodeIndeces_dvc.malloc(total_signal_nodes, 0);
+	m_assignedNodeMarkers_dvc.malloc(total_signal_nodes, 0);
+	m_transformedSignal_dvc.malloc(total_signal_nodes, (floatType)0);
 
 	gpu_device.memCpy_dvc2dvc(
 		m_transformedSignal_dvc.get(),
@@ -277,7 +277,7 @@ void waveletTransform::compute_wavelet_transform() {
 		sizeof(floatType) * total_signal_nodes
 	);
 
-	for (uint16_t k = 0; k < __max_refinement_level - __min_refinement_level + 1; ++k) {
+	for (uint16_t k = 0; k < m_maxRefinementLevel - m_minRefinementLevel + 1; ++k) {
 
 		uint16_t Threads = fmin(THREADS_P_BLK, total_signal_nodes / pow(rescaling, PHASE_SPACE_DIMENSIONS));
 		uint64_t Blocks = floor((total_signal_nodes / pow(rescaling, PHASE_SPACE_DIMENSIONS) - 1) / Threads) + 1;

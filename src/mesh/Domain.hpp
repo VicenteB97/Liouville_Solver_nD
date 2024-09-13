@@ -57,7 +57,7 @@ public:
 		Particle boundary_sup() const;
 
 	hostFunction deviceFunction
-		void set_nodes_per_dimension(uintType nodes_per_dim = 2);
+		void setNodesPerDimension(uintType nodes_per_dim = 2);
 
 	hostFunction deviceFunction
 		uintType nodes_per_dim() const;
