@@ -13,13 +13,7 @@
 #ifndef __INTERPOLATION_HPP__
 #define __INTERPOLATION_HPP__
 
-#include "include/headers.hpp"
-#include "include/Case_definition.hpp"
-#include "include/utils/numeric_defs.hpp"
-#include "include/utils/window.cuh"
-
-#include "probabilityDistributions/Probability.hpp"
-#include "mesh/Domain.hpp"
+#include "CSRBF.hpp"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -29,10 +23,10 @@
 class InterpHandle {
 	// Attributes
 public:
-	thrust::device_vector<floatType> GPU_R;
-	thrust::device_vector<floatType> GPU_temp;
-	thrust::device_vector<floatType> GPU_AP;
-	thrust::device_vector<floatType> GPU_P;
+	deviceUniquePtr<floatType> GPU_R;
+	deviceUniquePtr<floatType> GPU_temp;
+	deviceUniquePtr<floatType> GPU_AP;
+	deviceUniquePtr<floatType> GPU_P;
 
 public:
 	// Constructor
@@ -42,26 +36,6 @@ public:
 	void resize(uintType size = 1);
 
 };
-
-
-deviceFunction inline floatType RBF(const floatType& SuppRBF, const floatType& inputNormalized) {
-
-#if PHASE_SPACE_DIMENSIONS == 1
-	const double Mass_RBF = 0.333383333333333;
-
-#elif PHASE_SPACE_DIMENSIONS == 2
-	const double Mass_RBF = 0.4487989332761852; // this is actually the: int_0^1 phi(r)r dr
-
-#elif PHASE_SPACE_DIMENSIONS == 3
-	const double Mass_RBF = 0.2991993007905369;
-
-#elif PHASE_SPACE_DIMENSIONS == 4
-	const double Mass_RBF = 0.19582548282938347;
-#endif
-
-	return (floatType)powf(fmaxf(0, 1 - inputNormalized), 4) * (4 * inputNormalized + 1) / Mass_RBF / powf(SuppRBF, PHASE_SPACE_DIMENSIONS); // We multiply by this last factor to get the L1-normalized RBF
-
-}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -84,10 +58,10 @@ __global__ void MATRIX_VECTOR_MULTIPLICATION(
 	floatType* X, const floatType* x0, const intType* Matrix_idxs, const floatType* Matrix_entries, const intType total_length, const intType Max_Neighbors);
 
 
-hostFunction intType CONJUGATE_GRADIENT_SOLVE(thrust::device_vector<floatType>& GPU_lambdas,
-	thrust::device_vector<intType>& GPU_Index_array,
-	thrust::device_vector<floatType>& GPU_Mat_entries,
-	thrust::device_vector<floatType>& GPU_AdaptPDF,
+hostFunction intType CONJUGATE_GRADIENT_SOLVE(deviceUniquePtr<floatType>& GPU_lambdas,
+	deviceUniquePtr<intType>& GPU_Index_array,
+	deviceUniquePtr<floatType>& GPU_Mat_entries,
+	deviceUniquePtr<floatType>& GPU_AdaptPDF,
 	InterpHandle& interpVectors,
 	const intType					Total_Particles,
 	const intType					MaxNeighborNum,

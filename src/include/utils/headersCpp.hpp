@@ -4,6 +4,7 @@
 #include <fstream>      // Files output
 #include <iostream>     // Command Line input/output
 #include <vector>       // vector class is widely used
+#include <array>        // array class is used
 #include <cmath>        // C library (used for mathematical stuff)
 #include <numeric>      // OPTIONAL?
 #include <algorithm>    // OPTIONAL?

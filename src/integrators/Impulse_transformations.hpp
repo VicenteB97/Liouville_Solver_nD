@@ -21,9 +21,9 @@ int16_t RANDOMIZE_II(const intType* 								n_samples,
 					std::vector<Param_vec<PHASE_SPACE_DIMENSIONS>>* parameter_mesh,
 					const Distributions* 						Dist_Parameters);
 
-int16_t IMPULSE_TRANSFORM_PDF(thrust::device_vector<floatType>&		GPU_PDF,				// PDF in cartesianMesh
-		thrust::device_vector<Particle>& 	D_Particle_Locations,	// Particle positions
-		thrust::device_vector<floatType>&		D_Particle_Values,		// PDF in AMR-selected points
+int16_t IMPULSE_TRANSFORM_PDF(deviceUniquePtr<floatType>&		GPU_PDF,				// PDF in cartesianMesh
+		deviceUniquePtr<Particle>& 	D_Particle_Locations,	// Particle positions
+		deviceUniquePtr<floatType>&		D_Particle_Values,		// PDF in AMR-selected points
 		const Time_instants					time,					// time-impulse information 
 		const intType							jumpCount,				// current jumpCount 
 		const cartesianMesh&							Problem_Domain,

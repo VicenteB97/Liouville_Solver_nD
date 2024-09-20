@@ -50,7 +50,7 @@ hostFunction deviceFunction	cartesianMesh::cartesianMesh(const Particle& bnd_inf
 
 // Methods/functions
 hostFunction deviceFunction
-void cartesianMesh::set_boundary_inf(const Particle& boundary_inf) {
+void cartesianMesh::setBoundaryInf(const Particle& boundary_inf) {
 	__boundary_inf = boundary_inf;
 };
 
@@ -60,7 +60,7 @@ Particle cartesianMesh::boundary_inf() const {
 };
 
 hostFunction deviceFunction
-void cartesianMesh::set_boundary_sup(const Particle& boundary_sup) {
+void cartesianMesh::setBoundarySup(const Particle& boundary_sup) {
 	__boundary_sup = boundary_sup;
 };
 
@@ -189,7 +189,7 @@ void cartesianMesh::Squarify() {
 /// @brief This function updates a cartesianMesh-defined bounding box
 /// @param D_Particle_Locations GPU array storing the positions of the particles
 /// @returns Nothing
-//void cartesianMesh::update_bounding_box(const thrust::device_vector<Particle>& D_Particle_Locations) {
+//void cartesianMesh::update_bounding_box(const deviceUniquePtr<Particle>& D_Particle_Locations) {
 //
 //	intType threads = fmin(THREADS_P_BLK, D_Particle_Locations.size());
 //	intType blocks = floor((D_Particle_Locations.size() - 1) / threads) + 1;
@@ -197,7 +197,7 @@ void cartesianMesh::Squarify() {
 //	gpuDevice device;
 //
 //	// Temporary vector storing the particles' projections in each dimension 
-//	thrust::device_vector<floatType> projection(D_Particle_Locations.size(), (floatType)0);
+//	deviceUniquePtr<floatType> projection(D_Particle_Locations.size(), (floatType)0);
 //
 //	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
 //

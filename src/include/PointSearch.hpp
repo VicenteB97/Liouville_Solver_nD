@@ -4,7 +4,7 @@
 #include "include/headers.hpp"
 #include "include/utils/numeric_defs.hpp"
 #include "mesh/Domain.hpp"
-#include "interpolation/Interpolation.hpp"
+#include "mesh/Particle.hpp"
 
 #if 0
 /// @brief 
@@ -99,10 +99,10 @@ __global__ void Neighbor_search(
 /// @param Bounding_Box 
 /// @param search_radius 
 /// @return 
-__host__ int16_t CS_Neighbor_Search(thrust::device_vector<Particle>& Search_Particles,
-	thrust::device_vector<floatType>& PDF_vals,
-	thrust::device_vector<intType>& Index_Array,
-	thrust::device_vector<floatType>& Matrix_Entries,
+__host__ int16_t CS_Neighbor_Search(deviceUniquePtr<Particle>& Search_Particles,
+	deviceUniquePtr<floatType>& PDF_vals,
+	deviceUniquePtr<intType>& Index_Array,
+	deviceUniquePtr<floatType>& Matrix_Entries,
 	const uintType Adapt_Points,
 	const uintType max_neighbor_num,
 	const cartesianMesh& Bounding_Box,
@@ -119,33 +119,25 @@ __host__ int16_t CS_Neighbor_Search(thrust::device_vector<Particle>& Search_Part
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
-/// @brief 
-/// @tparam PHASE_SPACE_DIMENSIONS
-/// @tparam floatType
-/// @param Search_Particles 
-/// @param Fixed_Particles 
-/// @param Index_Array 
-/// @param Matrix_Entries
-/// @param max_neighbor_num 
-/// @param Adapt_Points 
-/// @param Total_Particles 
-/// @param search_radius 
-/// @return 
-__global__ void Exh_PP_Search(const Particle* Search_Particles,
-	const Particle* Fixed_Particles,
-	intType* Index_Array,
-	floatType* Matrix_Entries,
-	const intType max_neighbor_num,
-	const uintType Adapt_Points,
-	const uintType Total_Particles,
-	const floatType search_radius);
+class Exh_PP_Search {
+public:
+	const Particle* Search_Particles;
+	intType* Index_Array;
+	floatType* Matrix_Entries;
+	const uintType MaxNeighborNum;
+	const uintType Adapt_Points;
+	const uintType Total_Particles;
+	const floatType search_radius;
+public:
+	deviceFunction void operator()(const uint64_t global_id) const;
+};
 
 
-int16_t particleNeighborSearch(thrust::device_vector<Particle>& Search_Particles,
-	thrust::device_vector<floatType>& PDF_vals,
-	thrust::device_vector<intType>& Index_Array,
-	thrust::device_vector<floatType>& Matrix_Entries,
+int16_t particleNeighborSearch(
+	deviceUniquePtr<Particle>& Search_Particles,
+	deviceUniquePtr<floatType>& PDF_vals,
+	deviceUniquePtr<int64_t>& Index_Array,
+	deviceUniquePtr<floatType>& Matrix_Entries,
 	const uintType Adapt_Points,
 	const uintType MaxNeighborNum,
 	const cartesianMesh& Bounding_Box,

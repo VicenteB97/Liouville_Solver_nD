@@ -23,7 +23,7 @@
 #include "mesh/Particle.hpp"
 #include "probabilityDistributions/Probability.hpp"
 #include "interpolation/Interpolation.hpp"
-#include "include/PointSearch.cuh"
+#include "include/PointSearch.hpp"
 #include "integrators/Impulse_transformations.hpp"
 #include "integrators/Integrator.hpp"
 
@@ -33,22 +33,22 @@
 class ivpSolver{
 private:
 	//Domain where the PDF will evolve (positively invariant set)
-	cartesianMesh __problem_domain;
-	cartesianMesh __particle_bounding_box;
+	cartesianMesh m_problemDomain;
+	cartesianMesh m_particleBoundingBox;
 	
 	// Distributions for the model parameters
 	Distributions __initial_condition_distributions[PHASE_SPACE_DIMENSIONS];
-	Distributions __parameter_distributions[PARAM_SPACE_DIMENSIONS];
+	Distributions m_parameterDistributions[PARAM_SPACE_DIMENSIONS];
 	
 	// Time vector, impulse information, timestep and effective timestep
-	std::vector<Time_instants> __reinitialization_info;
+	std::vector<Time_instants> m_reinitializationInfo;
 	double __delta_t;
-	intType __reinitialization_steps, __storage_steps;
+	intType __reinitialization_steps, m_storageSteps;
 
-	LogSimulation __simulation_log;
+	LogSimulation m_simulationLog;
 
 	// Final simulation storage
-	std::vector<floatType> __simulation_storage;
+	std::vector<floatType> m_simulationStorage;
 
 
 public:
@@ -66,7 +66,7 @@ public:
 	int16_t buildDistributions();
 	
 	// This function contains the most important function of them all: The full numerical method!
-	int16_t evolvePDF(const cudaDeviceProp& D_Properties);
+	int16_t evolvePDF();
 
 	int16_t writeFramesToFile(const double& simulationDuration);
 };

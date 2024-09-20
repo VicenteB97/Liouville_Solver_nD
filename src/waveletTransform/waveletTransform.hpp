@@ -50,7 +50,7 @@ public:
 private:
 	// Input signal for wavelet transform: 
 	std::unique_ptr<floatType> m_initialSignal;
-	cudaUniquePtr<floatType> m_initialSignal_dvc;
+	deviceUniquePtr<floatType> m_initialSignal_dvc;
 	
 	// Parameters
 	uint16_t m_minRefinementLevel;
@@ -60,15 +60,15 @@ private:
 	std::unique_ptr<floatType> m_transformedSignal;
 	std::unique_ptr<floatType> m_thresholdCutoffTransformedSignal;
 
-	cudaUniquePtr<floatType> m_transformedSignal_dvc;
-	cudaUniquePtr<floatType> m_thresholdCutoffTransformedSignal_dvc;
+	deviceUniquePtr<floatType> m_transformedSignal_dvc;
+	deviceUniquePtr<floatType> m_thresholdCutoffTransformedSignal_dvc;
 
 	// Output AMR arrays for indeces and assigned nodes. These are not externally-assigned, just here
 	std::unique_ptr<uint64_t> m_assignedNodeIndeces;
 	std::unique_ptr<uintType> m_assignedNodeMarkers;
 
-	cudaUniquePtr<uint64_t> m_assignedNodeIndeces_dvc;
-	cudaUniquePtr<uintType> m_assignedNodeMarkers_dvc;
+	deviceUniquePtr<uint64_t> m_assignedNodeIndeces_dvc;
+	deviceUniquePtr<uintType> m_assignedNodeMarkers_dvc;
 
 	// other signal definitions:
 	uint16_t __signal_dimension;
@@ -81,13 +81,13 @@ public:
 		uint16_t signal_dimension() const;
 
 	hostFunction
-		void set_min_refinement_level(uint16_t input);
+		void setMinRefinementLevel(uint16_t input);
 
 	hostFunction deviceFunction
 		uint16_t min_refinement_level() const;
 
 	hostFunction
-		void set_max_refinement_level(uint16_t input);
+		void setMaxRefinementLevel(uint16_t input);
 
 	hostFunction deviceFunction
 		uint16_t max_refinement_level() const;
@@ -96,7 +96,7 @@ public:
 		uint16_t set_initial_signal_host2dvc(const floatType* input_signal);
 
 	hostFunction
-		uint16_t set_initial_signal_dvc2dvc(const floatType* input_signal_dvc);
+		uint16_t setInitialSignal_dvc2dvc(const floatType* inputSignal_dvc);
 
 	hostFunction deviceFunction
 		uintType nodes_per_dim() const;
@@ -129,7 +129,7 @@ public:
 		uintType* assigned_node_markers_dvc() const;
 
 	hostFunction
-		void compute_wavelet_transform();
+		void computeWaveletTransform();
 
 	hostFunction
 		uintType sorted_assigned_nodes();

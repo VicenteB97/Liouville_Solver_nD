@@ -67,7 +67,7 @@ int16_t PARAMETER_VEC_BUILD(const int random_var_sample_vec, parameterPair* PP, 
 
 
 template<uint16_t DIM>
-__host__ __device__ 
+hostFunction deviceFunction
 Param_vec<DIM> Gather_Param_Vec(const uintType index, const parameterPair* Parameter_Array, const intType* random_var_sample_vec) {
 
 	Param_vec<DIM> Output;
@@ -103,7 +103,7 @@ Param_vec<DIM> Gather_Param_Vec(const uintType index, const parameterPair* Param
 /// @param Dist_Parameters: Parameters' (hyper)parameters
 /// @param Dist_Names: Distributions that will be assigned (N = Normal, U = Uniform, etc.)
 template<uint16_t DIM>
-int16_t RANDOMIZE(parameterPair* parameter_mesh,
+int16_t RANDOMIZE(std::vector<parameterPair>& parameter_mesh,
 	const Distributions* Dist_Parameters) {
 
 	uintType aux = 0;

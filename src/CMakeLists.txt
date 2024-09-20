@@ -14,6 +14,7 @@ if(BUILD_CUDA)
         "${CMAKE_CURRENT_SOURCE_DIR}/interpolation/Interpolation.cu"
         "${CMAKE_CURRENT_SOURCE_DIR}/integrators/Integrator.cu"
         "${CMAKE_CURRENT_SOURCE_DIR}/integrators/Impulse_transformations.cu"
+        "${CMAKE_CURRENT_SOURCE_DIR}/include/PointSearch.cu"
     )
 else()
     set(LIBRARY_SOURCES
@@ -28,6 +29,7 @@ else()
         "${CMAKE_CURRENT_SOURCE_DIR}/interpolation/Interpolation.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/integrators/Integrator.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/integrators/Impulse_transformations.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/include/PointSearch.cpp"
     )
 endif()
 
@@ -43,6 +45,7 @@ set(LIBRARY_HEADERS
     "${CMAKE_CURRENT_SOURCE_DIR}/interpolation/Interpolation.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/integrators/Integrator.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/integrators/Impulse_transformations.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/PointSearch.hpp"
 )
 
 add_library(${LIB_NAME} STATIC ${LIBRARY_HEADERS} ${LIBRARY_SOURCES})

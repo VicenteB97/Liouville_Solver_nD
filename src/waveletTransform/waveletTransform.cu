@@ -121,11 +121,11 @@ waveletTransform::waveletTransform() {
 	std::unique_ptr<uintType> m_assignedNodeMarkers = std::make_unique<uintType>();
 
 	// Instantiate device pointers as null pointers
-	cudaUniquePtr<floatType> m_initialSignal_dvc;
-	cudaUniquePtr<floatType> m_transformedSignal_dvc;
-	cudaUniquePtr<floatType> m_thresholdCutoffTransformedSignal_dvc;
-	cudaUniquePtr<uint64_t> m_assignedNodeIndeces_dvc;
-	cudaUniquePtr<uintType> m_assignedNodeMarkers_dvc;
+	deviceUniquePtr<floatType> m_initialSignal_dvc;
+	deviceUniquePtr<floatType> m_transformedSignal_dvc;
+	deviceUniquePtr<floatType> m_thresholdCutoffTransformedSignal_dvc;
+	deviceUniquePtr<uint64_t> m_assignedNodeIndeces_dvc;
+	deviceUniquePtr<uintType> m_assignedNodeMarkers_dvc;
 };
 
 hostFunction
@@ -146,7 +146,7 @@ uint16_t waveletTransform::signal_dimension() const {
 };
 
 hostFunction
-void waveletTransform::set_min_refinement_level(uint16_t input) {
+void waveletTransform::setMinRefinementLevel(uint16_t input) {
 	m_minRefinementLevel = input;
 };
 
@@ -156,7 +156,7 @@ uint16_t waveletTransform::min_refinement_level() const {
 };
 
 hostFunction
-void waveletTransform::set_max_refinement_level(uint16_t input) {
+void waveletTransform::setMaxRefinementLevel(uint16_t input) {
 	m_maxRefinementLevel = input;
 };
 
@@ -184,13 +184,13 @@ uint16_t waveletTransform::set_initial_signal_host2dvc(const floatType* input_si
 };
 
 hostFunction
-uint16_t waveletTransform::set_initial_signal_dvc2dvc(const floatType* input_signal_dvc) {
+uint16_t waveletTransform::setInitialSignal_dvc2dvc(const floatType* inputSignal_dvc) {
 	// malloc and memcopy
 	uint64_t copy_size_bytes = sizeof(floatType) * this->total_signal_nodes();
 
 	try {
 		m_initialSignal_dvc.malloc(this->total_signal_nodes(), (floatType)0);
-		gpu_device.memCpy_dvc2dvc((void*)m_initialSignal_dvc.get(), (void*)input_signal_dvc, copy_size_bytes);
+		gpu_device.memCpy_dvc2dvc((void*)m_initialSignal_dvc.get(), (void*)inputSignal_dvc, copy_size_bytes);
 	}
 	catch (const std::exception& except) {
 		std::cerr << "Exception thrown: " << except.what() << std::endl;	// That way we make sure that no exceptions escape these methods
@@ -259,7 +259,7 @@ uintType* waveletTransform::assigned_node_markers_dvc() const {
 };
 
 hostFunction
-void waveletTransform::compute_wavelet_transform() {
+void waveletTransform::computeWaveletTransform() {
 	// Here, you've got to compute the wavelet transformation of the initial signal.
 	uintType rescaling{ 2 };
 	const uint64_t total_signal_nodes{ this->total_signal_nodes() };

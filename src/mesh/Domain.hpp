@@ -45,13 +45,13 @@ public:
 
 // Methods/functions
 	hostFunction deviceFunction
-		void set_boundary_inf(const Particle& boundary_inf);
+		void setBoundaryInf(const Particle& boundary_inf);
 
 	hostFunction deviceFunction
 		Particle boundary_inf() const;
 
 	hostFunction deviceFunction
-		void set_boundary_sup(const Particle& boundary_sup);
+		void setBoundarySup(const Particle& boundary_sup);
 
 	hostFunction deviceFunction
 		Particle boundary_sup() const;
@@ -112,7 +112,7 @@ public:
 	/// @param D_Particle_Locations GPU array storing the positions of the particles
 	/// @returns Nothing
 	 hostFunction 
-		 void update_bounding_box(const thrust::device_vector<Particle>& D_Particle_Locations);
+		 void update_bounding_box(const deviceUniquePtr<Particle>& D_Particle_Locations);
 };
 
 #endif

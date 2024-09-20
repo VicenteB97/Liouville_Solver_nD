@@ -7,22 +7,22 @@
 
 hostFunction
 void setInitialParticles(
-	const floatType* input_signal_dvc,
-	cudaUniquePtr<Particle>& output_active_nodes_dvc,
-	const cartesianMesh& signal_bounding_box,
-	const cartesianMesh& signal_domain
+	const floatType* inputSignal_dvc,
+	deviceUniquePtr<Particle>& outputActiveNodes_dvc,
+	const cartesianMesh& signalBoundingBox,
+	const cartesianMesh& signalDomain
 );
 
 hostFunction
-void get_detail_above_threshold_nodes(waveletTransform& amr_engine, cudaUniquePtr<Particle>& particle_locations, const cartesianMesh& signal_domain);
+void getDetailAboveThresholdNodes(waveletTransform& amrEngine, deviceUniquePtr<Particle>& particle_locations, const cartesianMesh& signalDomain);
 
 
-class write_signal_in_bounding_box {
+class writeSignalInBoundingBox {
 public:
 	const floatType* input_signal;
 	floatType* output_signal;
-	const cartesianMesh signal_domain;
-	const cartesianMesh signal_bounding_box;
+	const cartesianMesh signalDomain;
+	const cartesianMesh signalBoundingBox;
 	const uint64_t max_nodes;
 public:
 	deviceFunction void operator()(const uint64_t global_id) const;

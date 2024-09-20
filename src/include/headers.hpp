@@ -4,7 +4,7 @@
 #include "utils/headersCpp.hpp"
 #include "Case_definition.hpp"
 
-#define USECUDA	// REMEMBER TO ERASE THIS!!
+#define USECUDA	// REMEMBER TO ERASE THIS DEFINITION!!
 
 #ifdef USECUDA
 #include "utils/cudaBase.hpp"

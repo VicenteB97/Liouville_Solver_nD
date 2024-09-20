@@ -65,7 +65,7 @@ __global__ void MATRIX_VECTOR_MULTIPLICATION(floatType* X, const floatType* x0, 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-__host__ InterpHandle::InterpHandle(uintType size) {
+hostFunction InterpHandle::InterpHandle(uintType size) {
 	GPU_R.resize(size);
 	GPU_temp.resize(size);
 	GPU_AP.resize(size);
@@ -81,11 +81,11 @@ void InterpHandle::resize(uintType size) {
 };
 
 
-__host__ intType CONJUGATE_GRADIENT_SOLVE(
-	thrust::device_vector<floatType>& GPU_lambdas,
-	thrust::device_vector<intType>& GPU_Index_array,
-	thrust::device_vector<floatType>& GPU_Mat_entries,
-	thrust::device_vector<floatType>& GPU_AdaptPDF,
+hostFunction intType CONJUGATE_GRADIENT_SOLVE(
+	deviceUniquePtr<floatType>& GPU_lambdas,
+	deviceUniquePtr<intType>& GPU_Index_array,
+	deviceUniquePtr<floatType>& GPU_Mat_entries,
+	deviceUniquePtr<floatType>& GPU_AdaptPDF,
 	InterpHandle& interpVectors,
 	const intType					Total_Particles,
 	const intType					MaxNeighborNum,

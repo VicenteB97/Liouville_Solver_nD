@@ -4,3 +4,8 @@
 *.ptx
 *.cubin
 *.fatbin
+/build
+/.vs
+/.vscode
+CMakeSettings.json
+CMakePresets.json

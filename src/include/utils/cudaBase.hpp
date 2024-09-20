@@ -1,9 +1,11 @@
 #ifndef __CUDABASE_CUH__
+#ifdef USECUDA
 #define __CUDABASE_CUH__
 
 #define deviceFunction __device__
 #define hostFunction __host__
 #define gpuDevice cudaDevice
+#define deviceUniquePtr cudaUniquePtr
 
 // Headers for the CUDA libraries
 #include "headersCpp.hpp"
@@ -30,6 +32,8 @@ __global__ static void deviceLaunchFunctionWrapper(const T functor) {
 
 
 class cudaDevice {
+public:
+	const cudaDeviceProp deviceProperties;
 public:
 	void memCpy_hst2dvc(void* dst_dvc, void* src_hst, uint64_t size_bytes) const {
 		if (cudaMemcpy(dst_dvc, src_hst, size_bytes, cudaMemcpyHostToDevice) != cudaSuccess) {
@@ -61,7 +65,7 @@ public:
 // Read a little bit about exception vs return codes for performance!! And how/when to launch exceptions
 
 template<typename T>
-class cudaUniquePtr {
+class deviceUniquePtr {
 private:
 	T* __raw_dvc_pointer;	// Underlying device pointer. DO NOT DEREFERENCE IT IN hostFunctions
 	uint32_t __size_count;	// Number of elements the raw pointer points to
@@ -69,10 +73,10 @@ private:
 
 public:
 	// Default constructor
-	cudaUniquePtr() : __raw_dvc_pointer(nullptr), __size_count(0), __valid_state(true) {};
+	deviceUniquePtr() : __raw_dvc_pointer(nullptr), __size_count(0), __valid_state(true) {};
 
 	// Allocate and initialize constructor
-	cudaUniquePtr(uint32_t size, T init_value = (T)0) : __raw_dvc_pointer(nullptr), __size_count(0), __valid_state(true) {
+	deviceUniquePtr(uint32_t size, T init_value = (T)0) : __raw_dvc_pointer(nullptr), __size_count(0), __valid_state(true) {
 		try {
 			this->malloc(size, init_value);
 		}
@@ -85,7 +89,7 @@ public:
 		__size_count = size;
 	};
 
-	~cudaUniquePtr() noexcept {	
+	~deviceUniquePtr() noexcept {	
 		try {
 			this->free();
 		}
@@ -96,8 +100,8 @@ public:
 	};
 
 	// Delete copy constructors and assignment operators for this class (equivalent to the uniquePtr from std::unique_ptr)
-	cudaUniquePtr(const cudaUniquePtr&) = delete;	// Copy constructor
-	cudaUniquePtr& operator=(const cudaUniquePtr&) = delete;	// Assignment operator
+	deviceUniquePtr(const deviceUniquePtr&) = delete;	// Copy constructor
+	deviceUniquePtr& operator=(const deviceUniquePtr&) = delete;	// Assignment operator
 
 	hostFunction
 	/// @brief This function allocates size_count elements of memory type given by the template parameter T of the unique_poitner.
@@ -176,5 +180,4 @@ private:
 };
 
 #endif
-
-// #endif
+#endif

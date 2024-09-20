@@ -53,7 +53,7 @@ int16_t PDF_EVOLUTION() {
 
 auto start = std::chrono::high_resolution_clock::now();
 
-	errorCheck(Solver.evolvePDF(prop))
+	errorCheck(Solver.evolvePDF())
 
 auto end = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<float> duration = end - start; // duration
