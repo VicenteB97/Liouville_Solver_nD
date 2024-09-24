@@ -22,8 +22,8 @@ int16_t RANDOMIZE_II(const intType* 								n_samples,
 					const Distributions* 						Dist_Parameters);
 
 int16_t IMPULSE_TRANSFORM_PDF(deviceUniquePtr<floatType>&		GPU_PDF,				// PDF in cartesianMesh
-		deviceUniquePtr<Particle>& 	D_Particle_Locations,	// Particle positions
-		deviceUniquePtr<floatType>&		D_Particle_Values,		// PDF in AMR-selected points
+		deviceUniquePtr<Particle>& 	fullParticleLocations_dvc,	// Particle positions
+		deviceUniquePtr<floatType>&		fullParticleValues_dvc,		// PDF in AMR-selected points
 		const Time_instants					time,					// time-impulse information 
 		const intType							jumpCount,				// current jumpCount 
 		const cartesianMesh&							Problem_Domain,

@@ -84,7 +84,7 @@ deviceFunction void runge_kutta_45(
 
 	value *= val_aux;
 
-	if (!domain_mesh.contains_particle(position)) { value = 0; }
+	if (!domain_mesh.containsParticle(position)) { value = 0; }
 }
 
 /// @brief This case is ONLY VALID for 2D methods! We'll use the 
@@ -147,7 +147,7 @@ deviceFunction void lie_euler_mathieu(
 
 	value *= val_aux;
 
-	if (!domain_mesh.contains_particle(position)) { value = 0; }
+	if (!domain_mesh.containsParticle(position)) { value = 0; }
 }
 
 

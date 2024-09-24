@@ -20,7 +20,7 @@ Here, we give the general layout of the header file, but you can also see the ot
 2. **Simulation parameters** This family of parameters contain the tolerances, domain definition and timing information:
     1. ```floatType```: Floating-point type (```float``` or ```double```).
     2. ```TOLERANCE_AMR```: Adaptive cartesianMesh Refinement tolerance.
-    3. ```TOLERANCE_ConjGrad```: Conjugate Gradient tolerance.
+    3. ```__CGrad_TOLERANCE__```: Conjugate Gradient tolerance.
     4. ```DISC_RADIUS```: The radial basis function radius as a multiple of the spatial discretization.
     5. ```phase_space_dimensions```: Number of dimensions of the phase space.
     6. ```DOMAIN_INF```: Lowest corner of the phase space domain.

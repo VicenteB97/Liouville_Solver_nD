@@ -5,7 +5,7 @@ void writeSignalInBoundingBox::operator()(const uint64_t global_id) const {
 	if (global_id >= max_nodes) { return; }
 
 	// First, find the node index at the problem domain:
-	uint64_t node_index_at_domain = signalDomain.get_bin_idx(signalBoundingBox.get_node(global_id));
+	uint64_t node_index_at_domain = signalDomain.getBinIdx(signalBoundingBox.get_node(global_id));
 
 	// Now, fill the value of the output_signal with the value of the input_signal
 	output_signal[global_id] = input_signal[node_index_at_domain];

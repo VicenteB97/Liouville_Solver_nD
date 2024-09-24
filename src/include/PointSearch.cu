@@ -24,7 +24,7 @@
 //	// Find the Bin where it belongs. We use an unsigned int because since we are working with the bounding box,
 //	// we're never going to have a point outside. Therefore, there will be a positive index for the bin location.
 //
-//	uintType bin_idx = Bounding_Box.get_bin_idx(temp_GP);	// this part should be positive...why aren't we getting a positive number?
+//	uintType bin_idx = Bounding_Box.getBinIdx(temp_GP);	// this part should be positive...why aren't we getting a positive number?
 //
 //	// Now, we've got the nearest bin index. This tells the idx of the bin center containing a given particle
 //	Bin_locations[globalID] = bin_idx;
@@ -126,7 +126,7 @@
 //	const uintType Bin_offset = lroundf(DISC_RADIUS);
 //
 //	// We find the lowest corner in the neighboring bins (Hence, the Bin_offset variable)
-//	uintType bin_idx = Bounding_Box.get_bin_idx(fixed_GP, -Bin_offset);
+//	uintType bin_idx = Bounding_Box.getBinIdx(fixed_GP, -Bin_offset);
 //
 //	for (uintType k = 0; k < pow(2 * Bin_offset + 1, PHASE_SPACE_DIMENSIONS); k++) { // That's the total number of bins to visit
 //

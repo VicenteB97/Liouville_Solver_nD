@@ -14,7 +14,7 @@
 
     // AMR tolerance, Conjugate Gradient tolerance and number of discretization size for the radius of the RBFs
     #define TOLERANCE_AMR       1E-5
-    #define TOLERANCE_ConjGrad  1E-9
+    #define __CGrad_TOLERANCE__  1E-9
     #define DISC_RADIUS         4.49
 
     // Phase space information

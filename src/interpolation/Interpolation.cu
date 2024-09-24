@@ -18,46 +18,24 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
-__global__ void UPDATE_VEC(floatType* x, const floatType* x0, const floatType scalar, const floatType* v, const intType Max_Length) {
-	const uint64_t globalIDX = blockDim.x * blockIdx.x + threadIdx.x;
-
-	uint64_t i = globalIDX * ELEMENTS_AT_A_TIME;
-
-#pragma unroll
-	for (uint16_t k = 0; k < ELEMENTS_AT_A_TIME; k++) {
-		if ((i + k) < Max_Length) { x[i + k] = x0[i + k] + scalar * v[i + k]; }
-		else { return; }
-	}
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-__global__ void MATRIX_VECTOR_MULTIPLICATION(floatType* X, const floatType* x0, const intType* Matrix_idxs, const floatType* Matrix_entries, const intType total_length, const intType Max_Neighbors) {
-
-	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;	// For each i, which represents the matrix row, we read the index positions and multiply against the particle weights
-
-	if (i >= total_length) { return; }						// total length = adapt_points * total_sample_count
+void COOMatVecMultiplication_dvc::operator()(const uint64_t global_id) {
+	if (global_id >= totalLength) { return; }	// total length = adapt_points * total_sample_count
 
 	// 1.- Compute A*X0										
-		// 1.1.- Determine where my particles are!!
-	const uintType i0 = i * Max_Neighbors;		// where does my search index start
+	// 1.1.- Determine where my particles are!!
+	const uintType i0 = global_id * maxNeighbors;	// where does my search index start
 
-	floatType a = 0;					// auxiliary value for sum (the diagonal is always 1 in our case)
+	floatType a = 0;	// auxiliary value for sum (the diagonal is always 1 in our case)
 	uintType j = i0;
-	while (Matrix_idxs[j] != -1 && j < total_length * Max_Neighbors) {
-		intType p = Matrix_idxs[j];
+	while (matrixIdxs_dvc[j] != -1 && j < totalLength * maxNeighbors) {
+		intType p = matrixIdxs_dvc[j];
 
-		a += Matrix_entries[j] * x0[p]; 	// < n calls to global memory
+		a += matrixEntries_dvc[j] * x0_dvc[p]; 	// < n calls to global memory
 		j++;
 	}
 
 	// 2.- Output
-	X[i] = a;								// particle weights
+	x_dvc[global_id] = a;	// particle weights
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -65,97 +43,145 @@ __global__ void MATRIX_VECTOR_MULTIPLICATION(floatType* X, const floatType* x0, 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-hostFunction InterpHandle::InterpHandle(uintType size) {
-	GPU_R.resize(size);
-	GPU_temp.resize(size);
-	GPU_AP.resize(size);
-	GPU_P.resize(size);
+void vectorUpdate_dvc::operator()(const uint64_t global_id) {
+
+	#pragma unroll
+	for (uint16_t k = 0; k < ELEMENTS_AT_A_TIME; k++) {
+		if ((global_id + k) >= totalLength) { return; }
+		x_dvc[global_id + k] = x0_dvc[global_id + k] + scalar * directionVector[global_id + k];
+	}
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void InterpHandle::resize(uintType size) {
-	GPU_R.resize(size);
-	GPU_temp.resize(size);
-	GPU_AP.resize(size);
-	GPU_P.resize(size);
-};
-
-
-hostFunction intType CONJUGATE_GRADIENT_SOLVE(
-	deviceUniquePtr<floatType>& GPU_lambdas,
-	deviceUniquePtr<intType>& GPU_Index_array,
-	deviceUniquePtr<floatType>& GPU_Mat_entries,
-	deviceUniquePtr<floatType>& GPU_AdaptPDF,
-	InterpHandle& interpVectors,
-	const intType					Total_Particles,
-	const intType					MaxNeighborNum,
-	const uintType					max_steps,
-	const floatType							in_tolerance) {
-
-
+uint16_t ConjugateGradientEngine::execute(
+	deviceUniquePtr<floatType>& inputOutputVector,
+	const deviceUniquePtr<floatType>& targetVector,
+	const deviceUniquePtr<int64_t>& matrixIndeces,
+	const deviceUniquePtr<floatType>& matrixValues,
+	const uint16_t maxNeighbors,
+	const double interpolationTolerance,
+	const uint16_t maxIterations
+) {
 	// Determine threads and blocks for the simulation
-	const uintType Threads = fminf(THREADS_P_BLK, Total_Particles);
-	const uintType Blocks = floor((double)(Total_Particles - 1) / Threads) + 1;
+	const uint64_t vectorLength = targetVector.size_count();
+	const uintType Threads = fminf(THREADS_P_BLK, vectorLength);
+	const uintType Blocks = floor((double)(vectorLength - 1) / Threads) + 1;
 
 	// These are for the update_vec function
-	const uintType Threads_2 = fminf(THREADS_P_BLK, (float)Total_Particles / ELEMENTS_AT_A_TIME);
-	const uintType Blocks_2 = floor((double)(Total_Particles / ELEMENTS_AT_A_TIME - 1) / Threads) + 1;
+	const uintType Threads_2 = fminf(THREADS_P_BLK, (float)vectorLength / ELEMENTS_AT_A_TIME);
+	const uintType Blocks_2 = floor((double)(vectorLength / ELEMENTS_AT_A_TIME - 1) / Threads) + 1;
 
 	// ------------------ AUXILIARIES FOR THE INTEPROLATION PROC. ------------------------------- //
 	// Auxiliary values
 	intType  k = 1;	// to control possible overflow of iterations
 	bool flag = true;	// to stop the iterations
-	const double squaredTolerance = in_tolerance * in_tolerance;
+	const double squaredTolerance = interpolationTolerance * interpolationTolerance;
 
 	// Initialize Conjugate gradient method ----------------------------------------------------
-		// Compute A * X0
-	MATRIX_VECTOR_MULTIPLICATION << < Blocks, Threads >> > (rpc(interpVectors.GPU_temp, 0), rpc(GPU_lambdas, 0), rpc(GPU_Index_array, 0),
-		rpc(GPU_Mat_entries, 0), Total_Particles, MaxNeighborNum);
-if(cudaDeviceSynchronize()!=cudaSuccess){return EXIT_FAILURE;}
+	// Compute A * X0
+	try{
+		gpu_device.launchKernel(Blocks, Threads, COOMatVecMultiplication_dvc{
+			m_temp_dvc.get(),
+			inputOutputVector.get(),
+			matrixIndeces.get(),
+			matrixValues.get(),
+			vectorLength,
+			maxNeighbors
+		});
+	}
+	catch (const std::exception& except) {
+		std::cerr << "Caught exception at matrix multiplication: " << except.what() << std::endl;
+		return EXIT_FAILURE;
+	}
 
-	// Compute R=B-A*X0
-	UPDATE_VEC << <Blocks_2, Threads_2 >> > (rpc(interpVectors.GPU_R, 0), rpc(GPU_AdaptPDF, 0), (floatType)-1, rpc(interpVectors.GPU_temp, 0), Total_Particles);
-if(cudaDeviceSynchronize()!=cudaSuccess){return EXIT_FAILURE;}
+	// Compute R = B-A*X0
+	gpu_device.launchKernel(Blocks_2, Threads_2, vectorUpdate_dvc{
+		m_R_dvc.get(),
+		targetVector.get(),
+		(floatType) -1,
+		m_temp_dvc.get()
+	});
 
 	floatType Alpha, R0_norm, r_squaredNorm, aux, beta;
-	// floatType Alpha, R0_norm, r_norm, aux, beta;
 
-	interpVectors.GPU_P = interpVectors.GPU_R;
+	// Assign P = R
+	gpu_device.memCpy_dvc2dvc(
+		m_P_dvc.get(), m_R_dvc.get(), m_R_dvc.size_bytes()
+	);
 
 	while (flag) { // this flag is useful to know when we have arrived to the desired tolerance
 		// Alpha computation (EVERYTHING IS CORRECT!)
 			// 1.1.- Compute AP=A*P
-		MATRIX_VECTOR_MULTIPLICATION << < Blocks, Threads >> > (rpc(interpVectors.GPU_AP, 0), rpc(interpVectors.GPU_P, 0), rpc(GPU_Index_array, 0),
-			rpc(GPU_Mat_entries, 0), Total_Particles, MaxNeighborNum);
-	if(cudaDeviceSynchronize()!=cudaSuccess){return EXIT_FAILURE;}
+		try{
+			gpu_device.launchKernel(Blocks, Threads, COOMatVecMultiplication_dvc{
+				m_AP_dvc.get(),
+				m_P_dvc.get(),
+				matrixIndeces.get(),
+				matrixValues.get(),
+				vectorLength,
+				maxNeighbors
+			});
+		} 
+		catch (const std::exception& except) {
+			std::cerr << "Error caught in matrix multiplication at line: " << __LINE__ << ".\n";
+			std::cerr << "Exception: " << except.what() << std::endl;
+			return EXIT_FAILURE;
+		}
 
 		// 1.2.- Compute P'*AP
-		aux = thrust::inner_product(thrust::device, interpVectors.GPU_P.begin(), interpVectors.GPU_P.end(), interpVectors.GPU_AP.begin(), 0.0f);
+		aux = innerProduct_dvc<floatType>(m_P_dvc.get(), m_AP_dvc.get(), (floatType)0);
 
 		// 1.3.- R'*R
-		R0_norm = thrust::inner_product(thrust::device, interpVectors.GPU_R.begin(), interpVectors.GPU_R.end(), interpVectors.GPU_R.begin(), 0.0f);
+		R0_norm = innerProduct_dvc<floatType>(m_R_dvc.get(), m_R_dvc.get(), (floatType)0);
 
 		Alpha = R0_norm / aux;
 
 		// New X and R: (new, old, scalar, driving vec, total length)
 		// 1.- Update Lambdas
-		UPDATE_VEC << <Blocks_2, Threads_2 >> > (rpc(GPU_lambdas, 0), rpc(GPU_lambdas, 0), Alpha, rpc(interpVectors.GPU_P, 0), Total_Particles);
-		// we DO NOT use cudaDeviceSynchronize() because the following CUDA kernel does not require this kernel to be done...we may save a (very small) amount of time
+		try {
+			gpu_device.launchKernel(Blocks_2, Threads_2, vectorUpdate_dvc{
+				inputOutputVector.get(),
+				inputOutputVector.get(),
+				Alpha,
+				m_P_dvc.get(),
+				vectorLength
+			});
+		}
+		catch (const std::exception& except) {
+			std::cerr << "Error updating vector at line " << __LINE__ << ". ";
+			std::cerr << "Exception: " << except.what() << std::endl;
+			return EXIT_FAILURE;
+		}
 
 		// 2.- Update residuals 
-		UPDATE_VEC << <Blocks_2, Threads_2 >> > (rpc(interpVectors.GPU_R, 0), rpc(interpVectors.GPU_R, 0), -Alpha, rpc(interpVectors.GPU_AP, 0), Total_Particles);
-	if(cudaDeviceSynchronize()!=cudaSuccess){return EXIT_FAILURE;}
+		try {
+			gpu_device.launchKernel(Blocks_2, Threads_2, vectorUpdate_dvc{
+				m_R_dvc.get(),
+				m_R_dvc.get(),
+				-Alpha,
+				m_AP_dvc.get(),
+				vectorLength
+				});
+		}
+		catch (const std::exception& except) {
+			std::cerr << "Error updating vector at line " << __LINE__ << ". ";
+			std::cerr << "Exception: " << except.what() << std::endl;
+			return EXIT_FAILURE;
+		}
 
 		// Compute residual l_2 norm
-		r_squaredNorm = thrust::inner_product(thrust::device, interpVectors.GPU_R.begin(), interpVectors.GPU_R.end(), interpVectors.GPU_R.begin(), 0.0f);
+		r_squaredNorm = innerProduct_dvc<floatType>(m_R_dvc.get(), m_R_dvc.get(), (floatType)0);
 
-		if ((double)r_squaredNorm / (Total_Particles * Total_Particles) < squaredTolerance) {
+		if ((double)r_squaredNorm / (vectorLength * vectorLength) < squaredTolerance) {
 			flag = false;
 			break;
 		}
-		else if (k > max_steps) {
+		else if (k > maxIterations) {
 			std::cout << "No convergence was obtained after reaching max. allowed iterations. Last residual norm was: " << sqrt(r_squaredNorm) << "\n";
-			std::cout << border_mid;
 
 			k = -1;
 			flag = false;
@@ -164,173 +190,22 @@ if(cudaDeviceSynchronize()!=cudaSuccess){return EXIT_FAILURE;}
 		else {
 			beta = r_squaredNorm / R0_norm;
 
-			UPDATE_VEC << <Blocks_2, Threads_2 >> > (rpc(interpVectors.GPU_P, 0), rpc(interpVectors.GPU_R, 0), beta, rpc(interpVectors.GPU_P, 0), Total_Particles);
-		if(cudaDeviceSynchronize()!=cudaSuccess){return EXIT_FAILURE;}
+			try {
+				gpu_device.launchKernel(Blocks_2, Threads_2, vectorUpdate_dvc{
+					m_P_dvc.get(),
+					m_R_dvc.get(),
+					beta,
+					m_P_dvc.get(),
+					vectorLength
+					});
+			}
+			catch (const std::exception& except) {
+				std::cerr << "Error updating vector at line " << __LINE__ << ". ";
+				std::cerr << "Exception: " << except.what() << std::endl;
+				return EXIT_FAILURE;
+			}
 			k++;
 		}
 	}
-	return k;
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-__global__ void RESTART_GRID_FIND_GN(Particle* Particle_Positions,
-									floatType* PDF,
-									floatType* lambdas,
-									const parameterPair* parameter_mesh,
-									const intType* n_Samples,
-									const floatType 	 		search_radius,
-									const uintType	 		Adapt_Pts,
-									const uintType	 		Block_samples,
-									const uintType	 		offset,
-									const cartesianMesh 	Domain,
-									const cartesianMesh	Expanded_Domain) {
-	
-	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
-
-	if (i >= Adapt_Pts * Block_samples) { return; }
-
-	uintType Current_sample = offset + floor((double) i / Adapt_Pts);
-	Param_vec<PARAM_SPACE_DIMENSIONS>	aux = Gather_Param_Vec<PARAM_SPACE_DIMENSIONS>(Current_sample, parameter_mesh, n_Samples);
-
-	floatType weighted_lambda = lambdas[i] * aux.Joint_PDF;
-
-	Particle particle(Particle_Positions[i]);
-
-	// Find the point in the lowest corner of the search box!
-	Particle Lowest_node(Expanded_Domain.get_node(Expanded_Domain.get_bin_idx(particle, -lround(DISC_RADIUS))));
-
-	const uintType Neighbors_per_dim = 2 * lround(DISC_RADIUS) + 1;
-	const uintType totalNeighborsToVisit = pow(Neighbors_per_dim, PHASE_SPACE_DIMENSIONS); 
-	const floatType domainDiscretization = Domain.discr_length();
-
-	// Go through all the nodes where rewriting will be possible
-	for (uint16_t k = 0; k < totalNeighborsToVisit; k++) {
-
-		Particle visit_node(Lowest_node);
-
-		// Get the node at that point
-		uintType tempPowerAccumulate = 1;
-
-		#pragma unroll
-		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-			uintType temp_idx = floor((double) positive_rem(k, Neighbors_per_dim * tempPowerAccumulate) / tempPowerAccumulate);
-
-			visit_node.dim[d] += temp_idx * domainDiscretization;
-			tempPowerAccumulate *= Neighbors_per_dim;
-		}
-
-		// If it is inside our problem mesh...
-		if (Domain.contains_particle(visit_node)) {
-
-			// Calculate normalized distance
-			floatType dist = visit_node.Distance(particle) / search_radius;
-
-			// if it's inside the RBF support...
-			if (dist <= 1) {
-
-				dist = RBF(search_radius, dist) * weighted_lambda;
-
-				intType idx = Domain.get_bin_idx(visit_node);
-
-				atomicAdd(&PDF[idx], dist);
-			}
-		}
-	}
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-__global__ void RESTART_GRID_FIND_GN(Particle* Particle_Positions,
-	floatType* PDF,
-	floatType* lambdas,
-	const Param_vec<PHASE_SPACE_DIMENSIONS>* Impulse_weights,
-	const floatType 	search_radius,
-	const uintType	Adapt_Pts,
-	const uintType	Current_sample,
-	const cartesianMesh	Domain,
-	const cartesianMesh	Expanded_Domain) {
-	// OUTPUT: New values of the PDF at the fixed cartesianMesh
-
-	const uint64_t i = blockDim.x * blockIdx.x + threadIdx.x;
-
-	if (i >= Adapt_Pts) { return; }
-
-	uintType global_id = i + Current_sample * Adapt_Pts;
-
-	floatType weighted_lambda = lambdas[global_id] * Impulse_weights[Current_sample].Joint_PDF;				// the specific sample weight
-
-	Particle particle(Particle_Positions[global_id]);
-
-	// Find the point in the lowest corner of the search box!
-	Particle Lowest_node(Expanded_Domain.get_node(Expanded_Domain.get_bin_idx(particle, -lround(DISC_RADIUS))));
-
-	const uintType Neighbors_per_dim = 2 * lround(DISC_RADIUS) + 1;
-	const uintType totalNeighborsToVisit = pow(Neighbors_per_dim, PHASE_SPACE_DIMENSIONS);
-	const floatType domainDiscretization = Domain.discr_length();
-
-	// Go through all the nodes where rewriting will be possible
-	for (uint16_t k = 0; k < totalNeighborsToVisit; k++) {
-
-		Particle visit_node(Lowest_node);
-
-		// Get the node at that point
-		uintType tempPowerAccumulate = 1;
-
-#pragma unroll
-		for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-			uintType temp_idx = floorf((float)positive_rem(k, Neighbors_per_dim * tempPowerAccumulate) / tempPowerAccumulate);
-
-			visit_node.dim[d] += temp_idx * domainDiscretization;
-			tempPowerAccumulate *= Neighbors_per_dim;
-		}
-
-		// If it is inside our problem mesh...
-		if (Domain.contains_particle(visit_node)) {
-
-			// Calculate normalized distance
-			floatType dist = visit_node.Distance(particle) / search_radius;
-
-			// if it's inside the RBF support...
-			if (dist <= 1) {
-
-				dist = RBF(search_radius, dist) * weighted_lambda;
-
-				intType idx = Domain.get_bin_idx(visit_node);
-
-				atomicAdd(&PDF[idx], dist);
-			}
-		}
-	}
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-/// @brief This function makes sure that the PDF does not have any negative values! (Having this enforced by the interpolation would've been wonderful)
-/// @param PDF 
-/// @param Grid_Nodes 
-/// @return 
-
-__global__ void CORRECTION(floatType* PDF, const intType Grid_Nodes) {
-	const uint64_t globalIDX = blockDim.x * blockIdx.x + threadIdx.x;
-
-	const uint64_t i = globalIDX * ELEMENTS_AT_A_TIME;
-
-#pragma unroll
-	for (uint16_t k = 0; k < ELEMENTS_AT_A_TIME; k++) {
-		if (i + k < Grid_Nodes) {
-			PDF[i + k] = fmaxf(PDF[i + k], 0.00f);
-		}
-	}
-
-
+	return k;	// In this case, we return the iteration number, contrarily to returning the success/failure of the function
 }

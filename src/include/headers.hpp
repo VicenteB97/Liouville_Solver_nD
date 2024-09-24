@@ -46,6 +46,7 @@ static const gpuDevice gpu_device;	// We declare the static gpu_device at the be
 // Mathematical definitions we need
 #define M_PI 3.14159265358979323846
 #define ptSEARCH_THRESHOLD 10000000 // The min. number of particles per sample where we use the counting sort search (not worth it yet)
+#define __DEFAULT_CONJUGATE_GRADIENT_MAX_ITERS__ 1000
 
 // Error checking in the CPU code
 #define errorCheck(ans) {if(ans != EXIT_SUCCESS){std::cout << "Error found at:\n" << __FILE__ << "\nLine: " << std::to_string(__LINE__) << ".\n"; return EXIT_FAILURE;}}

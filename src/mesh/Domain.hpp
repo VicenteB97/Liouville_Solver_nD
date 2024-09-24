@@ -88,11 +88,11 @@ public:
 	/// @param Particle 
 	/// @return bool. True if particle is inside cartesianMesh, false otherwise
 	hostFunction deviceFunction	
-		bool contains_particle(const Particle& particle) const;
+		bool containsParticle(const Particle& particle) const;
 	
 	// Returns the bin (or ID of the closest node) where Particle belongs to, adding bin_offset.
 	hostFunction deviceFunction
-		uint64_t get_bin_idx(const Particle& particle, intType bin_offset = 0) const;
+		uint64_t getBinIdx(const Particle& particle, intType bin_offset = 0) const;
 
 	// Compute the global index at your mesh, given the global index in "other" mesh.
 	hostFunction 
@@ -109,10 +109,10 @@ public:
 		void Squarify();
 
 	/// @brief This function updates a cartesianMesh-defined bounding box
-	/// @param D_Particle_Locations GPU array storing the positions of the particles
+	/// @param fullParticleLocations_dvc GPU array storing the positions of the particles
 	/// @returns Nothing
 	 hostFunction 
-		 void update_bounding_box(const deviceUniquePtr<Particle>& D_Particle_Locations);
+		 void update_bounding_box(const deviceUniquePtr<Particle>& fullParticleLocations_dvc);
 };
 
 #endif

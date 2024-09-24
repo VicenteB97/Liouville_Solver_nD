@@ -98,11 +98,11 @@ int16_t ivpSolver::evolvePDF() {
 	// Build the parameter mesh from previous info
 	if (RANDOMIZE<PARAM_SPACE_DIMENSIONS>(parameterMesh, m_parameterDistributions)) { return EXIT_FAILURE; }
 	
-	deviceUniquePtr<parameterPair> parameterMesh_dvc;
-	gpu_device.memCpy_hst2dvc(parameterMesh_dvc.get(), parameterMesh.data(), sum_samples_count * sizeof(parameterPair));
+	deviceUniquePtr<parameterPair> parameterMesh_dvc(sum_samples_count, parameterPair());
+	gpu_device.memCpy_hst2dvc(parameterMesh_dvc.get(), parameterMesh.data(), parameterMesh_dvc.size_bytes());
 
-	deviceUniquePtr<intType> samplesPerParameter_dvc;
-	gpu_device.memCpy_hst2dvc(samplesPerParameter_dvc.get(), &samples_per_parameter[0], PARAM_SPACE_DIMENSIONS * sizeof(intType));
+	deviceUniquePtr<intType> samplesPerParameter_dvc(PARAM_SPACE_DIMENSIONS);
+	gpu_device.memCpy_hst2dvc(samplesPerParameter_dvc.get(), &samples_per_parameter[0], samplesPerParameter_dvc.size_bytes());
 
 	// auxiliary variable that will be used for ensemble mean computation
 	floatType sum_sample_val = 0;
@@ -136,7 +136,7 @@ int16_t ivpSolver::evolvePDF() {
 	errorCheck(PDF_INITIAL_CONDITION(m_problemDomain, pdfValuesAtProblemDomain.get(), __initial_condition_distributions));
 
 	// Pass the pdfValuesAtProblemDomain to the gpu:
-	deviceUniquePtr<floatType> pdfValuesAtProblemDomain_dvc(m_problemDomain.total_nodes(), (floatType)0);
+	deviceUniquePtr<floatType> pdfValuesAtProblemDomain_dvc(m_problemDomain.total_nodes());
 	gpu_device.memCpy_hst2dvc(
 		pdfValuesAtProblemDomain_dvc.get(),
 		pdfValuesAtProblemDomain.get(),
@@ -171,8 +171,6 @@ int16_t ivpSolver::evolvePDF() {
 
 	std::vector<floatType>	fullParticleValues;
 	deviceUniquePtr<floatType> fullParticleValues_dvc;
-
-	InterpHandle interpolationEngine;
 
 	indicators::ProgressBar statusBar{ 
 		indicators::option::BarWidth{35},
@@ -313,18 +311,17 @@ int16_t ivpSolver::evolvePDF() {
 		/////////////////////////////////////////////////////////////////////////////////////////
 		// Declare the solution of the interpolation vector (weights of the RBF functions)
 		deviceUniquePtr<floatType> basisWeightsLambdas_dvc(AMR_ActiveNodeCount);
-		interpolationEngine.resize(AMR_ActiveNodeCount);
+		ConjugateGradientEngine interpolationEngine(AMR_ActiveNodeCount);
 
 		startTimeSeconds = std::chrono::high_resolution_clock::now();
-		intType iterations = CONJUGATE_GRADIENT_SOLVE(basisWeightsLambdas_dvc,
+		intType iterations = interpolationEngine.execute(
+			basisWeightsLambdas_dvc,
+			fullParticleValues_dvc,
 			matrixIndex_dvc,
 			matrixValues_dvc,
-			D_Particle_Values,
-			interpVectors,
 			AMR_ActiveNodeCount,
-			MaxNeighborNum,
-			ConjGrad_MaxSteps,
-			TOLERANCE_ConjGrad);
+			MaxNeighborNum
+		);
 		if (iterations == -1) { std::cout << "Convergence failure.\n"; break; }
 		endTimeSeconds = std::chrono::high_resolution_clock::now();
 		durationSeconds = endTimeSeconds - startTimeSeconds;
@@ -340,7 +337,10 @@ int16_t ivpSolver::evolvePDF() {
 		matrixValues_dvc.clear();
 		#endif
 
-		D_Particle_Values = basisWeightsLambdas_dvc;
+		// Overwrite the particle values with the lambdas from the RBF interpolation procedure
+		gpu_device.memCpy_dvc2dvc(
+			fullParticleValues_dvc.get(), basisWeightsLambdas_dvc.get(), basisWeightsLambdas_dvc.size_bytes()
+		);
 
 		if (m_reinitializationInfo[iterationCount].impulse) {
 			/////////////////////////////////////////////////////////////////////////////////////////
@@ -353,8 +353,8 @@ int16_t ivpSolver::evolvePDF() {
 			startTimeSeconds = std::chrono::high_resolution_clock::now();
 
 			errorCheck(IMPULSE_TRANSFORM_PDF(D_PDF_ProbDomain,
-				D_Particle_Locations,
-				D_Particle_Values,
+				fullParticleLocations_dvc,
+				fullParticleValues_dvc,
 				m_reinitializationInfo[iterationCount],
 				jumpCount,
 				m_problemDomain,
@@ -412,7 +412,10 @@ int16_t ivpSolver::evolvePDF() {
 			uintType total_simulation_blocks = ceil((double)total_sample_count / Samples_PerBlk);
 
 			// For correct reinitialization
-			D_fixedParticles = D_Particle_Locations;
+			cudaUniquePtr<Particle> fixed_fullParticleLocations_dvc(fullParticleLocations_dvc.size_count(), Particle());
+			gpu_device.memCpy_dvc2dvc(
+				fixed_fullParticleLocations_dvc.get(), fullParticleLocations_dvc.get(), fullParticleLocations_dvc.size_bytes()
+			);
 
 			for (uintType b = 0; b < total_simulation_blocks; b++) {
 
@@ -426,15 +429,17 @@ int16_t ivpSolver::evolvePDF() {
 				// Total AMR-activated nodes in the current block
 				uintType ActiveNodes_PerBlk = Samples_PerBlk * AMR_ActiveNodeCount;
 
-				D_Particle_Locations.resize(ActiveNodes_PerBlk);
-				D_Particle_Values.resize(ActiveNodes_PerBlk);
+				// TODO: ME HE QUEDADO AQUÍ!!!!!
+
+				fullParticleLocations_dvc.resize(ActiveNodes_PerBlk);
+				fullParticleValues_dvc.resize(ActiveNodes_PerBlk);
 
 				for (uintType k = 0; k < Samples_PerBlk; k++) {
-					thrust::copy(thrust::device, &D_fixedParticles[0], &D_fixedParticles[AMR_ActiveNodeCount],
-						&D_Particle_Locations[k * AMR_ActiveNodeCount]);
+					thrust::copy(thrust::device, &fixed_fullParticleLocations_dvc[0], &fixed_fullParticleLocations_dvc[AMR_ActiveNodeCount],
+						&fullParticleLocations_dvc[k * AMR_ActiveNodeCount]);
 
 					thrust::copy(thrust::device, &basisWeightsLambdas_dvc[0], &basisWeightsLambdas_dvc[AMR_ActiveNodeCount],
-						&D_Particle_Values[k * AMR_ActiveNodeCount]);
+						&fullParticleValues_dvc[k * AMR_ActiveNodeCount]);
 				}
 
 				/////////////////////////////////////////////////////////////////////////////////////////
@@ -447,8 +452,8 @@ int16_t ivpSolver::evolvePDF() {
 
 				startTimeSeconds = std::chrono::high_resolution_clock::now();
 				ODE_INTEGRATE << <Blocks, Threads >> > (
-					rpc(D_Particle_Locations, 0),
-					rpc(D_Particle_Values, 0),
+					rpc(fullParticleLocations_dvc, 0),
+					rpc(fullParticleValues_dvc, 0),
 					rpc(D_Parameter_cartesianMesh, Sample_idx_offset_init),
 					rpc(samplesPerParameter_dvc, 0),
 					t0,
@@ -467,12 +472,12 @@ int16_t ivpSolver::evolvePDF() {
 				m_simulationLog.LogFrames[iterationCount].log_Advection_Time = durationSeconds.count();
 				m_simulationLog.LogFrames[iterationCount].log_Advection_TotalParticles = ActiveNodes_PerBlk;
 
-				m_particleBoundingBox.update_bounding_box(D_Particle_Locations);
+				m_particleBoundingBox.update_bounding_box(fullParticleLocations_dvc);
 
 				// COMPUTE THE SOLUTION "PROJECTION" INTO THE L1 SUBSPACE. THIS WAY, REINITIALIZATION CONSERVES VOLUME (=1)
 				if (PHASE_SPACE_DIMENSIONS < 5) {
-					floatType temp = thrust::reduce(thrust::device, D_Particle_Values.begin(), D_Particle_Values.end());
-					thrust::transform(D_Particle_Values.begin(), D_Particle_Values.end(), D_Particle_Values.begin(), Samples_PerBlk / temp * _1);
+					floatType temp = thrust::reduce(thrust::device, fullParticleValues_dvc.begin(), fullParticleValues_dvc.end());
+					thrust::transform(fullParticleValues_dvc.begin(), fullParticleValues_dvc.end(), fullParticleValues_dvc.begin(), Samples_PerBlk / temp * _1);
 				}
 
 				/////////////////////////////////////////////////////////////////////////////////////////
@@ -491,9 +496,9 @@ int16_t ivpSolver::evolvePDF() {
 				Blocks = floor((double)(ActiveNodes_PerBlk - 1) / Threads) + 1;
 
 				startTimeSeconds = std::chrono::high_resolution_clock::now();
-				RESTART_GRID_FIND_GN << < Blocks, Threads >> > (rpc(D_Particle_Locations, 0),
+				RESTART_GRID_FIND_GN << < Blocks, Threads >> > (rpc(fullParticleLocations_dvc, 0),
 					rpc(D_PDF_ProbDomain, 0),
-					rpc(D_Particle_Values, 0),
+					rpc(fullParticleValues_dvc, 0),
 					rpc(D_Parameter_cartesianMesh, 0),
 					rpc(samplesPerParameter_dvc, 0),
 					RBF_SupportRadius,

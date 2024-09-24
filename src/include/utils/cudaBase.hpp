@@ -76,9 +76,9 @@ public:
 	deviceUniquePtr() : __raw_dvc_pointer(nullptr), __size_count(0), __valid_state(true) {};
 
 	// Allocate and initialize constructor
-	deviceUniquePtr(uint32_t size, T init_value = (T)0) : __raw_dvc_pointer(nullptr), __size_count(0), __valid_state(true) {
+	deviceUniquePtr(uint32_t size_count, T init_value = (T)0) : __raw_dvc_pointer(nullptr), __size_count(0), __valid_state(true) {
 		try {
-			this->malloc(size, init_value);
+			this->malloc(size_count, init_value);
 		}
 		catch (const std::exception& e) {
 			std::cerr << "Error in cuda unique pointer initialization: " << e.what();
@@ -86,7 +86,7 @@ public:
 		}
 
 		// Set size count only if allocation and initialization succeeded
-		__size_count = size;
+		__size_count = size_count;
 	};
 
 	~deviceUniquePtr() noexcept {	

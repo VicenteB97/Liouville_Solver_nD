@@ -23,8 +23,8 @@ __global__ void TRANSFORM_PARTICLES(Particle*					Particle_Locations,
 }
 
 int16_t IMPULSE_TRANSFORM_PDF(deviceUniquePtr<floatType>&		GPU_PDF,				// PDF in cartesianMesh
-							deviceUniquePtr<Particle>& 	D_Particle_Locations,	// Particle positions
-							deviceUniquePtr<floatType>&		D_Particle_Values,		// PDF in AMR-selected points
+							deviceUniquePtr<Particle>& 	fullParticleLocations_dvc,	// Particle positions
+							deviceUniquePtr<floatType>&		fullParticleValues_dvc,		// PDF in AMR-selected points
 							const Time_instants					time,					// time-impulse information 
 							const intType							jumpCount,				// current jumpCount 
 							const cartesianMesh&							Problem_Domain,
@@ -33,7 +33,7 @@ int16_t IMPULSE_TRANSFORM_PDF(deviceUniquePtr<floatType>&		GPU_PDF,				// PDF in
 
 // 0.- Create the impulse samples
 
-		uintType AMR_ActiveNodeCount = D_Particle_Locations.size();
+		uintType AMR_ActiveNodeCount = fullParticleLocations_dvc.size();
 
 		Distributions* Imp_Param_Dist = new Distributions[PHASE_SPACE_DIMENSIONS];
 		intType n_samples[PHASE_SPACE_DIMENSIONS];
@@ -67,12 +67,12 @@ int16_t IMPULSE_TRANSFORM_PDF(deviceUniquePtr<floatType>&		GPU_PDF,				// PDF in
 
 		const intType Total_Particles = AMR_ActiveNodeCount * Random_Samples;
 
-		D_Particle_Locations.resize(Total_Particles);
-		D_Particle_Values.resize(Total_Particles);
+		fullParticleLocations_dvc.resize(Total_Particles);
+		fullParticleValues_dvc.resize(Total_Particles);
 
 		for(uint16_t k = 1; k < Random_Samples; k++){
-			thrust::copy(thrust::device, &D_Particle_Locations[0], &D_Particle_Locations[AMR_ActiveNodeCount], &D_Particle_Locations[k * AMR_ActiveNodeCount]);
-			thrust::copy(thrust::device, &D_Particle_Values[0], &D_Particle_Values[AMR_ActiveNodeCount], &D_Particle_Values[k * AMR_ActiveNodeCount]);
+			thrust::copy(thrust::device, &fullParticleLocations_dvc[0], &fullParticleLocations_dvc[AMR_ActiveNodeCount], &fullParticleLocations_dvc[k * AMR_ActiveNodeCount]);
+			thrust::copy(thrust::device, &fullParticleValues_dvc[0], &fullParticleValues_dvc[AMR_ActiveNodeCount], &fullParticleValues_dvc[k * AMR_ActiveNodeCount]);
 		}
 
 // 1.- Do the transformation of the points according to the info given by the time-impulse vector
@@ -83,7 +83,7 @@ int16_t IMPULSE_TRANSFORM_PDF(deviceUniquePtr<floatType>&		GPU_PDF,				// PDF in
 
 	// FOR SOME REASON, I'M ONLY WRITING IN SOME VALUES...NOT ALL OF THEM
 
-	TRANSFORM_PARTICLES << <Blocks, Threads >> > (	rpc(D_Particle_Locations,0), 
+	TRANSFORM_PARTICLES << <Blocks, Threads >> > (	rpc(fullParticleLocations_dvc,0), 
 													rpc(Impulses,0), 
 													AMR_ActiveNodeCount, 
 													Total_Particles);
@@ -103,9 +103,9 @@ for (uintType s = 0; s < Random_Samples; s++){
 	Threads = fmin(THREADS_P_BLK, AMR_ActiveNodeCount);
 	Blocks = floor((AMR_ActiveNodeCount - 1) / Threads) + 1;		// To compute the interpolation results at the GPU
 
-	RESTART_GRID_FIND_GN<<< Blocks, Threads >>>(rpc(D_Particle_Locations, 0),
+	RESTART_GRID_FIND_GN<<< Blocks, Threads >>>(rpc(fullParticleLocations_dvc, 0),
 												rpc(GPU_PDF, 0),
-												rpc(D_Particle_Values, 0),
+												rpc(fullParticleValues_dvc, 0),
 												rpc(Impulses, 0),
 												search_radius,
 												AMR_ActiveNodeCount,

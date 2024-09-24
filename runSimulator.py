@@ -40,7 +40,7 @@ def write_header(sim_name: str, sim_data: dict[str, Any]):
 
     // AMR tolerance, Conjugate Gradient tolerance and number of discretization size for the radius of the RBFs
     #define TOLERANCE_AMR       {sim_data["simulation_parameters"]["TOLERANCE_AMR"]}
-    #define TOLERANCE_ConjGrad  {sim_data["simulation_parameters"]["TOLERANCE_ConjGrad"]}
+    #define __CGrad_TOLERANCE__  {sim_data["simulation_parameters"]["__CGrad_TOLERANCE__"]}
     #define DISC_RADIUS         {sim_data["simulation_parameters"]["DISC_RADIUS"]}
 
     // Phase space information

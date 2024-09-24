@@ -9,7 +9,7 @@
         "simulation_parameters":{
             "floatType": "float",
             "TOLERANCE_AMR": "1E-5",
-            "TOLERANCE_ConjGrad": "1E-9",
+            "__CGrad_TOLERANCE__": "1E-9",
             "DISC_RADIUS": "4.49",
 
             "phase_space_dimensions": "2",

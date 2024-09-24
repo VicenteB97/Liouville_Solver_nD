@@ -127,7 +127,7 @@ Particle cartesianMesh::get_node(intType globalIdx) const {
 /// @param Particle 
 /// @return bool. True if particle is inside cartesianMesh, false otherwise
 hostFunction deviceFunction	 
-bool cartesianMesh::contains_particle(const Particle& particle) const {
+bool cartesianMesh::containsParticle(const Particle& particle) const {
 	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
 		if (particle.dim[d] < __boundary_inf.dim[d] || particle.dim[d] > __boundary_sup.dim[d]) { return false; }
 	}
@@ -136,7 +136,7 @@ bool cartesianMesh::contains_particle(const Particle& particle) const {
 
 // Returns the bin (or ID of the closest node) where Particle belongs to, adding bin_offset.
 hostFunction deviceFunction  
-uint64_t cartesianMesh::get_bin_idx(const Particle& particle, intType bin_offset) const {
+uint64_t cartesianMesh::getBinIdx(const Particle& particle, intType bin_offset) const {
 	intType bin_idx = 0, accPower = 1;
 	floatType discretizationLength = this->discr_length();
 
@@ -152,7 +152,7 @@ uint64_t cartesianMesh::get_bin_idx(const Particle& particle, intType bin_offset
 // Compute the global index at your mesh, given the global index in "other" mesh.
 hostFunction  
 uint64_t cartesianMesh::idx_here_from_other_mesh(intType indx_at_other, const cartesianMesh& other) const {
-	return this->get_bin_idx(other.get_node(indx_at_other));
+	return this->getBinIdx(other.get_node(indx_at_other));
 }
 
 /// @brief This function expands a fixed cartesianMesh "other" by a length of  "expansion_length" in each direction/dimension
@@ -187,24 +187,24 @@ void cartesianMesh::Squarify() {
 }
 
 /// @brief This function updates a cartesianMesh-defined bounding box
-/// @param D_Particle_Locations GPU array storing the positions of the particles
+/// @param fullParticleLocations_dvc GPU array storing the positions of the particles
 /// @returns Nothing
-//void cartesianMesh::update_bounding_box(const deviceUniquePtr<Particle>& D_Particle_Locations) {
+//void cartesianMesh::update_bounding_box(const deviceUniquePtr<Particle>& fullParticleLocations_dvc) {
 //
-//	intType threads = fmin(THREADS_P_BLK, D_Particle_Locations.size());
-//	intType blocks = floor((D_Particle_Locations.size() - 1) / threads) + 1;
+//	intType threads = fmin(THREADS_P_BLK, fullParticleLocations_dvc.size());
+//	intType blocks = floor((fullParticleLocations_dvc.size() - 1) / threads) + 1;
 //
 //	gpuDevice device;
 //
 //	// Temporary vector storing the particles' projections in each dimension 
-//	deviceUniquePtr<floatType> projection(D_Particle_Locations.size(), (floatType)0);
+//	deviceUniquePtr<floatType> projection(fullParticleLocations_dvc.size(), (floatType)0);
 //
 //	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
 //
 //		device.launchKernel(blocks, threads, find_projection{
-//			rpc(D_Particle_Locations, 0),
+//			rpc(fullParticleLocations_dvc, 0),
 //			rpc(projection, 0),
-//			D_Particle_Locations.size(),
+//			fullParticleLocations_dvc.size(),
 //			d
 //		});
 //
