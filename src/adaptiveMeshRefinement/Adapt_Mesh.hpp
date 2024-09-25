@@ -9,6 +9,7 @@ hostFunction
 void setInitialParticles(
 	const floatType* inputSignal_dvc,
 	deviceUniquePtr<Particle>& outputActiveNodes_dvc,
+	deviceUniquePtr<floatType>& outputActiveNodesValues_dvc,
 	const cartesianMesh& signalBoundingBox,
 	const cartesianMesh& signalDomain
 );
@@ -33,6 +34,8 @@ template<uint16_t elementsProcessedPerThread>
 class get_nodes_from_indeces {
 public:
 	Particle* outputNodes;
+	floatType* outputNodesValues;
+	const floatType* transformedSignalInBoundingBox;
 	const cartesianMesh inputNodes;
 	const uint64_t* nodeIdx;
 	const uintType elementNr;
@@ -45,7 +48,9 @@ public:
 
 			if (myIdx < elementNr) {
 				const uint64_t myNodeIdx = nodeIdx[myIdx];
+
 				outputNodes[myIdx] = inputNodes.get_node(myNodeIdx);
+				outputNodesValues[myIdx] = transformedSignalInBoundingBox[myNodeIdx];
 			}
 		}
 	};

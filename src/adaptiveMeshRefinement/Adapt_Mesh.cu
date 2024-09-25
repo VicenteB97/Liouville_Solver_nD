@@ -16,6 +16,7 @@ hostFunction
 void setInitialParticles(
 	const floatType* inputSignal_dvc,
 	deviceUniquePtr<Particle>& outputActiveNodes_dvc,
+	deviceUniquePtr<floatType>& outputActiveNodesValues_dvc,
 	const cartesianMesh& signalBoundingBox,
 	const cartesianMesh& signalDomain
 ) {
@@ -47,14 +48,19 @@ void setInitialParticles(
 	amrEngine.setInitialSignal_dvc2dvc(signalInBoundingBox_dvc.get());
 
 	amrEngine.computeWaveletTransform();
-	getDetailAboveThresholdNodes(amrEngine, outputActiveNodes_dvc, signalBoundingBox);
+	getDetailAboveThresholdNodes(amrEngine, outputActiveNodes_dvc, outputActiveNodesValues_dvc, signalBoundingBox);
 
 	return /*EXIT_SUCCESS*/;
 };
 
 
 hostFunction
-void getDetailAboveThresholdNodes(waveletTransform& amrEngine, deviceUniquePtr<Particle>& particleLocations_dvc, const cartesianMesh& signalDomain) {
+void getDetailAboveThresholdNodes(
+	waveletTransform& amrEngine, 
+	deviceUniquePtr<Particle>& particleLocations_dvc, 
+	deviceUniquePtr<floatType>& outputActiveNodesValues_dvc,
+	const cartesianMesh& signalDomain
+) {
 
 	// We get the number of selected nodes because we'll read the first nr_selected_nodes indeces in the bounding box mesh
 	uintType nr_selected_nodes = amrEngine.sorted_assigned_nodes();
@@ -68,6 +74,8 @@ void getDetailAboveThresholdNodes(waveletTransform& amrEngine, deviceUniquePtr<P
 		gpu_device.launchKernel(Blocks, Threads,
 			get_nodes_from_indeces<ELEMENTS_AT_A_TIME>{
 				particleLocations_dvc.get(),
+				outputActiveNodesValues_dvc.get(),
+				amrEngine.transformed_signal_dvc(),
 				signalDomain,
 				amrEngine.assigned_node_indeces_dvc(),
 				nr_selected_nodes

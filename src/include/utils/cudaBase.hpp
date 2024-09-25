@@ -116,6 +116,7 @@ public:
 		};
 		// If it works (no exceptions thrown) update the size information in the managed pointer
 		__size_count = size_count;
+		__valid_state = true;
 
 		try{
 			this->set_init_values(value);
@@ -147,10 +148,48 @@ public:
 		}
 	};
 
+	//void realloc(uint64_t newSize_count) {
+	//	uint64_t newSize_bytes = newSize_count * sizeof(T);
+
+	//	if (newSize_bytes == 0) {
+	//		this->free();
+	//		return;
+	//	}
+
+	//	if (__raw_dvc_pointer == nullptr) {
+	//		throw std::runtime_error("Attempting to reallocate a nullptr. Allocate first.");
+	//	}
+
+	//	// Allocate new memory block on the device
+	//	T* newPtr(nullptr);
+	//	if (cudaSuccess != cudaMalloc((void**)&newPtr, newSize_bytes)) {
+	//		throw std::runtime_error ("cudaMalloc failed in realloc function.");
+	//	}
+
+	//	// Determine how much data to copy (the smaller of the old and new sizes)
+	//	size_t copySize = (oldSize < newSize) ? oldSize : newSize;
+
+	//	// Copy the data from the old memory block to the new one
+	//	err = cudaMemcpy(newPtr, __raw_dvc_pointer, copySize, cudaMemcpyDeviceToDevice);
+	//	if (err != cudaSuccess) {
+	//		printf("cudaMemcpy failed: %s\n", cudaGetErrorString(err));
+	//		cudaFree(newPtr); // Free the newly allocated memory if copying fails
+	//		return nullptr;
+	//	}
+
+	//	// Free the old memory block
+	//	cudaFree(oldPtr);
+
+	//	return newPtr;
+	//};
+
 	/// @brief Returns the raw device pointer
 	hostFunction
-		T* get() const {
-		return __raw_dvc_pointer;
+		T* get(uint64_t offset = 0) const {
+		if (offset >= __size_count) {
+			throw std::runtime_error("Attempting to access out-of-bounds array element.");
+		}
+		return __raw_dvc_pointer + offset;
 	};
 
 	/// @brief Get the size (number of elements) of the pointed array

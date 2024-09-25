@@ -5,6 +5,7 @@
 #include "include/utils/numeric_defs.hpp"
 #include "mesh/Domain.hpp"
 #include "mesh/Particle.hpp"
+#include "interpolation/CSRBF.hpp"
 
 #if 0
 /// @brief 
@@ -122,7 +123,7 @@ __host__ int16_t CS_Neighbor_Search(deviceUniquePtr<Particle>& Search_Particles,
 class Exh_PP_Search {
 public:
 	const Particle* Search_Particles;
-	intType* Index_Array;
+	int64_t* Index_Array;
 	floatType* Matrix_Entries;
 	const uintType MaxNeighborNum;
 	const uintType Adapt_Points;
