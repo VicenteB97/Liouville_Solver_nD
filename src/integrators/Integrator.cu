@@ -150,52 +150,26 @@ deviceFunction void lie_euler_mathieu(
 	if (!domain_mesh.containsParticle(position)) { value = 0; }
 }
 
+deviceFunction void characteristicIntegrator::operator()(const uint64_t global_id) const {
+	if (global_id >= particleCountPerSample * sampleCountTotal) { return; }
 
-/// @brief This function computes the advection of the particles created by AMR.
-/// @param Particles Particle location (spatial variables)
-/// @param PDF PDF value at the corresponding particle location
-/// @param parameters Parameters to be used for the vector field and its corresponding divergence function
-/// @param t0 Inital time for starting the simulation
-/// @param time_step Time step used in the simulation
-/// @param ReinitSteps Number of steps before needing a re-interpolation
-/// @param Adapt_Points Number of particles as computed by the AMR scheme
-/// @param Random_Samples Number of random parameter_realization samples
-/// @return 
-__global__ void ODE_INTEGRATE(
-	Particle* Particles,
-	floatType* PDF,
-	const parameterPair* parameters,
-	const intType* n_Samples,
-	double t0,
-	const double time_step,
-	const double tF,
-	const intType Adapt_Points,
-	const intType Random_Samples,
-	const uintType mode,
-	const double* extra_param,
-	const cartesianMesh D_cartesianMesh) {
+	// So, the total amount of advections are going to be: (no. particles x no. of samples)
+	const uintType  i_sample{ (uintType)floor((double)global_id / particleCountPerSample) };
 
-	const uint64_t i {blockDim.x * blockIdx.x + threadIdx.x};
+	const Param_vec<PARAM_SPACE_DIMENSIONS> parameter_realization{ 
+		Gather_Param_Vec<PARAM_SPACE_DIMENSIONS>(i_sample, modelParameters, sampleCountPerParameter)
+	};
 
-	if (i < Adapt_Points * Random_Samples) {
+	Particle pos_particle{ particleLocations[global_id] };
+	floatType value_particle{ particleValues[global_id] };
 
-		// AUXILIARY DATA TO RUN THE ITERATIONS
-		// So, the total amount of advections are going to be: (no. particles x no. of samples)
-		const uintType  i_sample {(uintType) floor((double)i / Adapt_Points)};
+#if SPECIAL_INTEGRATOR
+	lie_euler_mathieu(pos_particle, value_particle, t0, tF, time_step, parameter_realization, extra_param, mode, D_cartesianMesh);
+#else
+	runge_kutta_45(pos_particle, value_particle, t0, tF, time_step, parameter_realization, extraModelParameters, fieldModeIndex, problemDomain);
+#endif
 
-		const Param_vec<PARAM_SPACE_DIMENSIONS> parameter_realization {Gather_Param_Vec<PARAM_SPACE_DIMENSIONS>(i_sample, parameters, n_Samples)};
-
-		Particle pos_particle {Particles[i]};
-		floatType value_particle {PDF[i]};
-
-		#if SPECIAL_INTEGRATOR
-		lie_euler_mathieu(pos_particle, value_particle, t0, tF, time_step, parameter_realization, extra_param, mode, D_cartesianMesh);
-		#else
-		runge_kutta_45(pos_particle, value_particle, t0, tF, time_step, parameter_realization, extra_param, mode, D_cartesianMesh);
-		#endif
-
-		// Output results
-		Particles[i] = pos_particle;
-		PDF[i] = value_particle;
-	}
+	// Output results
+	particleLocations[global_id] = pos_particle;
+	particleValues[global_id] = value_particle;
 }

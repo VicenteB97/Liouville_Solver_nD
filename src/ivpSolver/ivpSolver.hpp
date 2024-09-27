@@ -23,9 +23,11 @@
 #include "mesh/Particle.hpp"
 #include "probabilityDistributions/Probability.hpp"
 #include "interpolation/Interpolation.hpp"
+#include "interpolation/Remeshing.hpp"
 #include "include/PointSearch.hpp"
 #include "integrators/Impulse_transformations.hpp"
 #include "integrators/Integrator.hpp"
+#include "terminal/terminal.hpp"
 
 #include "Simulation_parameters.hpp"
 #include "Sim_data.hpp"
@@ -49,6 +51,9 @@ private:
 
 	// Final simulation storage
 	std::vector<floatType> m_simulationStorage;
+
+	// terminal for current launch
+	terminal m_terminal;
 
 
 public:

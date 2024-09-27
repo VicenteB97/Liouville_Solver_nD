@@ -4,13 +4,11 @@
 #include "utils/headersCpp.hpp"
 #include "Case_definition.hpp"
 
-#define USECUDA	// REMEMBER TO ERASE THIS DEFINITION!!
-
 #ifdef USECUDA
 #include "utils/cudaBase.hpp"
 #endif
 
-static const gpuDevice gpu_device;	// We declare the static gpu_device at the beggining
+static const gpuDevice gpu_device(0);	// We declare the static gpu_device at the beggining
 
 #ifndef EXIT_SUCCESS
 #define EXIT_SUCCESS 0

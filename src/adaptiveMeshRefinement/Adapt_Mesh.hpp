@@ -15,7 +15,12 @@ void setInitialParticles(
 );
 
 hostFunction
-void getDetailAboveThresholdNodes(waveletTransform& amrEngine, deviceUniquePtr<Particle>& particle_locations, const cartesianMesh& signalDomain);
+void getDetailAboveThresholdNodes(
+	waveletTransform& amrEngine, 
+	deviceUniquePtr<Particle>& particle_locations, 
+	deviceUniquePtr<floatType>& particle_values, 
+	const cartesianMesh& signalDomain
+);
 
 
 class writeSignalInBoundingBox {

@@ -1,7 +1,9 @@
 #ifndef __REMESHING_HPP__
 #define __REMESHING_HPP__
+
 #include "CSRBF.hpp"
 #include "include/headers.hpp"
+#include "probabilityDistributions/Probability.hpp"
 #include "mesh/Domain.hpp"
 #include "mesh/Particle.hpp"
 
@@ -45,7 +47,7 @@ public:
 		uintType Current_sample = offset + floor((double)global_id / nrParticles);
 		Param_vec<PARAM_SPACE_DIMENSIONS>	aux = Gather_Param_Vec<PARAM_SPACE_DIMENSIONS>(Current_sample, parameterWeights, n_Samples);
 
-		floatType weighted_lambda = lambdas[global_id] * aux.Joint_PDF;
+		floatType weighted_lambda = interpolationLambdas[global_id] * aux.Joint_PDF;
 
 		Particle particle(particlePositions[global_id]);
 
@@ -85,10 +87,20 @@ public:
 
 					intType idx = Domain.getBinIdx(visit_node);
 
-					atomicAdd(&PDF[idx], dist);
+					atomicAdd(&densityFunction[idx], dist);
 				}
 			}
 		}
 	}
+};
+
+template<typename _Ty>
+void L1normalizeLambdas(_Ty* lambdasFromInterpolation, const uint32_t normalizingValue){
+#ifdef USECUDA
+	thrust::device_ptr<_Ty> lambdasPointer(lambdasFromInterpolation);
+
+	floatType temp = thrust::reduce(thrust::device, lambdasPointer.begin(), lambdasPointer.end());
+	thrust::transform(lambdasPointer.begin(), lambdasPointer.end(), lambdasPointer.begin(), normalizingValue / temp * _1);
+#endif
 };
 #endif

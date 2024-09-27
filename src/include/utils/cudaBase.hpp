@@ -4,8 +4,6 @@
 
 #define deviceFunction __device__
 #define hostFunction __host__
-#define gpuDevice cudaDevice
-#define deviceUniquePtr cudaUniquePtr
 
 // Headers for the CUDA libraries
 #include "headersCpp.hpp"
@@ -31,9 +29,13 @@ __global__ static void deviceLaunchFunctionWrapper(const T functor) {
 };
 
 
-class cudaDevice {
+class gpuDevice {
 public:
-	const cudaDeviceProp deviceProperties;
+	cudaDeviceProp deviceProperties;
+public:
+	gpuDevice(uint16_t gpuId = 0) : deviceProperties() {
+		cudaGetDeviceProperties(&deviceProperties, gpuId);
+	}
 public:
 	void memCpy_hst2dvc(void* dst_dvc, void* src_hst, uint64_t size_bytes) const {
 		if (cudaMemcpy(dst_dvc, src_hst, size_bytes, cudaMemcpyHostToDevice) != cudaSuccess) {
@@ -51,6 +53,12 @@ public:
 		if (cudaMemcpy(dst_dvc, src_dvc, size_bytes, cudaMemcpyDeviceToDevice) != cudaSuccess) {
 			throw std::runtime_error("Device to device memCpy unsuccessful.");
 		};
+	};
+
+	template<typename _Ty>
+	void transformMultiply(_Ty* dvcPtr, _Ty value, uint64_t lastElement, uint64_t firstElement = 0) const {
+		thrust::device_ptr<_Ty> tempPtr(dvcPtr);
+		thrust::transform(tempPtr + firstElement, tempPtr + lastElement, tempPtr, value * thrust::placeholders::_1); // we use the thrust::placeholders here (@ the last input argument)
 	};
 
 	template<typename T>

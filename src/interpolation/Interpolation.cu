@@ -63,8 +63,8 @@ uint16_t ConjugateGradientEngine::execute(
 	const deviceUniquePtr<int64_t>& matrixIndeces,
 	const deviceUniquePtr<floatType>& matrixValues,
 	const uint16_t maxNeighbors,
-	const double interpolationTolerance,
-	const uint16_t maxIterations
+	const uint16_t maxIterations,
+	const double interpolationTolerance
 ) {
 	// Determine threads and blocks for the simulation
 	const uint64_t vectorLength = targetVector.size_count();

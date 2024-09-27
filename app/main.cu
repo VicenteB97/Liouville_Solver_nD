@@ -16,32 +16,18 @@
 #include <string>
 
 #include "ivpSolver/ivpSolver.hpp"
-#include "include/utils/window.cuh"
+#include "terminal/terminal.hpp"
 
 int16_t PDF_EVOLUTION();
 
 int main() {
-	//----------------------------------------------------------------------------------------------------------------------------------------//
 
-	int16_t ret_val = PDF_EVOLUTION();
-
-	std::string temp = "|	Simulation finished successfully.\n";
-	Intro_square_filler(temp, windowLength, 1, 0);
-	std::cout << border_mid << "\n" << border << "\n";
-	
-	return ret_val;
+	printEntryMessage();
+	return PDF_EVOLUTION();
 }
 
 //--------------------------------------------------------------------------------------------- //
 int16_t PDF_EVOLUTION() {
-
-	cudaDeviceProp prop;
-	errorCheck(IntroDisplay(prop));
-
-	std::string temp = "|	You are simulating " + (std::string)CASE;
-	Intro_square_filler(temp, windowLength, 1, 0);
-	std::cout << border_mid << "\n";
-	// Pre-Simulation Data initialization -------------------------------------------------------------------------------
 
 	ivpSolver Solver;
 
@@ -66,8 +52,7 @@ auto end = std::chrono::high_resolution_clock::now();
 // -------------------------------------------------------------------------------------------- //
 // -------------------------------------------------------------------------------------------- //
 
-	errorCheck(Solver.writeFramesToFile(duration.count()))
-	errorCheck_dvc(cudaDeviceReset());
+	errorCheck(Solver.writeFramesToFile(duration.count()));
 
 	return 0;
 }

@@ -48,7 +48,12 @@ void setInitialParticles(
 	amrEngine.setInitialSignal_dvc2dvc(signalInBoundingBox_dvc.get());
 
 	amrEngine.computeWaveletTransform();
-	getDetailAboveThresholdNodes(amrEngine, outputActiveNodes_dvc, outputActiveNodesValues_dvc, signalBoundingBox);
+	getDetailAboveThresholdNodes(
+		amrEngine, 
+		outputActiveNodes_dvc, 
+		outputActiveNodesValues_dvc, 
+		signalBoundingBox
+	);
 
 	return /*EXIT_SUCCESS*/;
 };

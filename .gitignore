@@ -7,5 +7,4 @@
 /build
 /.vs
 /.vscode
-CMakeSettings.json
 CMakePresets.json

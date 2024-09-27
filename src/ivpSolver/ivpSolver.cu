@@ -13,7 +13,6 @@
 
 #include "ivpSolver.hpp"
 
-using namespace thrust::placeholders;
 
 // Set the default constructor. Parametric constructor won't be required!!
 ivpSolver::ivpSolver() {};
@@ -76,7 +75,7 @@ int16_t ivpSolver::evolvePDF() {
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// 	PARAMETERS
-	intType total_sample_count = 1, sum_samples_count = 0;
+	uint32_t total_sample_count = 1, sum_samples_count = 0;
 	intType samples_per_parameter[PARAM_SPACE_DIMENSIONS];
 
 	for (uintType i = 0; i < PARAM_SPACE_DIMENSIONS; i++) {
@@ -165,19 +164,6 @@ int16_t ivpSolver::evolvePDF() {
 	const uintType	ConjGrad_MaxSteps = 1000;
 	const floatType	RBF_SupportRadius = DISC_RADIUS * m_problemDomain.discr_length();
 
-	indicators::ProgressBar statusBar{ 
-		indicators::option::BarWidth{35},
-		indicators::option::ForegroundColor{indicators::Color::yellow},
-		indicators::option::ShowElapsedTime{true},
-		indicators::option::ShowRemainingTime{false},
-		indicators::option::PrefixText{"[INFO] Running..."},
-		indicators::option::Start{"["},
-		indicators::option::Fill{"*"},
-		indicators::option::Lead{"*"},
-		indicators::option::Remainder{"-"},
-		indicators::option::End{"]"}, 
-	};
-
 	// Resize the simulation logger
 	m_simulationLog.resize(m_reinitializationInfo.size() - 1);
 
@@ -194,19 +180,19 @@ int16_t ivpSolver::evolvePDF() {
 	std::atomic<uintType> currentlySavedFrames = 0;	// We need atomic type because we'll be saving in a separate thread concurrently!
 
 	// Aux variable to switch between step functions (Heaviside forcing) 
-	uintType mode = 0;
+	uint16_t mode = 0;
 
 	// IF THERE ARE DELTA TERMS
 	#if IMPULSE_TYPE == 1
 	uintType jumpCount = 0;	// auxiliary variable to know how many delta jumpCounts have passed
 	#endif
 
-	// IF THERE ARE HEAVISIDE TERMS WITH EXTRA PARAMETERS
+	// TODO: FIX THIS APPROPRIATELY
 	#if INCLUDE_XTRA_PARAMS
-	deviceUniquePtr<double>	Extra_Parameter(XTRA_PARAM_LENGTH);
-	thrust::copy(&XTRA_PARAM[0], &XTRA_PARAM[XTRA_PARAM_LENGTH], Extra_Parameter.begin());
+	deviceUniquePtr<double>	extraParameters_dvc(XTRA_PARAM_LENGTH);
+	thrust::copy(&XTRA_PARAM[0], &XTRA_PARAM[XTRA_PARAM_LENGTH], extraParameters_dvc.begin());
 	#else
-	deviceUniquePtr<double> Extra_Parameter(0);
+	deviceUniquePtr<double> extraParameters_dvc;
 	#endif
 
 	// Define concurrent saving lambda function
@@ -231,11 +217,8 @@ int16_t ivpSolver::evolvePDF() {
 		double t0 = m_reinitializationInfo[iterationCount].time; double tF = m_reinitializationInfo[iterationCount + 1].time;
 
 		// Full array storing appended particles for all parameter samples. Use std::vector because it changes quite often!
-		//std::vector<Particle>	particleLocations;
 		deviceUniquePtr<Particle>	particleLocations_dvc;
-
-		//std::vector<floatType>	particleValues;
-		deviceUniquePtr<floatType> particleValues_dvc;
+		deviceUniquePtr<floatType>	particleValues_dvc;
 
 		/////////////////////////////////////////////////////////////////////////////////////////
 		/////////////////////////////////////////////////////////////////////////////////////////
@@ -412,7 +395,7 @@ int16_t ivpSolver::evolvePDF() {
 			uintType total_simulation_blocks = ceil((double)total_sample_count / Samples_PerBlk);
 
 			// For correct reinitialization
-			//cudaUniquePtr<Particle> fixed_fullParticleLocations_dvc(particleLocations_dvc.size_count(), Particle());
+			//deviceUniquePtr<Particle> fixed_fullParticleLocations_dvc(particleLocations_dvc.size_count(), Particle());
 			//gpu_device.memCpy_dvc2dvc(
 			//	fixed_fullParticleLocations_dvc.get(), particleLocations_dvc.get(), particleLocations_dvc.size_bytes()
 			//);
@@ -429,8 +412,8 @@ int16_t ivpSolver::evolvePDF() {
 				// Total AMR-activated nodes in the current block
 				uintType ActiveNodes_PerBlk = Samples_PerBlk * AMR_ActiveNodeCount;
 
-				cudaUniquePtr<Particle> fullParticleLocations_dvc(ActiveNodes_PerBlk, Particle());
-				cudaUniquePtr<floatType> fullBasisWeightsLambdas_dvc(ActiveNodes_PerBlk, (floatType) 0);
+				deviceUniquePtr<Particle> fullParticleLocations_dvc(ActiveNodes_PerBlk, Particle());
+				deviceUniquePtr<floatType> fullBasisWeightsLambdas_dvc(ActiveNodes_PerBlk, (floatType) 0);
 
 				for (uintType k = 0; k < Samples_PerBlk; k++) {
 					gpu_device.memCpy_dvc2dvc(
@@ -454,20 +437,26 @@ int16_t ivpSolver::evolvePDF() {
 				uintType Blocks = floor((double)(ActiveNodes_PerBlk - 1) / Threads) + 1;
 
 				startTimeSeconds = std::chrono::high_resolution_clock::now();
-				ODE_INTEGRATE << <Blocks, Threads >> > (
-					rpc(particleLocations_dvc, 0),
-					rpc(particleValues_dvc, 0),
-					rpc(D_Parameter_cartesianMesh, Sample_idx_offset_init),
-					rpc(samplesPerParameter_dvc, 0),
-					t0,
-					__delta_t,
-					tF,
-					AMR_ActiveNodeCount,
-					Samples_PerBlk,
-					mode,
-					rpc(Extra_Parameter, 0),
-					m_problemDomain);
-			if(cudaDeviceSynchronize()!=cudaSuccess){return EXIT_FAILURE;}
+				try{
+					gpu_device.launchKernel(Blocks, Threads, characteristicIntegrator{
+						fullParticleLocations_dvc.get(),
+						fullBasisWeightsLambdas_dvc.get(),
+						parameterMesh_dvc.get(Sample_idx_offset_init),
+						samplesPerParameter_dvc.get(),
+						t0,
+						__delta_t,
+						tF,
+						AMR_ActiveNodeCount,
+						total_sample_count,
+						mode,
+						extraParameters_dvc.get(),
+						m_problemDomain
+						});
+				}
+				catch (const std::exception& except) {
+					std::cerr << "Exception caught at characteristic integration. Code: " << except.what() << std::endl;
+					return EXIT_FAILURE;
+				}
 				endTimeSeconds = std::chrono::high_resolution_clock::now();
 				durationSeconds = endTimeSeconds - startTimeSeconds;
 
@@ -479,8 +468,7 @@ int16_t ivpSolver::evolvePDF() {
 
 				// COMPUTE THE SOLUTION "PROJECTION" INTO THE L1 SUBSPACE. THIS WAY, REINITIALIZATION CONSERVES VOLUME (=1)
 				if (PHASE_SPACE_DIMENSIONS < 5) {
-					floatType temp = thrust::reduce(thrust::device, particleValues_dvc.begin(), particleValues_dvc.end());
-					thrust::transform(particleValues_dvc.begin(), particleValues_dvc.end(), particleValues_dvc.begin(), Samples_PerBlk / temp * _1);
+					L1normalizeLambdas(fullBasisWeightsLambdas_dvc.get(), Samples_PerBlk);
 				}
 
 				/////////////////////////////////////////////////////////////////////////////////////////
@@ -488,29 +476,32 @@ int16_t ivpSolver::evolvePDF() {
 				// -------------------------- REINITIALIZATION --------------------------------------- //
 				/////////////////////////////////////////////////////////////////////////////////////////
 				/////////////////////////////////////////////////////////////////////////////////////////
-
-				#if ERASE_dPDF
-				D_PDF_ProbDomain.resize(nrNodesPerFrame, 0);	// PDF is reset to 0, so that we may use atomic adding at the remeshing step
-				#else
-				thrust::fill(thrust::device, D_PDF_ProbDomain.begin(), D_PDF_ProbDomain.end(), 0);
-				#endif
+				// Restart the values of the PDF at the problem domain
+				pdfValuesAtProblemDomain_dvc.set_init_values((floatType)0);
 
 				Threads = fmin(THREADS_P_BLK, ActiveNodes_PerBlk);
 				Blocks = floor((double)(ActiveNodes_PerBlk - 1) / Threads) + 1;
 
 				startTimeSeconds = std::chrono::high_resolution_clock::now();
-				RESTART_GRID_FIND_GN << < Blocks, Threads >> > (rpc(particleLocations_dvc, 0),
-					rpc(D_PDF_ProbDomain, 0),
-					rpc(particleValues_dvc, 0),
-					rpc(D_Parameter_cartesianMesh, 0),
-					rpc(samplesPerParameter_dvc, 0),
-					RBF_SupportRadius,
-					AMR_ActiveNodeCount,
-					Samples_PerBlk,
-					Sample_idx_offset_init,
-					m_problemDomain,
-					Expanded_Domain);
-			if(cudaDeviceSynchronize()!=cudaSuccess){return EXIT_FAILURE;}
+				try{
+					gpu_device.launchKernel(Blocks, Threads, remeshParticles<parameterPair>{
+						fullParticleLocations_dvc.get(),
+							pdfValuesAtProblemDomain_dvc.get(),
+							fullBasisWeightsLambdas_dvc.get(),
+							parameterMesh_dvc.get(),
+							samplesPerParameter_dvc.get(),
+							RBF_SupportRadius,
+							AMR_ActiveNodeCount,
+							Samples_PerBlk,
+							Sample_idx_offset_init,
+							m_problemDomain,
+							Expanded_Domain
+					});
+				}
+				catch (const std::exception& except) {
+					std::cerr << "Exception caught at particle remeshing. Code: " << except.what() << std::endl;
+					return EXIT_FAILURE;
+				}
 				endTimeSeconds = std::chrono::high_resolution_clock::now();
 				durationSeconds = endTimeSeconds - startTimeSeconds;
 
@@ -527,16 +518,33 @@ int16_t ivpSolver::evolvePDF() {
 			// Correction of any possible negative PDF values
 			uintType Threads = fmin(THREADS_P_BLK, nrNodesPerFrame / ELEMENTS_AT_A_TIME);
 			uintType Blocks = floor((double)(nrNodesPerFrame / ELEMENTS_AT_A_TIME - 1) / Threads) + 1;
-
-			CORRECTION << <Blocks, Threads >> > (rpc(D_PDF_ProbDomain, 0), nrNodesPerFrame);
-		if(cudaDeviceSynchronize()!=cudaSuccess){return EXIT_FAILURE;}
+			try{
+				gpu_device.launchKernel(Blocks, Threads, correctNegativeValues<floatType>{
+					pdfValuesAtProblemDomain_dvc.get(),
+					nrNodesPerFrame
+				});
+			}
+			catch (const std::exception& except) {
+				std::cerr << "Exception cauhgt correcting PDF negative values. Code: " << except.what() << std::endl;
+				return EXIT_FAILURE;
+			}
 
 			// Divide by the sum of the values of the parameter mesh to obtain the weighted mean
-			thrust::transform(D_PDF_ProbDomain.begin(), D_PDF_ProbDomain.end(), D_PDF_ProbDomain.begin(), 1.0f / sum_sample_val * _1); // we use the thrust::placeholders here (@ the last input argument)
-
+			try{
+				gpu_device.transformMultiply<floatType>(
+					pdfValuesAtProblemDomain_dvc.get(), 1.0f / sum_sample_val, nrNodesPerFrame);
+			}
+			catch (const std::exception& except) {
+				std::cerr << "Exception caught at multiply per value. Code: " << except.what() << std::endl;
+				return EXIT_FAILURE;
+			}
+			
 			// Send back to CPU
-			PDF_ProbDomain = D_PDF_ProbDomain;
-
+			gpu_device.memCpy_dvc2hst(
+				pdfValuesAtProblemDomain.get(),
+				pdfValuesAtProblemDomain_dvc.get(),
+				pdfValuesAtProblemDomain_dvc.size_bytes()
+			);
 		}
 
 		// Upadte simulation step
@@ -544,20 +552,19 @@ int16_t ivpSolver::evolvePDF() {
 
 		storeFrame_worker.join();
 
-		statusBar.set_option(indicators::option::PostfixText{ "Iterations: " + std::to_string(iterationCount) + "/" + std::to_string(m_reinitializationInfo.size() - 1) });
-		statusBar.set_progress((float)iterationCount / (m_reinitializationInfo.size() - 1) * 100);
+		m_terminal.update_simulation_status(iterationCount, m_reinitializationInfo.size() - 1);
 	}
 
 	/*thrust::copy(PDF_ProbDomain.begin(), PDF_ProbDomain.end(), &m_simulationStorage[currentlySavedFrames * nrNodesPerFrame]);*/
+	std::copy(pdfValuesAtProblemDomain.get(), pdfValuesAtProblemDomain.get() + nrNodesPerFrame, &m_simulationStorage[currentlySavedFrames * nrNodesPerFrame]);
 
-	std::cout << termcolor::bold << termcolor::green << "[INFO] Completed successfully!" << std::endl;
-	std::cout << termcolor::reset;
+	m_terminal.simulation_completed();
 
 	std::string log_filename{CASE};
 	log_filename += "_log_file"; 
 	m_simulationLog.writeSimulationLog_toFile(log_filename);
 	// Exit current function
-	return 0;
+	return EXIT_SUCCESS;
 };
 
 int16_t ivpSolver::writeFramesToFile(const double& simulationDuration) {
@@ -761,8 +768,8 @@ int16_t ivpSolver::writeFramesToFile(const double& simulationDuration) {
 			myfile.write((char*)&m_simulationStorage[(k * max_frames_file + frames_init) * nrNodesPerFrame], sizeof(floatType) * frames_in_file * nrNodesPerFrame);
 			myfile.close();
 
-			std::string temp_output_str = "|	Simulation output file " + std::to_string(k) + " completed!";
-			Intro_square_filler(temp_output_str, windowLength, 1, 0);
+			std::string temp_output_str = "Simulation output file " + std::to_string(k) + " completed!";
+			m_terminal.print_message(temp_output_str);
 		}
 		saving_active = false;
 		#endif

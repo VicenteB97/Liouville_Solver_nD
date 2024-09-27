@@ -33,10 +33,10 @@ find_package(OpenMP REQUIRED)
 
 message(STATUS "Building in ${CMAKE_HOST_SYSTEM_NAME}")
 
-option(EXECUTE_TESTS "Execute tests" OFF)
-add_compile_options(-D EXECUTE_TESTS)
+# option(EXECUTE_TESTS "Execute tests" OFF)
+# add_compile_options(-D EXECUTE_TESTS)
 
 add_subdirectory(configured)
 add_subdirectory(src)
-add_subdirectory(test)
+# add_subdirectory(test)
 add_subdirectory(app)

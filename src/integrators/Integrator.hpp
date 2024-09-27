@@ -4,6 +4,7 @@
 #include "include/headers.hpp"
 #include "probabilityDistributions/Probability.hpp"
 #include "mesh/Domain.hpp"
+#include "mesh/Particle.hpp"
 
 // Dynamics functions:
 // The following functions are not to be modified
@@ -27,9 +28,17 @@ inline floatType DIVERGENCE_FIELD(
 
 
 // Output the final point
-deviceFunction void runge_kutta_45(Particle& position, floatType& value, double t0, const double tF, const double time_step,
-	Param_vec<PARAM_SPACE_DIMENSIONS> parameter_realization, const double* extra_param, const uintType mode,
-	const cartesianMesh domain_mesh);
+deviceFunction void runge_kutta_45(
+	Particle& position,
+	floatType& value,
+	double t0,
+	const double tF,
+	double time_step,
+	Param_vec<PARAM_SPACE_DIMENSIONS> parameter_realization,
+	const double* extra_param,
+	const uintType mode,
+	const cartesianMesh domain_mesh
+);
 
 deviceFunction void lie_midpoint_mathieu(
 	Particle& position,
@@ -54,18 +63,24 @@ deviceFunction void lie_midpoint_mathieu(
 /// @param Adapt_Points Number of particles as computed by the AMR scheme
 /// @param Random_Samples Number of random parameter_realization samples
 /// @return 
-__global__ void ODE_INTEGRATE(
-	Particle* Particles,
-	floatType* PDF,
-	const parameterPair* parameters,
-	const intType* n_Samples,
-	double			t0,
-	const double	time_step,
-	const double	tF,
-	const intType		Adapt_Points,
-	const intType		Random_Samples,
-	const uintType		mode,
-	const double* extra_param,
-	const cartesianMesh  	D_cartesianMesh);
+
+
+class characteristicIntegrator {
+public:
+	Particle* particleLocations;
+	floatType* particleValues;
+	const parameterPair* modelParameters;
+	const intType* sampleCountPerParameter;
+	double t0;
+	const double time_step;
+	const double tF;
+	const uint32_t particleCountPerSample;
+	const uint32_t sampleCountTotal;
+	const uint16_t fieldModeIndex;
+	const double* extraModelParameters;
+	const cartesianMesh problemDomain;
+public:
+	deviceFunction void operator()(const uint64_t global_id) const;
+};
 
 #endif
