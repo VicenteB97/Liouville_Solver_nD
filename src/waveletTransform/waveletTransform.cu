@@ -281,27 +281,41 @@ void waveletTransform::computeWaveletTransform() {
 
 		uint16_t Threads = fmin(THREADS_P_BLK, total_signal_nodes / pow(rescaling, PHASE_SPACE_DIMENSIONS));
 		uint64_t Blocks = floor((total_signal_nodes / pow(rescaling, PHASE_SPACE_DIMENSIONS) - 1) / Threads) + 1;
+		try{
 
-		gpu_device.launchKernel(Blocks, Threads,
-			single_block_single_level_wavelet_transform{
-				m_transformedSignal_dvc.get(),
-				rescaling,
-				nodes_per_dim,
-				total_signal_nodes
-			}
-		);
+			gpu_device.launchKernel(Blocks, Threads,
+				single_block_single_level_wavelet_transform{
+					m_transformedSignal_dvc.get(),
+					rescaling,
+					nodes_per_dim,
+					total_signal_nodes
+				}
+			);
+		}
+		catch (const std::exception& except) {
+			mainTerminal.print_message("Exception caught at single block wavelet transform, level: " + std::to_string(k));
+			mainTerminal.print_message("Exception info: " + std::string{ except.what() });
+			throw;
+		}
 
-		gpu_device.launchKernel(Blocks, Threads,
-			get_nodes_above_threshold{
-				m_transformedSignal_dvc.get(),
-				m_assignedNodeIndeces_dvc.get(),
-				m_assignedNodeMarkers_dvc.get(),
-				rescaling,
-				nodes_per_dim,
-				total_signal_nodes,
-				tolerance
-			}
-		);
+		try{
+			gpu_device.launchKernel(Blocks, Threads,
+				get_nodes_above_threshold{
+					m_transformedSignal_dvc.get(),
+					m_assignedNodeIndeces_dvc.get(),
+					m_assignedNodeMarkers_dvc.get(),
+					rescaling,
+					nodes_per_dim,
+					total_signal_nodes,
+					tolerance
+				}
+			);
+		}
+		catch (const std::exception& except) {
+			mainTerminal.print_message("Exception caught at nodes above threshhold, level: " + std::to_string(k));
+			mainTerminal.print_message("Exception info: " + std::string{ except.what() });
+			throw;
+		}
 		rescaling *= 2;	// our cartesianMesh will now have half the number of points
 	}
 };
@@ -312,7 +326,7 @@ uintType waveletTransform::sorted_assigned_nodes() {
 	uint64_t total_nr_of_nodes(this->total_signal_nodes());
 
 	thrust::device_ptr<uintType> assignedNodeMarkers_auxPtr(m_assignedNodeMarkers_dvc.get());
-	thrust::device_ptr<uintType> assignedNodeIndeces_auxPtr(m_assignedNodeIndeces_dvc.get());
+	thrust::device_ptr<uint64_t> assignedNodeIndeces_auxPtr(m_assignedNodeIndeces_dvc.get());
 
 	const uintType nr_selected_nodes(
 		thrust::reduce(

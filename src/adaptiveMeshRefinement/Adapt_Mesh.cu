@@ -28,17 +28,23 @@ void setInitialParticles(
 
 	//Fill the signalInBoundingBox_dvc
 	uint16_t threads = fmin(THREADS_P_BLK, nodesSignalInBoundingBox);
-	uint64_t blocks = floor((nodesSignalInBoundingBox - 1) / threads) + 1;
+	uint64_t blocks = ceil((nodesSignalInBoundingBox - 1) / threads);
 
-	gpu_device.launchKernel(blocks, threads,
-		writeSignalInBoundingBox{
-		   inputSignal_dvc,
-		   signalInBoundingBox_dvc.get(),	// We will overwrite the info on this pointer
-		   signalDomain,
-		   signalBoundingBox,
-		   nodesSignalInBoundingBox
-		}
-	);
+	try{
+		gpu_device.launchKernel(blocks, threads,
+			writeSignalInBoundingBox{
+			   inputSignal_dvc,
+			   signalInBoundingBox_dvc.get(),	// We will overwrite the info on this pointer
+			   signalDomain,
+			   signalBoundingBox,
+			   nodesSignalInBoundingBox
+			}
+		);
+	}
+	catch (const std::exception& except) {
+		mainTerminal.print_message("Exception caught writing singal into bounding box: " + std::string{ except.what() });
+		throw;
+	}
 
 	// Use the specific AMR engine required: in this case, wavelet transform
 	waveletTransform amrEngine;
@@ -72,7 +78,7 @@ void getDetailAboveThresholdNodes(
 	particleLocations_dvc.malloc(nr_selected_nodes, Particle());
 
 	try {
-		const uintType Threads = fmin(THREADS_P_BLK, nr_selected_nodes);
+		const uint16_t Threads = fmin(THREADS_P_BLK, nr_selected_nodes);
 		if (Threads == 0) { throw std::invalid_argument("0 threads assigned at getDetailAboveThresholdNodes.\n"); }
 		const uint64_t Blocks = floor((nr_selected_nodes - 1) / Threads) + 1;
 

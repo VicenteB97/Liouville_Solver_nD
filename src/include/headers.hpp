@@ -3,12 +3,14 @@
 
 #include "utils/headersCpp.hpp"
 #include "Case_definition.hpp"
+#include "terminal/terminal.hpp"
 
 #ifdef USECUDA
 #include "utils/cudaBase.hpp"
 #endif
 
 static const gpuDevice gpu_device(0);	// We declare the static gpu_device at the beggining
+static const terminal mainTerminal;
 
 #ifndef EXIT_SUCCESS
 #define EXIT_SUCCESS 0
@@ -56,6 +58,19 @@ static const gpuDevice gpu_device(0);	// We declare the static gpu_device at the
 hostFunction deviceFunction
 inline uint64_t positive_rem(const uint64_t a, const uint64_t b) {
 	return (a % b + b) % b;
+}
+
+inline void printEntryMessage(const std::string& str_projectVersion) {
+
+	mainTerminal.print_full_sep_line();
+	mainTerminal.print_message("Welcome to the Liouville Eq. Simulator. You are using version " + str_projectVersion);
+	mainTerminal.print_simple_sep_line();
+	mainTerminal.print_message("Starting simulation using GPU " + std::string(gpu_device.deviceProperties.name));
+	mainTerminal.print_message("Properties:");
+	mainTerminal.print_message("  - Global memory (GB): " + std::to_string(gpu_device.deviceProperties.totalGlobalMem / 1024 / 1024 / 1024));
+	mainTerminal.print_message("  - Max. memory bus width (b): " + std::to_string(gpu_device.deviceProperties.memoryBusWidth));
+	mainTerminal.print_message("  - Async. engine type (0/1/2): " + std::to_string(gpu_device.deviceProperties.asyncEngineCount));
+	mainTerminal.print_full_sep_line();
 }
 
 #endif

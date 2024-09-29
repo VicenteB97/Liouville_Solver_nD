@@ -164,7 +164,7 @@ deviceFunction void characteristicIntegrator::operator()(const uint64_t global_i
 	floatType value_particle{ particleValues[global_id] };
 
 #if SPECIAL_INTEGRATOR
-	lie_euler_mathieu(pos_particle, value_particle, t0, tF, time_step, parameter_realization, extra_param, mode, D_cartesianMesh);
+	lie_euler_mathieu(pos_particle, value_particle, t0, tF, time_step, parameter_realization, extraModelParameters, fieldModeIndex, problemDomain);
 #else
 	runge_kutta_45(pos_particle, value_particle, t0, tF, time_step, parameter_realization, extraModelParameters, fieldModeIndex, problemDomain);
 #endif

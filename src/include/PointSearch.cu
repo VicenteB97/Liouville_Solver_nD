@@ -209,8 +209,8 @@
 //	CS_BBox.__nodes_per_dim = 64;
 //
 //	// Bin the particles!
-//	uintType Threads = fmin(THREADS_P_BLK, Adapt_Points);
-//	uintType Blocks = floor((Adapt_Points - 1) / Threads) + 1;
+//	uint16_t Threads = fmin(THREADS_P_BLK, Adapt_Points);
+//	uint64_t Blocks = floor((Adapt_Points - 1) / Threads) + 1;
 //
 //	for (uintType k = 0; k < Total_Particles / Adapt_Points; k++) { // We've got to repeat this once per random sample...we'll see another way out...
 //

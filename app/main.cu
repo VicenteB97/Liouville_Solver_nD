@@ -17,12 +17,15 @@
 
 #include "ivpSolver/ivpSolver.hpp"
 #include "terminal/terminal.hpp"
+#include "config.hpp"
 
 int16_t PDF_EVOLUTION();
 
 int main() {
 
-	printEntryMessage();
+	const std::string str_projectVersion{ project_version };
+
+	printEntryMessage(str_projectVersion);
 	return PDF_EVOLUTION();
 }
 

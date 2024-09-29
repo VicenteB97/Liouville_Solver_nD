@@ -1,8 +1,9 @@
 #ifndef __TERMINAL_HPP__
 #define __TERMINAL_HPP__
 
-#include "include/headers.hpp"
-#include "include/indicators/progress_bar.hpp"
+#include <iostream>
+#include <string>
+//#include "include/indicators/progress_bar.hpp"
 
 class terminal {
 private:
@@ -73,7 +74,7 @@ public:
 	}
 
 	// Methods to print separator lines
-	void print_full_sep_line() {
+	void print_full_sep_line() const {
 		std::string print_buffer(__TERMINAL_WINDOW_SIZE, __FULL_SEPARATION_CHAR);
 		print_buffer[0] = __TERMINAL_CORNER_CHAR;
 		print_buffer[__TERMINAL_WINDOW_SIZE - 1] = __TERMINAL_CORNER_CHAR;
@@ -81,7 +82,7 @@ public:
 		std::cout << print_buffer << std::endl;
 	};
 
-	void print_simple_sep_line() {
+	void print_simple_sep_line() const {
 		std::string print_buffer(__TERMINAL_WINDOW_SIZE, __SIMPLE_SEPARATION_CHAR);
 		print_buffer[0] = __TERMINAL_CORNER_CHAR;
 		print_buffer[__TERMINAL_WINDOW_SIZE - 1] = __TERMINAL_CORNER_CHAR;
@@ -90,7 +91,7 @@ public:
 	};
 
 	// Print message with padding
-	void print_message(const std::string& print_message, const std::string& endlineStr = "\n", char message_color = 'W') {
+	void print_message(const std::string& print_message, const std::string& endlineStr = "\n", char message_color = 'W') const {
 		uint64_t message_length = print_message.length();
 		uint16_t border_size = 2;  // One on each side
 
@@ -121,31 +122,16 @@ public:
 	};
 
 	// Simulation status methods
-	void update_simulation_status(const uint32_t currentIteration, const uint32_t totalIterations) {
+	void update_simulation_status(const uint32_t currentIteration, const uint32_t totalIterations) const {
 		std::string updateMessage = "[RUNNING] Current progress: (" + std::to_string(currentIteration + 1) + "/" + std::to_string(totalIterations) + ")";
 		this->print_message(updateMessage, "\r");
 		// Update progress bar if applicable (commented section for progress bar usage)
 	};
 
-	void simulation_completed() {
+	void simulation_completed() const {
 		this->print_message("");
 		this->print_message("Simulation completed successfully.");
 	};
 };
-
-void printEntryMessage() {
-	terminal myTerminal;
-	const std::string str_project_version{ project_version };
-
-	myTerminal.print_full_sep_line();
-	myTerminal.print_message("Welcome to the Liouville Eq. Simulator. You are using version " + str_project_version);
-	myTerminal.print_simple_sep_line();
-	myTerminal.print_message("Starting simulation using GPU " + gpu_device.deviceProperties.name);
-	myTerminal.print_message("Properties:");
-	myTerminal.print_message("  - Global memory (GB): " + std::to_string(gpu_device.deviceProperties.totalGlobalMem / 1024 / 1024 / 1024));
-	myTerminal.print_message("  - Max. memory bus width (b): " + std::to_string(gpu_device.deviceProperties.memoryBusWidth));
-	myTerminal.print_message("  - Async. engine type (0/1/2): " + std::to_string(gpu_device.deviceProperties.asyncEngineCount));
-	myTerminal.print_full_sep_line();
-}
 
 #endif

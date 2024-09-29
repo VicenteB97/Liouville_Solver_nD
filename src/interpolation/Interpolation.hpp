@@ -59,7 +59,7 @@ public:
 
 public:
 	deviceFunction
-	void operator()(const uint64_t global_id);
+	void operator()(const uint64_t global_id) const;
 };
 
 class vectorUpdate_dvc {
@@ -72,20 +72,20 @@ public:
 
 public:
 	deviceFunction
-	void operator()(const uint64_t global_id);
+	void operator()(const uint64_t global_id) const;
 };
 
 template<typename _Ty>
-_Ty innerProduct_dvc(const _Ty* vectorOne, const _Ty* vectorTwo, const _Ty initialValue) {
+_Ty innerProduct_dvc(_Ty* vectorOne,_Ty* vectorTwo, const uint64_t vectorLength, const _Ty initialValue = (_Ty)0) {
 	#ifdef USECUDA
 	thrust::device_ptr<_Ty> vectorOne_thrustPtr(vectorOne);
 	thrust::device_ptr<_Ty> vectorTwo_thrustPtr(vectorTwo);
 
 	return thrust::inner_product(
 		thrust::device, 
-		vectorOne_thrustPtr.begin(),
-		vectorOne_thrustPtr.end(),
-		vectorTwo_thrustPtr.begin(),
+		vectorOne_thrustPtr,
+		vectorOne_thrustPtr + vectorLength,
+		vectorTwo_thrustPtr,
 		initialValue);
 	#endif // USECUDA
 }

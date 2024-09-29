@@ -302,7 +302,6 @@ int16_t ivpSolver::evolvePDF() {
 			particleValues_dvc,
 			matrixIndex_dvc,
 			matrixValues_dvc,
-			AMR_ActiveNodeCount,
 			MaxNeighborNum
 		);
 		if (iterations == -1) { std::cout << "Convergence failure.\n"; break; }
@@ -434,7 +433,7 @@ int16_t ivpSolver::evolvePDF() {
 				/////////////////////////////////////////////////////////////////////////////////////////
 				/////////////////////////////////////////////////////////////////////////////////////////
 				uint16_t Threads = fmin(THREADS_P_BLK, ActiveNodes_PerBlk);
-				uintType Blocks = floor((double)(ActiveNodes_PerBlk - 1) / Threads) + 1;
+				uint64_t Blocks = floor((double)(ActiveNodes_PerBlk - 1) / Threads) + 1;
 
 				startTimeSeconds = std::chrono::high_resolution_clock::now();
 				try{
@@ -468,7 +467,7 @@ int16_t ivpSolver::evolvePDF() {
 
 				// COMPUTE THE SOLUTION "PROJECTION" INTO THE L1 SUBSPACE. THIS WAY, REINITIALIZATION CONSERVES VOLUME (=1)
 				if (PHASE_SPACE_DIMENSIONS < 5) {
-					L1normalizeLambdas(fullBasisWeightsLambdas_dvc.get(), Samples_PerBlk);
+					L1normalizeLambdas(fullBasisWeightsLambdas_dvc.get(), Samples_PerBlk, ActiveNodes_PerBlk);
 				}
 
 				/////////////////////////////////////////////////////////////////////////////////////////
@@ -516,8 +515,8 @@ int16_t ivpSolver::evolvePDF() {
 			/////////////////////////////////////////////////////////////////////////////////////////
 
 			// Correction of any possible negative PDF values
-			uintType Threads = fmin(THREADS_P_BLK, nrNodesPerFrame / ELEMENTS_AT_A_TIME);
-			uintType Blocks = floor((double)(nrNodesPerFrame / ELEMENTS_AT_A_TIME - 1) / Threads) + 1;
+			uint16_t Threads = fmin(THREADS_P_BLK, nrNodesPerFrame / ELEMENTS_AT_A_TIME);
+			uint64_t Blocks = floor((double)(nrNodesPerFrame / ELEMENTS_AT_A_TIME - 1) / Threads) + 1;
 			try{
 				gpu_device.launchKernel(Blocks, Threads, correctNegativeValues<floatType>{
 					pdfValuesAtProblemDomain_dvc.get(),

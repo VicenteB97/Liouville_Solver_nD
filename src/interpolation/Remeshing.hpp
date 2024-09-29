@@ -13,7 +13,7 @@ public:
 	_Ty* densityFunction;
 	uint64_t nrNodes;
 public:
-	deviceFunction void operator()(const uint64_t global_id) {
+	deviceFunction void operator()(const uint64_t global_id) const {
 		const uint64_t i = global_id * ELEMENTS_AT_A_TIME;
 
 		#pragma unroll
@@ -35,17 +35,17 @@ public:
 	const intType* nrSamplesPerParameter;
 	const floatType searchRadius;
 	const uint64_t nrParticles;
-	const uintType blockSamples;
+	const uint64_t blockSamples;
 	const uintType offset;
 	const cartesianMesh Domain;
 	const cartesianMesh expandedDomain;
 
 public:
-	deviceFunction void operator()(const uint64_t global_id) {
+	deviceFunction void operator()(const uint64_t global_id) const {
 		if (global_id >= nrParticles * blockSamples) { return; }
 
 		uintType Current_sample = offset + floor((double)global_id / nrParticles);
-		Param_vec<PARAM_SPACE_DIMENSIONS>	aux = Gather_Param_Vec<PARAM_SPACE_DIMENSIONS>(Current_sample, parameterWeights, n_Samples);
+		Param_vec<PARAM_SPACE_DIMENSIONS>	aux = Gather_Param_Vec<PARAM_SPACE_DIMENSIONS>(Current_sample, parameterWeights, nrSamplesPerParameter);
 
 		floatType weighted_lambda = interpolationLambdas[global_id] * aux.Joint_PDF;
 
@@ -78,12 +78,12 @@ public:
 			if (Domain.containsParticle(visit_node)) {
 
 				// Calculate normalized distance
-				floatType dist = visit_node.distance(particle) / search_radius;
+				floatType dist = visit_node.distance(particle) / searchRadius;
 
 				// if it's inside the RBF support...
 				if (dist <= 1) {
 
-					dist = RBF(search_radius, dist) * weighted_lambda;
+					dist = RBF(searchRadius, dist) * weighted_lambda;
 
 					intType idx = Domain.getBinIdx(visit_node);
 
@@ -95,12 +95,12 @@ public:
 };
 
 template<typename _Ty>
-void L1normalizeLambdas(_Ty* lambdasFromInterpolation, const uint32_t normalizingValue){
+void L1normalizeLambdas(_Ty* lambdasFromInterpolation, const uint32_t normalizingValue, const uint64_t sizeArray){
 #ifdef USECUDA
 	thrust::device_ptr<_Ty> lambdasPointer(lambdasFromInterpolation);
 
-	floatType temp = thrust::reduce(thrust::device, lambdasPointer.begin(), lambdasPointer.end());
-	thrust::transform(lambdasPointer.begin(), lambdasPointer.end(), lambdasPointer.begin(), normalizingValue / temp * _1);
+	floatType temp = thrust::reduce(thrust::device, lambdasPointer, lambdasPointer + sizeArray);
+	thrust::transform(lambdasPointer, lambdasPointer + sizeArray, lambdasPointer, normalizingValue / temp * thrust::placeholders::_1);
 #endif
 };
 #endif

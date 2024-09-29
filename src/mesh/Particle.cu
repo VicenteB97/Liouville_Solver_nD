@@ -84,8 +84,8 @@ floatType Particle::distance(const Particle& other) const {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Grid class ----------------------------------------------------------------------------------------------------------------- //
-
-void find_projection::operator()(const uint64_t global_id) {
+deviceFunction
+void find_projection::operator()(const uint64_t global_id) const {
 	if (global_id >= in_total_particles) { return; }
 	out_projections[global_id] = in_particles[global_id].dim[in_project_dimension];
 }

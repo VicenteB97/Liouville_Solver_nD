@@ -55,7 +55,8 @@ public:
 	uint64_t in_project_dimension;
 
 public:
-	void operator()(const uint64_t global_id);
+	deviceFunction
+	void operator()(const uint64_t global_id) const;
 };
 
 #endif

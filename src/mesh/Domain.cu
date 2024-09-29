@@ -189,30 +189,37 @@ void cartesianMesh::Squarify() {
 /// @brief This function updates a cartesianMesh-defined bounding box
 /// @param fullParticleLocations_dvc GPU array storing the positions of the particles
 /// @returns Nothing
-//void cartesianMesh::update_bounding_box(const deviceUniquePtr<Particle>& fullParticleLocations_dvc) {
-//
-//	intType threads = fmin(THREADS_P_BLK, fullParticleLocations_dvc.size());
-//	intType blocks = floor((fullParticleLocations_dvc.size() - 1) / threads) + 1;
-//
-//	gpuDevice device;
-//
-//	// Temporary vector storing the particles' projections in each dimension 
-//	deviceUniquePtr<floatType> projection(fullParticleLocations_dvc.size(), (floatType)0);
-//
-//	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-//
-//		device.launchKernel(blocks, threads, find_projection{
-//			rpc(fullParticleLocations_dvc, 0),
-//			rpc(projection, 0),
-//			fullParticleLocations_dvc.size(),
-//			d
-//		});
-//
-//		floatType temp_1 = *(thrust::min_element(thrust::device, projection.begin(), projection.end())); // min element from the projection in that direction
-//		floatType temp_2 = *(thrust::max_element(thrust::device, projection.begin(), projection.end()));
-//
-//		__boundary_inf.dim[d] = temp_1 - ceilf(DISC_RADIUS) * this->discr_length();
-//		__boundary_sup.dim[d] = temp_2 + ceilf(DISC_RADIUS) * this->discr_length();
-//	}
-//	projection.clear();
-//}
+void cartesianMesh::update_bounding_box(const deviceUniquePtr<Particle>& fullParticleLocations_dvc) {
+
+	uint64_t particleCount = fullParticleLocations_dvc.size_count();
+	intType threads = fmin(THREADS_P_BLK, particleCount);
+	intType blocks = floor((particleCount - 1) / threads) + 1;
+
+	// Temporary vector storing the particles' projections in each dimension 
+	//deviceUniquePtr<floatType> projection(fullParticleLocations_dvc.size(), (floatType)0);
+#ifdef USECUDA
+	deviceUniquePtr<floatType> projection(particleCount, (floatType)0);
+	gpu_device.memCpy_dvc2dvc(
+		projection.get(),
+		fullParticleLocations_dvc.get(),
+		fullParticleLocations_dvc.size_bytes()
+	);
+	thrust::device_ptr<floatType> projectionPtr(projection.get());
+#endif
+
+	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
+
+		gpu_device.launchKernel(blocks, threads, find_projection{
+			fullParticleLocations_dvc.get(),
+			projection.get(),
+			particleCount,
+			d
+		});
+
+		floatType temp_1 = *(thrust::min_element(thrust::device, projectionPtr, projectionPtr + particleCount)); // min element from the projection in that direction
+		floatType temp_2 = *(thrust::max_element(thrust::device, projectionPtr, projectionPtr + particleCount));
+
+		__boundary_inf.dim[d] = temp_1 - ceilf(DISC_RADIUS) * this->discr_length();
+		__boundary_sup.dim[d] = temp_2 + ceilf(DISC_RADIUS) * this->discr_length();
+	}
+}

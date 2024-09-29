@@ -29,7 +29,7 @@ Distributions::Distributions() {
 /// @param cartesianMesh 
 /// @param PDF_value 
 /// @param IC_dist_parameters 
-int16_t PDF_INITIAL_CONDITION(const cartesianMesh& problem_domain, std::shared_ptr<floatType[]>& PDF_value, const Distributions* IC_dist_parameters) {
+int16_t PDF_INITIAL_CONDITION(const cartesianMesh& problem_domain, floatType* PDF_value, const Distributions* IC_dist_parameters) {
 
 	std::vector<floatType> temp_val(problem_domain.nodes_per_dim() * PHASE_SPACE_DIMENSIONS);
 

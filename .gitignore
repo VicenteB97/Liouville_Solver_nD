@@ -7,4 +7,6 @@
 /build
 /.vs
 /.vscode
+/output
+/ext
 CMakePresets.json

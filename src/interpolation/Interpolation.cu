@@ -17,8 +17,8 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void COOMatVecMultiplication_dvc::operator()(const uint64_t global_id) {
+deviceFunction
+void COOMatVecMultiplication_dvc::operator()(const uint64_t global_id) const {
 	if (global_id >= totalLength) { return; }	// total length = adapt_points * total_sample_count
 
 	// 1.- Compute A*X0										
@@ -42,8 +42,8 @@ void COOMatVecMultiplication_dvc::operator()(const uint64_t global_id) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void vectorUpdate_dvc::operator()(const uint64_t global_id) {
+deviceFunction
+void vectorUpdate_dvc::operator()(const uint64_t global_id) const {
 
 	#pragma unroll
 	for (uint16_t k = 0; k < ELEMENTS_AT_A_TIME; k++) {
@@ -68,12 +68,12 @@ uint16_t ConjugateGradientEngine::execute(
 ) {
 	// Determine threads and blocks for the simulation
 	const uint64_t vectorLength = targetVector.size_count();
-	const uintType Threads = fminf(THREADS_P_BLK, vectorLength);
-	const uintType Blocks = floor((double)(vectorLength - 1) / Threads) + 1;
+	const uint16_t Threads = fminf(THREADS_P_BLK, vectorLength);
+	const uint64_t Blocks = floor((double)(vectorLength - 1) / Threads) + 1;
 
 	// These are for the update_vec function
-	const uintType Threads_2 = fminf(THREADS_P_BLK, (float)vectorLength / ELEMENTS_AT_A_TIME);
-	const uintType Blocks_2 = floor((double)(vectorLength / ELEMENTS_AT_A_TIME - 1) / Threads) + 1;
+	const uint16_t Threads_2 = fminf(THREADS_P_BLK, (float)vectorLength / ELEMENTS_AT_A_TIME);
+	const uint64_t Blocks_2 = floor((double)(vectorLength / ELEMENTS_AT_A_TIME - 1) / Threads) + 1;
 
 	// ------------------ AUXILIARIES FOR THE INTEPROLATION PROC. ------------------------------- //
 	// Auxiliary values
@@ -133,10 +133,10 @@ uint16_t ConjugateGradientEngine::execute(
 		}
 
 		// 1.2.- Compute P'*AP
-		aux = innerProduct_dvc<floatType>(m_P_dvc.get(), m_AP_dvc.get(), (floatType)0);
+		aux = innerProduct_dvc<floatType>(m_P_dvc.get(), m_AP_dvc.get(), vectorLength);
 
 		// 1.3.- R'*R
-		R0_norm = innerProduct_dvc<floatType>(m_R_dvc.get(), m_R_dvc.get(), (floatType)0);
+		R0_norm = innerProduct_dvc<floatType>(m_R_dvc.get(), m_R_dvc.get(), vectorLength);
 
 		Alpha = R0_norm / aux;
 

@@ -25,7 +25,7 @@
 
 template<typename T>
 __global__ static void deviceLaunchFunctionWrapper(const T functor) {
-	functor(threadIdx.x + blockDim.x + blockIdx.x);
+	functor(threadIdx.x + blockDim.x * blockIdx.x);
 };
 
 
