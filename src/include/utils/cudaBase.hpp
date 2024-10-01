@@ -50,8 +50,9 @@ public:
 	};
 
 	void memCpy_dvc2dvc(void* dst_dvc, void* src_dvc, uint64_t size_bytes) const {
-		if (cudaMemcpy(dst_dvc, src_dvc, size_bytes, cudaMemcpyDeviceToDevice) != cudaSuccess) {
-			throw std::runtime_error("Device to device memCpy unsuccessful.");
+		cudaError_t status = cudaMemcpy(dst_dvc, src_dvc, size_bytes, cudaMemcpyDeviceToDevice);
+		if (status != cudaSuccess) {
+			throw std::runtime_error(cudaGetErrorString(status));
 		};
 	};
 
@@ -64,7 +65,7 @@ public:
 	template<typename T>
 	void launchKernel(uint64_t n_blocks, uint16_t n_threads, const T& functor) const {
 		deviceLaunchFunctionWrapper <<<n_blocks, n_threads>>> (functor);
-		if (cudaDeviceSynchronize() != cudaSuccess) { throw std::runtime_error("A device error has occurred."); }
+		if (cudaDeviceSynchronize() != cudaSuccess) { throw std::runtime_error("A device kernel launch error has occurred."); }
 	};
 };
 
@@ -84,12 +85,12 @@ public:
 	deviceUniquePtr() : __raw_dvc_pointer(nullptr), __size_count(0), __valid_state(true) {};
 
 	// Allocate and initialize constructor
-	deviceUniquePtr(uint32_t size_count, T init_value = (T)0) : __raw_dvc_pointer(nullptr), __size_count(0), __valid_state(true) {
+	deviceUniquePtr(int64_t size_count, T init_value = (T)0) : __raw_dvc_pointer(nullptr), __size_count(0), __valid_state(true) {
 		try {
 			this->malloc(size_count, init_value);
 		}
 		catch (const std::exception& e) {
-			std::cerr << "Error in cuda unique pointer initialization: " << e.what();
+			std::cerr << "Error in cuda unique pointer mallocation: " << e.what();
 			throw;
 		}
 
@@ -115,7 +116,7 @@ public:
 	/// @brief This function allocates size_count elements of memory type given by the template parameter T of the unique_poitner.
 	/// This function returns a runtime exception if allocation fails.
 	/// @param size_count - The number of elements that the poitner will point to.
-	void malloc(uint64_t size_count, T value) {
+	void malloc(int64_t size_count, T value) {
 		if (size_count <= 0) { throw std::runtime_error("Cannot allocate 0 elements on array.\n"); }
 		
 		// Allocate memory assuming the desired size is at least 1

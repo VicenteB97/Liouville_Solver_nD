@@ -111,22 +111,21 @@ void get_nodes_above_threshold::operator()(const uint64_t global_id) const {
 };
 
 hostFunction
-waveletTransform::waveletTransform() {
-	// Change all of these for shared pointers? Or unique pointers and we pass ownership?
-	// Instantiate host pointers as null pointers (Or should I do raw_pointers?)
-	std::unique_ptr<floatType> m_initialSignal = std::make_unique<floatType>();
-	std::unique_ptr<floatType> m_transformedSignal = std::make_unique<floatType>();
-	std::unique_ptr<floatType> m_thresholdCutoffTransformedSignal = std::make_unique<floatType>();
-	std::unique_ptr<uint64_t> m_assignedNodeIndeces = std::make_unique<uint64_t>();
-	std::unique_ptr<uintType> m_assignedNodeMarkers = std::make_unique<uintType>();
-
-	// Instantiate device pointers as null pointers
-	deviceUniquePtr<floatType> m_initialSignal_dvc;
-	deviceUniquePtr<floatType> m_transformedSignal_dvc;
-	deviceUniquePtr<floatType> m_thresholdCutoffTransformedSignal_dvc;
-	deviceUniquePtr<uint64_t> m_assignedNodeIndeces_dvc;
-	deviceUniquePtr<uintType> m_assignedNodeMarkers_dvc;
-};
+waveletTransform::waveletTransform() : 
+	m_initialSignal(std::make_unique<floatType>()),
+	m_transformedSignal(std::make_unique<floatType>()),
+	m_thresholdCutoffTransformedSignal(std::make_unique<floatType>()),
+	m_assignedNodeIndeces(std::make_unique<uint64_t>()),
+	m_assignedNodeMarkers(std::make_unique<uintType>()),
+	m_initialSignal_dvc(),
+	m_transformedSignal_dvc(),
+	m_thresholdCutoffTransformedSignal_dvc(),
+	m_assignedNodeIndeces_dvc(),
+	m_assignedNodeMarkers_dvc(),
+	__signal_dimension(PHASE_SPACE_DIMENSIONS),
+	m_minRefinementLevel(1),
+	m_maxRefinementLevel(1)
+{};
 
 hostFunction
 waveletTransform::~waveletTransform() {
@@ -177,7 +176,7 @@ uint16_t waveletTransform::set_initial_signal_host2dvc(const floatType* input_si
 		gpu_device.memCpy_hst2dvc((void*)m_initialSignal_dvc.get(), (void*)input_signal, copy_size_bytes);
 	}
 	catch (const std::exception& except) {
-		std::cerr << "Caught exception at wavelet transform: " << except.what() << std::endl;
+		mainTerminal.print_message("Caught exception at wavelet transform: " + std::string{ except.what() });
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;
@@ -193,7 +192,8 @@ uint16_t waveletTransform::setInitialSignal_dvc2dvc(const floatType* inputSignal
 		gpu_device.memCpy_dvc2dvc((void*)m_initialSignal_dvc.get(), (void*)inputSignal_dvc, copy_size_bytes);
 	}
 	catch (const std::exception& except) {
-		std::cerr << "Exception thrown: " << except.what() << std::endl;	// That way we make sure that no exceptions escape these methods
+		mainTerminal.print_message("Caught exception initiating device signal: " + std::string{ except.what() });	// That way we make sure that no exceptions escape these methods
+		throw;
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;
@@ -267,10 +267,28 @@ void waveletTransform::computeWaveletTransform() {
 	const double tolerance{ TOLERANCE_AMR }; 
 
 	// Allocate memory 
-	m_assignedNodeIndeces_dvc.malloc(total_signal_nodes, 0);
-	m_assignedNodeMarkers_dvc.malloc(total_signal_nodes, 0);
-	m_transformedSignal_dvc.malloc(total_signal_nodes, (floatType)0);
-
+	try{
+		m_assignedNodeIndeces_dvc.malloc(total_signal_nodes, 0);
+	}
+	catch (const std::exception& except) {
+		mainTerminal.print_message("Error at first allocation");
+		throw;
+	}
+	try {
+		m_assignedNodeMarkers_dvc.malloc(total_signal_nodes, 0);
+	}
+	catch (const std::exception& except) {
+		mainTerminal.print_message("Error at second allocation");
+		throw;
+	}
+	try {
+		m_transformedSignal_dvc.malloc(total_signal_nodes, (floatType)0);
+	}
+	catch (const std::exception& except) {
+		mainTerminal.print_message("Error at third allocation");
+		throw;
+	}
+	
 	gpu_device.memCpy_dvc2dvc(
 		m_transformedSignal_dvc.get(),
 		m_initialSignal_dvc.get(),
@@ -327,6 +345,12 @@ uintType waveletTransform::sorted_assigned_nodes() {
 
 	thrust::device_ptr<uintType> assignedNodeMarkers_auxPtr(m_assignedNodeMarkers_dvc.get());
 	thrust::device_ptr<uint64_t> assignedNodeIndeces_auxPtr(m_assignedNodeIndeces_dvc.get());
+
+	mainTerminal.print_message("Sum of important values: " + std::to_string(thrust::reduce(
+		thrust::device,
+		assignedNodeMarkers_auxPtr,
+		assignedNodeMarkers_auxPtr + total_nr_of_nodes
+	)));
 
 	const uintType nr_selected_nodes(
 		thrust::reduce(

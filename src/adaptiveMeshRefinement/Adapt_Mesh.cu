@@ -24,7 +24,7 @@ void setInitialParticles(
 	const uint64_t nodesSignalInBoundingBox = signalBoundingBox.total_nodes();
 
 	// Create and fill with 0 the signal_in_bounding_box array (remember to free memory afterwards):
-	deviceUniquePtr<floatType> signalInBoundingBox_dvc(nodesSignalInBoundingBox, 0);
+	deviceUniquePtr<floatType> signalInBoundingBox_dvc(nodesSignalInBoundingBox, (floatType)0);
 
 	//Fill the signalInBoundingBox_dvc
 	uint16_t threads = fmin(THREADS_P_BLK, nodesSignalInBoundingBox);
@@ -46,14 +46,24 @@ void setInitialParticles(
 		throw;
 	}
 
+	// let's see what values we are getting after writing into the bounding box
+	// Then, get the transformed signal
+
 	// Use the specific AMR engine required: in this case, wavelet transform
 	waveletTransform amrEngine;
 
 	amrEngine.setMinRefinementLevel(0);
-	amrEngine.setMaxRefinementLevel( log2(signalBoundingBox.nodes_per_dim()) );
+	amrEngine.setMaxRefinementLevel(round(log2(signalBoundingBox.nodes_per_dim())));
 	amrEngine.setInitialSignal_dvc2dvc(signalInBoundingBox_dvc.get());
 
-	amrEngine.computeWaveletTransform();
+	try{
+		amrEngine.computeWaveletTransform();
+	}
+	catch (const std::exception& except) {
+		mainTerminal.print_message("Error has occurred at compute Wavelet Transform");
+		throw;
+	}
+	
 	getDetailAboveThresholdNodes(
 		amrEngine, 
 		outputActiveNodes_dvc, 

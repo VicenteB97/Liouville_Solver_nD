@@ -57,7 +57,7 @@ int16_t PDF_INITIAL_CONDITION(const cartesianMesh& problem_domain, floatType* PD
 		}
 	}
 
-	std::cout << "Filling initial density...\n";
+	mainTerminal.print_message("Filling initial density...", "\r");
 
 	#pragma omp parallel for
 	for (intType k = 0; k < problem_domain.total_nodes(); k++) {
@@ -70,7 +70,7 @@ int16_t PDF_INITIAL_CONDITION(const cartesianMesh& problem_domain, floatType* PD
 		PDF_value[k] = val;
 	}
 
-	std::cout << "Initial density successfully filled!\n";
+	mainTerminal.print_message("Filling initial density...Initial density successfully filled!");
 	return EXIT_SUCCESS;
 }
 

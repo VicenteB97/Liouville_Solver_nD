@@ -7,46 +7,51 @@
 	/// @brief Create a cartesianMesh knowing the nodes per dimension
 	/// @param nodes_per_dim 
 	/// @return 
-hostFunction deviceFunction	cartesianMesh::cartesianMesh(intType nodes_per_dim) {
-
-	__nodes_per_dim = nodes_per_dim;
-	__boundary_inf = Particle(DOMAIN_INF);
-	__boundary_sup = Particle(DOMAIN_SUP);
-}
+hostFunction deviceFunction	cartesianMesh::cartesianMesh(intType nodes_per_dim) :
+	__nodes_per_dim(nodes_per_dim),
+	__boundary_inf(Particle(DOMAIN_INF)),
+	__boundary_sup(Particle(DOMAIN_SUP))
+{};
 
 /// @brief Create a cartesianMesh knowing the discretization length
 /// @param discretization_length 
 /// @return 
-hostFunction deviceFunction	cartesianMesh::cartesianMesh(floatType discretization_length) {
-
-	__boundary_inf = Particle(DOMAIN_INF);
-	__boundary_sup = Particle(DOMAIN_SUP);
+hostFunction deviceFunction	cartesianMesh::cartesianMesh(floatType discretization_length) :
+	__boundary_inf(Particle(DOMAIN_INF)),
+	__boundary_sup(Particle(DOMAIN_SUP))
+{
 	__nodes_per_dim = roundf((floatType)(__boundary_sup.dim[0] - __boundary_inf.dim[0]) / discretization_length);
-}
+};
 
 /// @brief Create a cartesianMesh specifying all the parameters
 /// @param bnd_inf 
 /// @param bnd_sup 
 /// @param nodes_per_dim 
 /// @return 
-hostFunction deviceFunction	cartesianMesh::cartesianMesh(const Particle& bnd_inf, const Particle& bnd_sup, intType nodes_per_dim) {
-
-	__nodes_per_dim = nodes_per_dim;
-	__boundary_inf = bnd_inf;
-	__boundary_sup = bnd_sup;
-}
+hostFunction deviceFunction	cartesianMesh::cartesianMesh(const Particle& bnd_inf, const Particle& bnd_sup, intType nodes_per_dim) :
+	__nodes_per_dim(nodes_per_dim),
+	__boundary_inf(bnd_inf),
+	__boundary_sup(bnd_sup)
+{};
 
 /// @brief Create a cartesianMesh specifying all the parameters (discr. length instead of the nodes per dimension)
 /// @param bnd_inf 
 /// @param bnd_sup 
 /// @param discretization_length 
 /// @return 
-hostFunction deviceFunction	cartesianMesh::cartesianMesh(const Particle& bnd_inf, const Particle& bnd_sup, floatType discretization_length) {
-
-	__boundary_inf = bnd_inf;
-	__boundary_sup = bnd_sup;
+hostFunction deviceFunction	cartesianMesh::cartesianMesh(const Particle& bnd_inf, const Particle& bnd_sup, floatType discretization_length) :
+	__boundary_inf(bnd_inf),
+	__boundary_sup(bnd_sup)
+{
 	__nodes_per_dim = (__boundary_sup.dim[0] - __boundary_inf.dim[0]) / discretization_length + 1;
-}
+};
+
+hostFunction deviceFunction
+cartesianMesh::cartesianMesh(const cartesianMesh& otherMesh) :
+	__nodes_per_dim(otherMesh.nodes_per_dim()),
+	__boundary_inf(otherMesh.boundary_inf()),
+	__boundary_sup(otherMesh.boundary_sup())
+{};
 
 // Methods/functions
 hostFunction deviceFunction

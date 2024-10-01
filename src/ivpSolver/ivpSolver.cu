@@ -111,22 +111,15 @@ int16_t ivpSolver::evolvePDF() {
 	}
 
 	// Output to the CLI
-	std::cout << "Total number of random samples: " << total_sample_count << ".\n";
+	mainTerminal.print_message("Total number of random samples: " + std::to_string(total_sample_count));
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// PROBLEM DOMAIN AND INITIAL PDF
 
-	// This cartesianMesh will be defined by the support bounding box of the data.
-	m_particleBoundingBox.setBoundaryInf((Particle)IC_InfTVAL);
-	m_particleBoundingBox.setBoundarySup((Particle)IC_SupTVAL);
-
-	// Make it square for AMR-purposes
-	m_particleBoundingBox.Squarify();
-
-	// Update the number of pts per dimension
-	m_particleBoundingBox.setNodesPerDimension(round((IC_SupTVAL[0] - IC_InfTVAL[0]) / m_problemDomain.discr_length()));
+	//// This cartesianMesh will be defined by the support bounding box of the data.
+	m_particleBoundingBox = m_problemDomain;
 
 	// PDF values at the fixed, high-res cartesianMesh (CPU)
 	std::unique_ptr<floatType[]> pdfValuesAtProblemDomain = std::make_unique<floatType[]>(m_problemDomain.total_nodes());
@@ -161,7 +154,6 @@ int16_t ivpSolver::evolvePDF() {
 	const uintType MAX_BYTES_USEABLE = 0.95 * (gpu_device.deviceProperties.totalGlobalMem - nrNodesPerFrame * sizeof(floatType));
 
 	// The following consts don't need an explanation
-	const uintType	ConjGrad_MaxSteps = 1000;
 	const floatType	RBF_SupportRadius = DISC_RADIUS * m_problemDomain.discr_length();
 
 	// Resize the simulation logger
@@ -238,7 +230,7 @@ int16_t ivpSolver::evolvePDF() {
 			);
 		}
 		catch (const std::exception& except) {
-			std::cerr << "Exception caught at setInitialParticles: " << except.what() << std::endl;
+			std::cerr << "Exception caught at setInitialParticles. Code: " << except.what() << std::endl;
 
 			storeFrame_worker.join();	// Make sure that the dispatched thread is not working when we return from the function
 			return EXIT_FAILURE;

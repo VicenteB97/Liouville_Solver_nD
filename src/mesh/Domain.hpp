@@ -43,6 +43,9 @@ public:
 	hostFunction deviceFunction	
 		cartesianMesh(const Particle& bnd_inf, const Particle& bnd_sup, floatType discretization_length);
 
+	hostFunction deviceFunction
+		cartesianMesh(const cartesianMesh& otherMesh);
+
 // Methods/functions
 	hostFunction deviceFunction
 		void setBoundaryInf(const Particle& boundary_inf);
