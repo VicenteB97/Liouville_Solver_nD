@@ -32,11 +32,12 @@ public:
 	floatType* signal;
 	uint64_t* assigned_node_indeces;
 	uintType* assigned_node_markers;
-	const uint64_t rescaling;
+	const uint64_t in_rescaling;
 	const uint64_t nodes_per_dim;
 	const uint64_t total_signal_nodes;
 	const double tolerance;
 	const uint16_t dimensions;
+	const cartesianMesh boundingBox;
 public:
 	deviceFunction void operator()(const uint64_t global_id) const;
 };

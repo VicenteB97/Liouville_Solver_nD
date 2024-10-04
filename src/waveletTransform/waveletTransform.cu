@@ -13,42 +13,38 @@ void single_block_single_level_wavelet_transform::operator()(const uint64_t glob
 	// Total nodes in each simple wavelet transform (per GPU thread)
 	if (global_id >= total_signal_nodes / powf(in_rescaling, dimensions)) { return; }
 
-	const uint16_t miniSquareNodes = 1 << dimensions; // Note that pow(2^dimensions) = 1 << dimensions
 	const uint64_t totalNodesInLevel = roundf(total_signal_nodes / in_rescaling);
-	const floatType discrLengthPerDimension = boundingBox.discr_length();
 
-	// Get the lowest corner of the cube:
-	Particle lowestNode = boundingBox.boundary_inf();
-
-	uint64_t multCounter = 1;	// auxiliary counter: => pow(BoundingBox.__nodes_per_dim / in_rescaling, d)
-	uint64_t multCounter_2 = 1;	// For the BoundingBox: => pow(BoundingBox.__nodes_per_dim, d)
+	uint64_t lowestNodeIdxInBoundingBox = 0;
+	uint16_t tempMultCounter = 1, tempScalingCounter = in_rescaling;
 	for (uint16_t d = 0; d < dimensions; d++) {
-		lowestNode.dim[d] += 
-			floorf(positive_rem(global_id, multCounter * totalNodesInLevel) / multCounter) * discrLengthPerDimension * in_rescaling;
+		lowestNodeIdxInBoundingBox += tempScalingCounter * floorf(
+			positive_rem(global_id, totalNodesInLevel * tempMultCounter) / tempMultCounter);
 
-		multCounter *= totalNodesInLevel;
-		multCounter_2 *= total_signal_nodes;
+		tempMultCounter *= totalNodesInLevel;
+		tempScalingCounter *= in_rescaling;
 	}
 
+	Particle lowestNode(boundingBox.get_node(lowestNodeIdxInBoundingBox));
+	Particle highestNode(
+		boundingBox.get_node(
+			boundingBox.getBinIdx(lowestNode, (intType)roundf(in_rescaling >> 1))
+		)
+	);
+
+	cartesianMesh miniCubeWaveletTransform(lowestNode, highestNode, (intType) 2);
+
+	tempMultCounter = 1;	// Reinitialize for next computations: => pow(2, d)
+	const uint16_t miniSquareNodes(1 << dimensions); // Note that pow(2^dimensions) = 1 << dimensions
+
 	for (uint16_t d = 0; d < dimensions; d++) {
-		for (uint64_t k = 0; k < miniSquareNodes; k++) {
+		for (uint16_t k = 0; k < miniSquareNodes; k++) {
 			// If we are at the current approximation vertex:
-			if (floorf(positive_rem(k, multCounter << 1) / multCounter) != 0) { continue; }
+			bool isApproxNode = (floorf(positive_rem(k, tempMultCounter << 1) / tempMultCounter) == 0);
+			if (!isApproxNode) { continue; }
 
-			Particle approxNode = lowestNode, detailNode;
-
-			// Define the approximation node information
-			uint64_t multCounter_3 = 1;	// => pow(2, j)
-			uint64_t multCounter_4 = 1;	// => pow(BoundingBox.__nodes_per_dim, j)
-
-			for (uint16_t j = 0; j < dimensions; j++) {
-				approxNode.dim[d] +=
-					floorf(positive_rem(k, multCounter_3 << 1) / multCounter_3) * discrLengthPerDimension * in_rescaling / 2;	// j-th component index
-				detailNode.dim[d] = approxNode.dim[d] + multCounter_2 * in_rescaling / 2 * discrLengthPerDimension;
-
-				multCounter_3 <<= 1;
-				multCounter_4 *= total_signal_nodes;
-			}
+			Particle approxNode{ miniCubeWaveletTransform.get_node(k) };
+			Particle detailNode{ miniCubeWaveletTransform.get_node(k + (1 << d)) };
 
 			// Get the node indeces:
 			if (!boundingBox.containsParticle(approxNode) || !boundingBox.containsParticle(detailNode)) { continue; }
@@ -56,109 +52,104 @@ void single_block_single_level_wavelet_transform::operator()(const uint64_t glob
 			uint64_t approxIdx = boundingBox.getBinIdx(approxNode), detailIdx = boundingBox.getBinIdx(detailNode);
 			haar_wavelet(signal[approxIdx], signal[detailIdx]);
 		}
-		multCounter <<= 1; // Bitwise representation for *= 2
-		multCounter_2 *= in_nodes_per_dim;
+		tempMultCounter <<= 1; // Bitwise representation for *= 2
 	}
-
-
-	//// Global index of the main approximation vertex at the bounding box
-	//int64_t cube_app_IDX = 0;
-
-	//// Compute the lowest corner node index
-	//uint64_t multCounter = 1;	// auxiliary counter: => pow(BoundingBox.__nodes_per_dim / in_rescaling, d)
-	//uint64_t multCounter_2 = 1;	// For the BoundingBox: => pow(BoundingBox.__nodes_per_dim, d)
-	//for (uint16_t d = 0; d < dimensions; d++) {
-	//	int64_t temp_idx = floorf(positive_rem(global_id, multCounter * totalNodesInLevel) / multCounter) * in_rescaling;
-
-	//	cube_app_IDX += temp_idx * multCounter_2;
-	//	multCounter *= totalNodesInLevel;
-	//	multCounter_2 *= total_signal_nodes;
-	//}
-
-	//multCounter = 1;	// Reinitialize for next computations: => pow(2, d)
-	//multCounter_2 = 1;	// For the BoundingBox: => pow(BoundingBox.__nodes_per_dim, d)
-
-	//// 1 set of wavelets per dimension (1D: horizontal; 2D: Horizontal + Vertical; 3D: Horz + Vert + Deep; ...)
-	//for (uint16_t d = 0; d < dimensions; d++) {
-	//	// Go through all the vertices that are defined by the main cube approximation vertex
-	//	for (uint64_t k = 0; k < miniSquareNodes; k++) {
-	//		// If we are at the current approximation vertex:
-	//		if (floorf(positive_rem(k, multCounter << 1) / multCounter) != 0) { continue; }
-	//		// here, multCounter == pow(2, d)
-
-	//		// Compute approximation node
-	//		int64_t app_IDX_at_BBox = cube_app_IDX;
-
-	//		uint64_t multCounter_3 = 1;	// => pow(2, j)
-	//		uint64_t multCounter_4 = 1;	// => pow(BoundingBox.__nodes_per_dim, j)
-
-	//		for (uint16_t j = 0; j < dimensions; j++) {
-	//			int64_t temp = floorf(positive_rem(k, multCounter_3 << 1) / multCounter_3) * in_rescaling / 2;	// j-th component index
-
-	//			app_IDX_at_BBox += temp * multCounter_4;
-	//			multCounter_3 <<= 1;
-	//			multCounter_4 *= total_signal_nodes;
-	//		}
-	//		// Compute corresponding detail node
-	//		int64_t det_IDX_at_BBox = app_IDX_at_BBox + multCounter_2 * in_rescaling / 2;
-	//		// Compute the wavelet transform in-place
-	//		if (det_IDX_at_BBox >= total_signal_nodes) { continue; }
-	//		haar_wavelet(signal[app_IDX_at_BBox], signal[det_IDX_at_BBox]);
-	//	}
-	//	multCounter <<= 1; // Bitwise representation for *= 2
-	//	multCounter_2 *= in_nodes_per_dim;
-	//}
 }
 
 deviceFunction 
 void get_nodes_above_threshold::operator()(const uint64_t global_id) const {
-	if (global_id >= total_signal_nodes / powf(rescaling, dimensions)) {
+	if (global_id >= total_signal_nodes / powf(in_rescaling, dimensions)) {
 		return;
 	}
-	// Total nodes in the problem domain
-	const uint16_t	miniSquareNodes = 1 << dimensions;
 
-	// Global index of the main approximation vertex at the bounding box
-	int64_t cube_app_IDX = 0;
+	const uint64_t totalNodesInLevel = roundf(total_signal_nodes / in_rescaling);
 
-	uint64_t multCounter = 1;	// auxiliary counter: => pow(BoundingBox.__nodes_per_dim / rescaling, d)
-	uint64_t multCounter_2 = 1;	// For the BoundingBox: => pow(BoundingBox.__nodes_per_dim, d)
+	uint64_t lowestNodeIdxInBoundingBox = 0;
+	uint16_t tempMultCounter = 1, tempScalingCounter = in_rescaling;
 	for (uint16_t d = 0; d < dimensions; d++) {
-		int64_t temp_idx = floorf(
-			positive_rem(global_id, multCounter * (nodes_per_dim / rescaling)) / multCounter
-		) * rescaling;
+		lowestNodeIdxInBoundingBox += tempScalingCounter * floorf(
+			positive_rem(global_id, totalNodesInLevel * tempMultCounter) / tempMultCounter);
 
-		cube_app_IDX += temp_idx * multCounter_2;
-		multCounter *= nodes_per_dim / rescaling;
-		multCounter_2 *= nodes_per_dim;
+		tempMultCounter *= totalNodesInLevel;
+		tempScalingCounter *= in_rescaling;
 	}
 
-	// Now we have to go see what happens with the outputs
-	assigned_node_markers[cube_app_IDX] = 0;
+	Particle lowestNode(boundingBox.get_node(lowestNodeIdxInBoundingBox));
+	Particle highestNode(
+		boundingBox.get_node(
+			boundingBox.getBinIdx(lowestNode, (intType)roundf(in_rescaling >> 1))
+		)
+	);
 
-	for (uint64_t k = 1; k < miniSquareNodes; k++) {
-		// Particle visit_node(BoundingBox.get_node(cube_app_IDX));
-		int64_t detail_idx = cube_app_IDX;
+	cartesianMesh miniCubeWaveletTransform(lowestNode, highestNode, (intType)2);
 
-		multCounter = 1;
-		multCounter_2 = 1;
+	//assigned_node_indeces[lowestNodeIdxInBoundingBox] = lowestNodeIdxInBoundingBox;
+	//assigned_node_markers[lowestNodeIdxInBoundingBox] = 0;
 
-		// Get the indeces at the bounding box:
-		for (uint16_t d = 0; d < dimensions; d++) {
-			int64_t temp = floorf(positive_rem(k, multCounter * 2) / multCounter) * rescaling / 2;	// j-th component index
+	const uint16_t miniSquareNodes(1 << dimensions); // Note that pow(2^dimensions) = 1 << dimensions
 
-			detail_idx += temp * multCounter_2;
-			multCounter *= 2;
-			multCounter_2 *= total_signal_nodes;
-		}
+	for (uint16_t d = 0; d < dimensions; d++) {
+		for (uint16_t k = 1; k < miniSquareNodes; k++) {
+			// If we are at the current approximation vertex:
+			Particle detailNode{ miniCubeWaveletTransform.get_node(k + (1 << d)) };
 
-		if (detail_idx >= total_signal_nodes) { continue; }
-		assigned_node_indeces[detail_idx] = detail_idx;
+			// Get the node indeces:
+			if (!boundingBox.containsParticle(detailNode)) { continue; }
 
-		if (abs(signal[detail_idx]) >= tolerance) {
-			assigned_node_markers[detail_idx] = 1;
+			uint64_t detailIdx = boundingBox.getBinIdx(detailNode);
+
+			assigned_node_indeces[detailIdx] = detailIdx;
+			if (abs(signal[detailIdx]) >= tolerance) {
+				assigned_node_markers[detailIdx] = 1;
+			}
 		}
 	}
+
+
+	//// Total nodes in the problem domain
+	//const uint16_t	miniSquareNodes = 1 << dimensions;
+
+	//// Global index of the main approximation vertex at the bounding box
+	//int64_t cube_app_IDX = 0;
+
+	//uint64_t multCounter = 1;	// auxiliary counter: => pow(BoundingBox.__nodes_per_dim / rescaling, d)
+	//uint64_t multCounter_2 = 1;	// For the BoundingBox: => pow(BoundingBox.__nodes_per_dim, d)
+	//for (uint16_t d = 0; d < dimensions; d++) {
+	//	int64_t temp_idx = floorf(
+	//		positive_rem(global_id, multCounter * (nodes_per_dim / rescaling)) / multCounter
+	//	) * rescaling;
+
+	//	cube_app_IDX += temp_idx * multCounter_2;
+	//	multCounter *= nodes_per_dim / rescaling;
+	//	multCounter_2 *= nodes_per_dim;
+	//}
+
+	//// Now we have to go see what happens with the outputs
+	//assigned_node_markers[cube_app_IDX] = 0;
+
+	//for (uint64_t k = 1; k < miniSquareNodes; k++) {
+	//	// Particle visit_node(BoundingBox.get_node(cube_app_IDX));
+	//	int64_t detail_idx = cube_app_IDX;
+
+	//	multCounter = 1;
+	//	multCounter_2 = 1;
+
+	//	// Get the indeces at the bounding box:
+	//	for (uint16_t d = 0; d < dimensions; d++) {
+	//		int64_t temp = floorf(positive_rem(k, multCounter * 2) / multCounter) * rescaling / 2;	// j-th component index
+
+	//		detail_idx += temp * multCounter_2;
+	//		multCounter *= 2;
+	//		multCounter_2 *= total_signal_nodes;
+	//	}
+
+	//	if (detail_idx >= total_signal_nodes) { continue; }
+	//	assigned_node_indeces[detail_idx] = detail_idx;
+
+	//	if (abs(signal[detail_idx]) >= tolerance) {
+	//		assigned_node_markers[detail_idx] = 1;
+	//	}
+	//}
 };
 
 hostFunction
@@ -376,7 +367,8 @@ void waveletTransform::computeWaveletTransform() {
 					nodes_per_dim,
 					total_signal_nodes,
 					tolerance,
-					(uint16_t) PHASE_SPACE_DIMENSIONS
+					(uint16_t) PHASE_SPACE_DIMENSIONS,
+					m_signalDomain
 				}
 			);
 		}
