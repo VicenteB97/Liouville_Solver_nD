@@ -65,7 +65,10 @@ public:
 	template<typename T>
 	void launchKernel(uint64_t n_blocks, uint16_t n_threads, const T& functor) const {
 		deviceLaunchFunctionWrapper <<<n_blocks, n_threads>>> (functor);
-		if (cudaDeviceSynchronize() != cudaSuccess) { throw std::runtime_error("A device kernel launch error has occurred."); }
+		cudaError_t err = cudaDeviceSynchronize();
+		if (err != cudaSuccess) { 
+			throw std::runtime_error("A device kernel launch error has occurred: " + std::string{ cudaGetErrorString(err) });
+		}
 	};
 };
 
@@ -82,10 +85,10 @@ private:
 
 public:
 	// Default constructor
-	deviceUniquePtr() : __raw_dvc_pointer(nullptr), __size_count(0), __valid_state(true) {};
+	deviceUniquePtr() : __raw_dvc_pointer(nullptr), __size_count(0), __valid_state(false) {};
 
 	// Allocate and initialize constructor
-	deviceUniquePtr(int64_t size_count, T init_value = (T)0) : __raw_dvc_pointer(nullptr), __size_count(0), __valid_state(true) {
+	deviceUniquePtr(int64_t size_count, T init_value = (T)0) : __raw_dvc_pointer(nullptr), __size_count(0), __valid_state(false) {
 		try {
 			this->malloc(size_count, init_value);
 		}
@@ -96,6 +99,7 @@ public:
 
 		// Set size count only if allocation and initialization succeeded
 		__size_count = size_count;
+		__valid_state = true;
 	};
 
 	~deviceUniquePtr() noexcept {	
@@ -219,8 +223,10 @@ private:
 		__size_count = 0;
 		if (!__valid_state) { return; }	// This line will make sure we don't call cudaFree if it has already been called
 		
-		if (cudaFree(__raw_dvc_pointer) != cudaSuccess){ // cudaFree automatically manages the case of the nullptr, so no need to check here
-			throw std::exception("Error deallocating device memory.\n");
+		cudaError_t err = cudaDeviceSynchronize();  // Pick up any possible errors that we were previously unaware of
+		cudaFree(__raw_dvc_pointer);
+		if (err != cudaSuccess){ // cudaFree automatically manages the case of the nullptr, so no need to check here
+			throw std::runtime_error("Error caught freeing device memory: " + std::string{ cudaGetErrorString(err) });
 		}
 		__valid_state = false;
 		__raw_dvc_pointer = nullptr;

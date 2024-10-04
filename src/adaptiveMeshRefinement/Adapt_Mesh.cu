@@ -23,7 +23,7 @@ void setInitialParticles(
 	// Create the signal in the bounding box. Initialized to 0
 	const uint64_t nodesSignalInBoundingBox = signalBoundingBox.total_nodes();
 
-	// Create and fill with 0 the signal_in_bounding_box array (remember to free memory afterwards):
+	// Create and fill with 0 the signal_in_bounding_box array:
 	deviceUniquePtr<floatType> signalInBoundingBox_dvc(nodesSignalInBoundingBox, (floatType)0);
 
 	//Fill the signalInBoundingBox_dvc
@@ -46,14 +46,10 @@ void setInitialParticles(
 		throw;
 	}
 
-	// let's see what values we are getting after writing into the bounding box
-	// Then, get the transformed signal
-
 	// Use the specific AMR engine required: in this case, wavelet transform
 	waveletTransform amrEngine;
 
-	amrEngine.setMinRefinementLevel(0);
-	amrEngine.setMaxRefinementLevel(round(log2(signalBoundingBox.nodes_per_dim())));
+	amrEngine.setSignalDomain(signalBoundingBox);
 	amrEngine.setInitialSignal_dvc2dvc(signalInBoundingBox_dvc.get());
 
 	try{

@@ -117,7 +117,7 @@ def write_header(sim_name: str, sim_data: dict[str, Any]):
 def build_compile_execute(config: str = "Release", cores: str = "12", clean_start: bool = True):
     my_path = os.getcwd() + f"/build/app/{config}"
     
-    commands = ["cmake -S ./ -B ./build -DBUILD_CUDA=ON"]
+    commands = [f"cmake -S ./ -B ./build -DCMAKE_BUILD_TYPE={config} -DBUILD_CUDA=ON"]
 
     if os.path.exists(f"{my_path}") and clean_start:
         shutil.rmtree(f"{my_path}")

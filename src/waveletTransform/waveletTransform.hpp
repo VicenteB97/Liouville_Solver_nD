@@ -2,6 +2,8 @@
 #define __WAVELET_TRANSFORM_HPP__
 
 #include "include/headers.hpp"
+#include "mesh/Domain.hpp"
+#include "mesh/Particle.hpp"
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -15,10 +17,11 @@ deviceFunction inline void haar_wavelet(floatType& s1, floatType& s2);
 class single_block_single_level_wavelet_transform {
 public:
 	floatType* signal;
-	uint64_t in_rescaling;
-	uintType in_nodes_per_dim;
-	uint64_t total_signal_nodes;
-	uint16_t dimensions;
+	const uint64_t in_rescaling;
+	const uintType in_nodes_per_dim;
+	const uint64_t total_signal_nodes;
+	const uint16_t dimensions;
+	const cartesianMesh boundingBox;
 public:
 	deviceFunction void operator()(const uint64_t global_id) const;
 };
@@ -44,12 +47,13 @@ public:
 	// Default constructor and destrucor
 	hostFunction 
 		waveletTransform();
+
 	hostFunction 
 		~waveletTransform();
 
 private:
 	// Input signal for wavelet transform: 
-	std::unique_ptr<floatType> m_initialSignal;
+	std::unique_ptr<floatType[]> m_initialSignal;
 	deviceUniquePtr<floatType> m_initialSignal_dvc;
 	
 	// Parameters
@@ -57,21 +61,22 @@ private:
 	uint16_t m_maxRefinementLevel;
 
 	// Output signals
-	std::unique_ptr<floatType> m_transformedSignal;
-	std::unique_ptr<floatType> m_thresholdCutoffTransformedSignal;
+	std::unique_ptr<floatType[]> m_transformedSignal;
+	std::unique_ptr<floatType[]> m_thresholdCutoffTransformedSignal;
 
 	deviceUniquePtr<floatType> m_transformedSignal_dvc;
 	deviceUniquePtr<floatType> m_thresholdCutoffTransformedSignal_dvc;
 
 	// Output AMR arrays for indeces and assigned nodes. These are not externally-assigned, just here
-	std::unique_ptr<uint64_t> m_assignedNodeIndeces;
-	std::unique_ptr<uintType> m_assignedNodeMarkers;
+	std::unique_ptr<uint64_t[]> m_assignedNodeIndeces;
+	std::unique_ptr<uintType[]> m_assignedNodeMarkers;
 
 	deviceUniquePtr<uint64_t> m_assignedNodeIndeces_dvc;
 	deviceUniquePtr<uintType> m_assignedNodeMarkers_dvc;
 
 	// other signal definitions:
 	uint16_t __signal_dimension;
+	cartesianMesh m_signalDomain;
 
 public:
 	hostFunction
@@ -133,6 +138,9 @@ public:
 
 	hostFunction
 		uintType sorted_assigned_nodes();
+
+	hostFunction
+		void setSignalDomain(const cartesianMesh& signalDomain);
 };
 
 #endif
