@@ -114,14 +114,14 @@ floatType cartesianMesh::discr_length() const {
 /// @param globalIdx Global index in the current cartesianMesh
 /// @return point in space
 hostFunction deviceFunction	 
-Particle cartesianMesh::get_node(intType globalIdx) const {
+Particle cartesianMesh::get_node(uint64_t globalIdx) const {
 
 	Particle out(__boundary_inf);
 	intType temp = 1;
 	floatType discretizationLength = this->discr_length();
 
 	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-		intType j = floorf((floatType)positive_rem(globalIdx, temp * __nodes_per_dim) / temp);	// This line gives the index at each dimension
+		uint64_t j = floorf((floatType)positive_rem(globalIdx, temp * __nodes_per_dim) / temp);	// This line gives the index at each dimension
 
 		out.dim[d] += j * discretizationLength; temp *= __nodes_per_dim;			// This line gives the cartesianMesh node per se
 	}
@@ -142,11 +142,11 @@ bool cartesianMesh::containsParticle(const Particle& particle) const {
 // Returns the bin (or ID of the closest node) where Particle belongs to, adding bin_offset.
 hostFunction deviceFunction  
 uint64_t cartesianMesh::getBinIdx(const Particle& particle, intType bin_offset) const {
-	intType bin_idx = 0, accPower = 1;
+	int64_t bin_idx = 0, accPower = 1;
 	floatType discretizationLength = this->discr_length();
 
 	for (uint16_t d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-		intType temp_idx = roundf((floatType)(particle.dim[d] - __boundary_inf.dim[d]) / discretizationLength) + bin_offset;
+		int64_t temp_idx = roundf((floatType)(particle.dim[d] - __boundary_inf.dim[d]) / discretizationLength) + bin_offset;
 
 		bin_idx += temp_idx * accPower;
 		accPower *= __nodes_per_dim;
@@ -155,7 +155,7 @@ uint64_t cartesianMesh::getBinIdx(const Particle& particle, intType bin_offset) 
 };
 
 // Compute the global index at your mesh, given the global index in "other" mesh.
-hostFunction  
+hostFunction deviceFunction
 uint64_t cartesianMesh::idx_here_from_other_mesh(intType indx_at_other, const cartesianMesh& other) const {
 	return this->getBinIdx(other.get_node(indx_at_other));
 }

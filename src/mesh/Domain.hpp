@@ -85,7 +85,7 @@ public:
 	/// @param globalIdx Global index in the current cartesianMesh
 	/// @return point in space
 	hostFunction deviceFunction	
-		Particle get_node(intType mesh_idx) const;
+		Particle get_node(uint64_t mesh_idx) const;
 
 	/// @brief This method decides whether Particle is inside the cartesianMesh or not
 	/// @param Particle 
@@ -98,7 +98,7 @@ public:
 		uint64_t getBinIdx(const Particle& particle, intType bin_offset = 0) const;
 
 	// Compute the global index at your mesh, given the global index in "other" mesh.
-	hostFunction 
+	hostFunction deviceFunction
 		uint64_t idx_here_from_other_mesh(intType indx_at_other, const cartesianMesh& other) const;
 
 	/// @brief This function expands a fixed cartesianMesh "other" by a length of  "expansion_length" in each direction/dimension

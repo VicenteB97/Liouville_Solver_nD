@@ -42,7 +42,7 @@ public:
 	floatType* outputNodesValues;
 	const floatType* transformedSignalInBoundingBox;
 	const cartesianMesh inputNodes;
-	const uint64_t* nodeIdx;
+	const int64_t* nodeIdx;
 	const uintType elementNr;
 public:
 	deviceFunction void operator()(const uint64_t global_id) const {

@@ -83,6 +83,8 @@ void getDetailAboveThresholdNodes(
 	uintType nr_selected_nodes = amrEngine.sorted_assigned_nodes();
 	particleLocations_dvc.malloc(nr_selected_nodes, Particle());
 
+	mainTerminal.print_message("Arrived here. Number of selected nodes is: " + std::to_string(nr_selected_nodes));
+
 	try {
 		const uint16_t Threads = fmin(THREADS_P_BLK, nr_selected_nodes);
 		if (Threads == 0) { throw std::invalid_argument("0 threads assigned at getDetailAboveThresholdNodes.\n"); }
@@ -101,6 +103,6 @@ void getDetailAboveThresholdNodes(
 	}
 	catch (std::exception& e) {
 		std::cout << "Caught exception: " << e.what() << std::endl;
-		return;
+		throw;
 	}
 };
