@@ -42,21 +42,20 @@ public:
 	floatType* outputNodesValues;
 	const floatType* transformedSignalInBoundingBox;
 	const cartesianMesh inputNodes;
-	const int64_t* nodeIdx;
-	const uintType elementNr;
+	const uint64_t* nodeIdx;
+	const uintType nr_selected_nodes;
 public:
 	deviceFunction void operator()(const uint64_t global_id) const {
 		#pragma unroll
 		for (uint16_t k = 0; k < elementsProcessedPerThread; k++) {
 
-			const uintType myIdx = global_id * elementsProcessedPerThread + k;
+			const uint64_t myIdx = global_id * elementsProcessedPerThread + k;
+			if (myIdx >= nr_selected_nodes) { return; }
 
-			if (myIdx < elementNr) {
-				const uint64_t myNodeIdx = nodeIdx[myIdx];
+			const int64_t myNodeIdx(nodeIdx[myIdx]);
 
-				outputNodes[myIdx] = inputNodes.get_node(myNodeIdx);
-				outputNodesValues[myIdx] = transformedSignalInBoundingBox[myNodeIdx];
-			}
+			outputNodes[myIdx] = inputNodes.get_node(myNodeIdx);
+			outputNodesValues[myIdx] = transformedSignalInBoundingBox[myNodeIdx];
 		}
 	};
 };

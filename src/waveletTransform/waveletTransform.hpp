@@ -18,7 +18,7 @@ deviceFunction inline void haar_wavelet(floatType& s1, floatType& s2);
 class single_block_single_level_wavelet_transform {
 public:
 	floatType* signal;
-	int64_t* assigned_node_indeces;
+	uint64_t* assigned_node_indeces;
 	uintType* assigned_node_markers;
 	const uint64_t in_rescaling;
 	const uintType in_nodes_per_dim;
@@ -57,10 +57,10 @@ private:
 	deviceUniquePtr<floatType> m_thresholdCutoffTransformedSignal_dvc;
 
 	// Output AMR arrays for indeces and assigned nodes. These are not externally-assigned, just here
-	std::unique_ptr<int64_t[]> m_assignedNodeIndeces;
+	std::unique_ptr<uint64_t[]> m_assignedNodeIndeces;
 	std::unique_ptr<uintType[]> m_assignedNodeMarkers;
 
-	deviceUniquePtr<int64_t> m_assignedNodeIndeces_dvc;
+	deviceUniquePtr<uint64_t> m_assignedNodeIndeces_dvc;
 	deviceUniquePtr<uintType> m_assignedNodeMarkers_dvc;
 
 	// other signal definitions:
@@ -111,13 +111,13 @@ public:
 		floatType* transformed_signal_dvc() const;
 
 	hostFunction
-		int64_t* assigned_node_indeces() const;
+		uint64_t* assigned_node_indeces() const;
 
 	hostFunction
 		uintType* assigned_node_markers() const;
 
 	hostFunction
-		int64_t* assigned_node_indeces_dvc() const;
+		uint64_t* assigned_node_indeces_dvc() const;
 
 	hostFunction
 		uintType* assigned_node_markers_dvc() const;

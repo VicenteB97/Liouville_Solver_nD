@@ -260,10 +260,10 @@ int16_t ivpSolver::evolvePDF() {
 		// Maximum neighbors to search. Diameter number of points powered to the dimension
 		uintType MaxNeighborNum = round(fmin(pow(2 * round(DISC_RADIUS) + 1, PHASE_SPACE_DIMENSIONS), AMR_ActiveNodeCount));
 
-		// Compressed COO-style indexing of the sparse interpolation matrix
-		deviceUniquePtr<int64_t> matrixIndex_dvc(MaxNeighborNum * AMR_ActiveNodeCount, -1);
-		deviceUniquePtr<floatType> matrixValues_dvc(MaxNeighborNum * AMR_ActiveNodeCount, 0);
 
+		// Compressed COO-style indexing of the sparse interpolation matrix
+		deviceUniquePtr<int64_t> matrixIndex_dvc(MaxNeighborNum * AMR_ActiveNodeCount, (int64_t)-1);
+		deviceUniquePtr<floatType> matrixValues_dvc(MaxNeighborNum * AMR_ActiveNodeCount, (floatType)0.0);
 
 		startTimeSeconds = std::chrono::high_resolution_clock::now();
 		errorCheck(particleNeighborSearch(
@@ -384,12 +384,6 @@ int16_t ivpSolver::evolvePDF() {
 
 			// Number of blocks to simulate
 			uintType total_simulation_blocks = ceil((double)total_sample_count / Samples_PerBlk);
-
-			// For correct reinitialization
-			//deviceUniquePtr<Particle> fixed_fullParticleLocations_dvc(particleLocations_dvc.size_count(), Particle());
-			//gpu_device.memCpy_dvc2dvc(
-			//	fixed_fullParticleLocations_dvc.get(), particleLocations_dvc.get(), particleLocations_dvc.size_bytes()
-			//);
 
 			for (uintType b = 0; b < total_simulation_blocks; b++) {
 
@@ -581,102 +575,7 @@ int16_t ivpSolver::writeFramesToFile(const double& simulationDuration) {
 	}
 
 	while (saving_active) {
-		#if TERMINAL_INPUT_ALLOWED
-		char ans;
-		std::cout << "Total memory of simulation: " << (double) MEM_2_STORE / 1024 / 1024 << " MB. \n";
-		std::cout << number_of_files_needed << " files required for total storage. Total frames: " << number_of_frames_needed << ", with frames per file: " << max_frames_file << " \n";
-		std::cout << "Write? (Y = Yes(total), N = No, P = Partial): ";
-		std::cin >> ans;
-
-		while ((ans != 'N') && (ans != 'n') && (ans != 'Y') && (ans != 'y') && (ans != 'P') && (ans != 'p')) {
-			std::cout << "Incorrect option. Choose one of the following (NOT case sensitive: Y = Yes, N = No, P = Partial): ";
-			std::cin >> ans;
-		}
-
-
-		if ((ans != 'N') && (ans != 'n')) {
-
-			intType frames_init = 0, frames_end = number_of_files_needed - 1;
-			bool condition = false;
-
-			if ((ans == 'P') || (ans == 'p')) {
-				while (!condition) {
-					std::cout << "Initial frame (must be >= 0): ";
-					std::cin >> frames_init;
-					std::cout << "Final frame (must be < " << number_of_frames_needed << "): ";
-					std::cin >> frames_end;
-
-					if (frames_init < 0 || frames_end >= number_of_frames_needed || frames_init > frames_end) {
-
-						if (frames_init == -1 || frames_end == -1) {
-							std::cout << "Exiting simulation without saving simulation results...\n";
-							return -1;
-						}
-						std::cout << "Check numbers, something's not right...\n";
-					}
-					else {
-						condition = true;
-						number_of_frames_needed = frames_end - frames_init + 1;
-						number_of_files_needed = (uintType) floor((double)(number_of_frames_needed - 1) / max_frames_file) + 1;
-					}
-				}
-			}
-			else {
-				frames_init = 0, frames_end = number_of_files_needed - 1;
-			}
-
-			#pragma omp parallel for
-			for (int16_t k = 0; k < (int16_t)number_of_files_needed; k++) {
-
-				uintType frames_in_file = fmin(max_frames_file, number_of_frames_needed - k * max_frames_file);
-
-				std::string temp_str = std::to_string((uintType)k);
-
-				// SIMULATION INFORMATION FILE
-				std::string source_path{SRC_DIR};
-
-				std::string relative_pth = source_path + "/output/" + CASE;
-				relative_pth.append("_Simulation_info_");
-				relative_pth.append(temp_str);
-				relative_pth.append(".csv");
-
-				std::ofstream file1(relative_pth, std::ios::out);
-				assert(file1.is_open());
-
-				file1 << nrNodesPerFrame << "," << m_problemDomain.__nodes_per_dim << ",";
-
-				for (uintType d = 0; d < PHASE_SPACE_DIMENSIONS; d++) {
-					file1 << m_problemDomain.__boundary_inf.dim[d] << "," << m_problemDomain.__boundary_sup.dim[d] << ",";
-				}
-				for (uint16_t d = 0; d < PARAM_SPACE_DIMENSIONS; d++) {
-					file1 << m_parameterDistributions[d].num_Samples << ",";
-				}
-				file1 << simulationDuration << "\n";
-
-				for (uintType i = k * max_frames_file + frames_init; i < k * max_frames_file + frames_in_file + frames_init - 1; i++) {
-					file1 << m_reinitializationInfo[i * m_storageSteps].time << ",";
-				}
-				file1 << m_reinitializationInfo[(k * max_frames_file + frames_in_file + frames_init - 1) * m_storageSteps].time;
-
-				file1.close();
-
-				// SIMULATION OUTPUT
-				relative_pth = source_path + "/output/" + CASE;
-				relative_pth.append("_Mean_PDFs_");
-				relative_pth.append(temp_str);
-				relative_pth.append(".bin");
-
-				std::ofstream myfile(relative_pth, std::ios::out | std::ios::binary);
-				assert(myfile.is_open());
-
-				myfile.write((char*)&m_simulationStorage[(k * max_frames_file + frames_init) * nrNodesPerFrame], sizeof(floatType) * frames_in_file * nrNodesPerFrame);
-				myfile.close();
-				std::cout << "Simulation output file " << k << " completed!\n";
-
-			}
-		}
-		saving_active = false;
-		#else
+		
 		std::cout << "Total memory of simulation: " << (double) MEM_2_STORE / 1024 / 1024 << " MB. \n";
 		std::cout << number_of_files_needed << " files required for total storage. Total frames: ";
 		std::cout << number_of_frames_needed << ", with frames per file: " << max_frames_file << " \n";
@@ -763,7 +662,6 @@ int16_t ivpSolver::writeFramesToFile(const double& simulationDuration) {
 			m_terminal.print_message(temp_output_str);
 		}
 		saving_active = false;
-		#endif
 	}
 	return error_check;
 };

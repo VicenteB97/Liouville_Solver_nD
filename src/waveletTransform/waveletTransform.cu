@@ -52,8 +52,8 @@ void single_block_single_level_wavelet_transform::operator()(const uint64_t glob
 		uint64_t detailNodeIdx = boundingBox.idx_here_from_other_mesh(k, miniCubeWaveletTransform);
 
 		assigned_node_indeces[detailNodeIdx] = detailNodeIdx;
-		if (abs(signal[detailNodeIdx]) >= tolerance) {
-			assigned_node_markers[detailNodeIdx] = 1;
+		if (abs(signal[detailNodeIdx]) < tolerance) {
+			assigned_node_markers[detailNodeIdx] = 0;
 		}
 	}
 };
@@ -191,7 +191,7 @@ floatType* waveletTransform::transformed_signal() const {
 };
 
 hostFunction
-int64_t* waveletTransform::assigned_node_indeces() const {
+uint64_t* waveletTransform::assigned_node_indeces() const {
 	uint64_t copy_size_bytes = this->total_signal_nodes() * sizeof(uint64_t);
 	gpu_device.memCpy_dvc2hst(m_assignedNodeIndeces.get(), m_assignedNodeIndeces_dvc.get(), copy_size_bytes);
 	return m_assignedNodeIndeces.get();
@@ -205,7 +205,7 @@ uintType* waveletTransform::assigned_node_markers() const {
 };
 
 hostFunction
-int64_t* waveletTransform::assigned_node_indeces_dvc() const {
+uint64_t* waveletTransform::assigned_node_indeces_dvc() const {
 	return m_assignedNodeIndeces_dvc.get();
 };
 
@@ -223,8 +223,8 @@ void waveletTransform::computeWaveletTransform() {
 	const double tolerance{ TOLERANCE_AMR }; 
 
 	// Allocate memory 
-	m_assignedNodeIndeces_dvc.malloc(total_signal_nodes, -1);
-	m_assignedNodeMarkers_dvc.malloc(total_signal_nodes, 0);
+	m_assignedNodeIndeces_dvc.malloc(total_signal_nodes, 0);
+	m_assignedNodeMarkers_dvc.malloc(total_signal_nodes, 1);	// We choose all of them at the beginning
 	m_transformedSignal_dvc.malloc(total_signal_nodes, (floatType)0);
 	
 	try{
@@ -266,32 +266,8 @@ void waveletTransform::computeWaveletTransform() {
 			throw;
 		}
 
-		rescaling <<= 1;	//, or *=2; our cartesianMesh will now have half the number of points
+		rescaling <<= 1;	// or *=2; our cartesianMesh will now have half the number of points
 	}
-
-	// FOR DEBUGGING PURPOSES
-	//// Gather the pointers and write them into a csv file:
-	//float* transformedSingal_cpuPtr = new float[total_signal_nodes];
-
-	//gpu_device.memCpy_dvc2hst(transformedSingal_cpuPtr, m_transformedSignal_dvc.get(), m_transformedSignal_dvc.size_bytes());
-	//std::unique_ptr<float[]> transformedSingal_cpu(transformedSingal_cpuPtr);
-
-	//std::ofstream myfile_0;
-	//myfile_0.open("DEBUG.csv");
-	//if (myfile_0.is_open()) {
-	//	for (int d = 0; d < m_signalDomain.nodes_per_dim(); d++) {
-	//		for (int k = 0; k < m_signalDomain.nodes_per_dim(); k++) {
-	//			myfile_0 << transformedSingal_cpu[k + d * m_signalDomain.nodes_per_dim()] << ",";
-	//		}
-	//		myfile_0 << "\n";
-	//	}
-
-	//	myfile_0.close();
-	//	std::cout << "Completed!\n";
-	//}
-	//else {
-	//	std::cout << "Failed!!\n";
-	//}
 };
 
 
@@ -300,7 +276,7 @@ uintType waveletTransform::sorted_assigned_nodes() {
 	uint64_t total_nr_of_nodes(this->total_signal_nodes());
 
 	thrust::device_ptr<uintType> assignedNodeMarkers_auxPtr(m_assignedNodeMarkers_dvc.get());
-	thrust::device_ptr<int64_t> assignedNodeIndeces_auxPtr(m_assignedNodeIndeces_dvc.get());
+	thrust::device_ptr<uint64_t> assignedNodeIndeces_auxPtr(m_assignedNodeIndeces_dvc.get());
 
 	const uintType nr_selected_nodes(
 		thrust::reduce(

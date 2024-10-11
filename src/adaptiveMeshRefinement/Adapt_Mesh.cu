@@ -82,13 +82,12 @@ void getDetailAboveThresholdNodes(
 	// We get the number of selected nodes because we'll read the first nr_selected_nodes indeces in the bounding box mesh
 	uintType nr_selected_nodes = amrEngine.sorted_assigned_nodes();
 	particleLocations_dvc.malloc(nr_selected_nodes, Particle());
-
-	mainTerminal.print_message("Arrived here. Number of selected nodes is: " + std::to_string(nr_selected_nodes));
+	outputActiveNodesValues_dvc.malloc(nr_selected_nodes, (floatType)0.0);
 
 	try {
-		const uint16_t Threads = fmin(THREADS_P_BLK, nr_selected_nodes);
+		const uint16_t Threads = fmin(THREADS_P_BLK, nr_selected_nodes / ELEMENTS_AT_A_TIME);
 		if (Threads == 0) { throw std::invalid_argument("0 threads assigned at getDetailAboveThresholdNodes.\n"); }
-		const uint64_t Blocks = floor((nr_selected_nodes - 1) / Threads) + 1;
+		const uint64_t Blocks = floor((nr_selected_nodes / ELEMENTS_AT_A_TIME - 1) / Threads) + 1;
 
 		gpu_device.launchKernel(Blocks, Threads,
 			get_nodes_from_indeces<ELEMENTS_AT_A_TIME>{
