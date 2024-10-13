@@ -31,7 +31,7 @@ private:
 
 public:
 	// Constructor
-	ConjugateGradientEngine(uint32_t sizeCount = 0) :
+	ConjugateGradientEngine(uint32_t sizeCount = 1) :
 			m_R_dvc(deviceUniquePtr<floatType>(sizeCount)), 
 			m_temp_dvc(deviceUniquePtr<floatType>(sizeCount)),
 			m_AP_dvc(deviceUniquePtr<floatType>(sizeCount)),

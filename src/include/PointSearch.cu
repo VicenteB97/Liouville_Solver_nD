@@ -326,38 +326,6 @@ int16_t particleNeighborSearch(
 	const cartesianMesh& Bounding_Box,
 	const floatType search_radius) 
 {
-
-
-	try {
-		// FOR DEBUGGING PURPOSES
-		// Gather the pointers and write them into a csv file:
-		int64_t* transformedSingal_cpuPtr = new int64_t[Adapt_Points];
-
-		gpu_device.memCpy_dvc2hst(transformedSingal_cpuPtr, Index_Array.get(), Index_Array.size_bytes());
-		std::unique_ptr<int64_t[]> transformedSingal_cpu(transformedSingal_cpuPtr);
-
-		std::ofstream myfile_0;
-		myfile_0.open("DEBUG.csv");
-		if (myfile_0.is_open()) {
-			for (int d = 0; d < Adapt_Points; d++) {
-				for (int k = 0; k < MaxNeighborNum; k++) {
-					myfile_0 << transformedSingal_cpu[k + d * MaxNeighborNum] << ",";
-				}
-				myfile_0 << "\n";
-			}
-
-			myfile_0.close();
-			std::cout << "Completed!\n";
-		}
-		else {
-			std::cout << "Failed!!\n";
-		}
-	}
-	catch (const std::exception& except) {
-		mainTerminal.print_message("Error debugging. Error: " + std::string{ except.what() });
-	}
-
-
 	uint16_t	Threads = fmin(THREADS_P_BLK, Adapt_Points);
 	uintType	Blocks = floor((Adapt_Points - 1) / Threads) + 1;
 
@@ -378,7 +346,6 @@ int16_t particleNeighborSearch(
 		mainTerminal.print_message("Problem here!. Exception: " + std::string{ except.what() });
 		return EXIT_FAILURE;
 	}
-
 
 	//// Dynamical choice of either exhaustive or counting sort-based point search
 	//if (Adapt_Points < ptSEARCH_THRESHOLD) {

@@ -98,6 +98,49 @@ uint16_t ConjugateGradientEngine::execute(
 		return EXIT_FAILURE;
 	}
 
+
+
+
+
+
+
+
+	try {
+		// FOR DEBUGGING PURPOSES
+		// Gather the pointers and write them into a csv file:
+		floatType* transformedSingal_cpuPtr = new floatType[vectorLength];
+
+		gpu_device.memCpy_dvc2hst(transformedSingal_cpuPtr, m_temp_dvc.get(), vectorLength);
+		std::unique_ptr<floatType[]> transformedSingal_cpu(transformedSingal_cpuPtr);
+
+		std::ofstream myfile_0;
+		myfile_0.open("DEBUG.csv");
+		if (myfile_0.is_open()) {
+			for (uint64_t d = 0; d < vectorLength; d++) {
+				myfile_0 << transformedSingal_cpu[d] << ",";
+			}
+			/*for (int d = 0; d < Adapt_Points; d++) {
+				for (int k = 0; k < MaxNeighborNum; k++) {
+					myfile_0 << transformedSingal_cpu[k + d * MaxNeighborNum] << ",";
+				}
+				myfile_0 << "\n";
+			}*/
+
+			myfile_0.close();
+			std::cout << "Completed!\n";
+		}
+		else {
+			std::cout << "Failed!!\n";
+		}
+	}
+	catch (const std::exception& except) {
+		mainTerminal.print_message("Error debugging. Error: " + std::string{ except.what() });
+	}
+
+
+
+
+
 	// Compute R = B-A*X0
 	gpu_device.launchKernel(Blocks_2, Threads_2, vectorUpdate_dvc{
 		m_R_dvc.get(),
@@ -207,5 +250,7 @@ uint16_t ConjugateGradientEngine::execute(
 			k++;
 		}
 	}
+
+	mainTerminal.print_message("Convergence achieved: " + std::to_string(r_squaredNorm) + " with iterations: " + std::to_string(k));
 	return k;	// In this case, we return the iteration number, contrarily to returning the success/failure of the function
 }
