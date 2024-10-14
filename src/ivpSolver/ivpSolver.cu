@@ -285,7 +285,7 @@ int16_t ivpSolver::evolvePDF() {
 		/////////////////////////////////////////////////////////////////////////////////////////
 		/////////////////////////////////////////////////////////////////////////////////////////
 		// Declare the solution of the interpolation vector (weights of the RBF functions)
-		deviceUniquePtr<floatType> basisWeightsLambdas_dvc(AMR_ActiveNodeCount, (floatType)0.0);
+		deviceUniquePtr<floatType> basisWeightsLambdas_dvc(AMR_ActiveNodeCount, (floatType)0);
 		ConjugateGradientEngine interpolationEngine(AMR_ActiveNodeCount);
 
 		startTimeSeconds = std::chrono::high_resolution_clock::now();

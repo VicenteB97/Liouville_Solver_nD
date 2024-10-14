@@ -82,7 +82,7 @@ uint16_t ConjugateGradientEngine::execute(
 	const double squaredTolerance = interpolationTolerance * interpolationTolerance;
 
 	// Initialize Conjugate gradient method ----------------------------------------------------
-	// Compute A * X0
+	// Compute temp = A * X0
 	try{
 		gpu_device.launchKernel(Blocks, Threads, COOMatVecMultiplication_dvc{
 			m_temp_dvc.get(),
@@ -98,55 +98,13 @@ uint16_t ConjugateGradientEngine::execute(
 		return EXIT_FAILURE;
 	}
 
-
-
-
-
-
-
-
-	try {
-		// FOR DEBUGGING PURPOSES
-		// Gather the pointers and write them into a csv file:
-		floatType* transformedSingal_cpuPtr = new floatType[vectorLength];
-
-		gpu_device.memCpy_dvc2hst(transformedSingal_cpuPtr, m_temp_dvc.get(), vectorLength);
-		std::unique_ptr<floatType[]> transformedSingal_cpu(transformedSingal_cpuPtr);
-
-		std::ofstream myfile_0;
-		myfile_0.open("DEBUG.csv");
-		if (myfile_0.is_open()) {
-			for (uint64_t d = 0; d < vectorLength; d++) {
-				myfile_0 << transformedSingal_cpu[d] << ",";
-			}
-			/*for (int d = 0; d < Adapt_Points; d++) {
-				for (int k = 0; k < MaxNeighborNum; k++) {
-					myfile_0 << transformedSingal_cpu[k + d * MaxNeighborNum] << ",";
-				}
-				myfile_0 << "\n";
-			}*/
-
-			myfile_0.close();
-			std::cout << "Completed!\n";
-		}
-		else {
-			std::cout << "Failed!!\n";
-		}
-	}
-	catch (const std::exception& except) {
-		mainTerminal.print_message("Error debugging. Error: " + std::string{ except.what() });
-	}
-
-
-
-
-
-	// Compute R = B-A*X0
+	// Compute R = B-A*X0 = B - temp
 	gpu_device.launchKernel(Blocks_2, Threads_2, vectorUpdate_dvc{
 		m_R_dvc.get(),
 		targetVector.get(),
 		(floatType) -1,
-		m_temp_dvc.get()
+		m_temp_dvc.get(),
+		vectorLength
 	});
 
 	floatType Alpha, R0_norm, r_squaredNorm, aux, beta;
@@ -208,7 +166,7 @@ uint16_t ConjugateGradientEngine::execute(
 				-Alpha,
 				m_AP_dvc.get(),
 				vectorLength
-				});
+			});
 		}
 		catch (const std::exception& except) {
 			std::cerr << "Error updating vector at line " << __LINE__ << ". ";
@@ -217,14 +175,14 @@ uint16_t ConjugateGradientEngine::execute(
 		}
 
 		// Compute residual l_2 norm
-		r_squaredNorm = innerProduct_dvc<floatType>(m_R_dvc.get(), m_R_dvc.get(), (floatType)0);
+		r_squaredNorm = innerProduct_dvc<floatType>(m_R_dvc.get(), m_R_dvc.get(), vectorLength);
 
-		if ((double)r_squaredNorm / (vectorLength * vectorLength) < squaredTolerance) {
+		if ((double) r_squaredNorm / (vectorLength * vectorLength) < squaredTolerance) {
 			flag = false;
 			break;
 		}
 		else if (k > maxIterations) {
-			std::cout << "No convergence was obtained after reaching max. allowed iterations. Last residual norm was: " << sqrt(r_squaredNorm) << "\n";
+			mainTerminal.print_message("No convergence was obtained. Last residual norm: " + std::to_string(sqrt(r_squaredNorm)));
 
 			k = -1;
 			flag = false;
@@ -240,7 +198,7 @@ uint16_t ConjugateGradientEngine::execute(
 					beta,
 					m_P_dvc.get(),
 					vectorLength
-					});
+				});
 			}
 			catch (const std::exception& except) {
 				std::cerr << "Error updating vector at line " << __LINE__ << ". ";
@@ -248,9 +206,8 @@ uint16_t ConjugateGradientEngine::execute(
 				return EXIT_FAILURE;
 			}
 			k++;
+			mainTerminal.print_message("Current norm: " + std::to_string(r_squaredNorm));
 		}
 	}
-
-	mainTerminal.print_message("Convergence achieved: " + std::to_string(r_squaredNorm) + " with iterations: " + std::to_string(k));
 	return k;	// In this case, we return the iteration number, contrarily to returning the success/failure of the function
 }
