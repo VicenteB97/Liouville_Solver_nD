@@ -76,7 +76,7 @@ public:
 };
 
 template<typename _Ty>
-_Ty innerProduct_dvc(_Ty* vectorOne,_Ty* vectorTwo, const uint64_t vectorLength, const _Ty initialValue = (_Ty)0) {
+_Ty innerProduct_dvc(_Ty* vectorOne, _Ty* vectorTwo, const uint64_t vectorLength, const _Ty initialValue = (_Ty)0) {
 	#ifdef USECUDA
 	thrust::device_ptr<_Ty> vectorOne_thrustPtr(vectorOne);
 	thrust::device_ptr<_Ty> vectorTwo_thrustPtr(vectorTwo);

@@ -40,7 +40,7 @@ class get_nodes_from_indeces {
 public:
 	Particle* outputNodes;
 	floatType* outputNodesValues;
-	const floatType* transformedSignalInBoundingBox;
+	const floatType* originalSignalInBoundingBox;
 	const cartesianMesh inputNodes;
 	const uint64_t* nodeIdx;
 	const uintType nr_selected_nodes;
@@ -55,7 +55,7 @@ public:
 			const int64_t myNodeIdx(nodeIdx[myIdx]);
 
 			outputNodes[myIdx] = inputNodes.get_node(myNodeIdx);
-			outputNodesValues[myIdx] = transformedSignalInBoundingBox[myNodeIdx];
+			outputNodesValues[myIdx] = originalSignalInBoundingBox[myNodeIdx];
 		}
 	};
 };

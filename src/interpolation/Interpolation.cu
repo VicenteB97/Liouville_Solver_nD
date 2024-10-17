@@ -73,7 +73,7 @@ uint16_t ConjugateGradientEngine::execute(
 
 	// These are for the update_vec function
 	const uint16_t Threads_2 = fminf(THREADS_P_BLK, (float)vectorLength / ELEMENTS_AT_A_TIME);
-	const uint64_t Blocks_2 = floor((double)(vectorLength / ELEMENTS_AT_A_TIME - 1) / Threads) + 1;
+	const uint64_t Blocks_2 = floor((double)(vectorLength / ELEMENTS_AT_A_TIME - 1) / Threads_2) + 1;
 
 	// ------------------ AUXILIARIES FOR THE INTEPROLATION PROC. ------------------------------- //
 	// Auxiliary values
@@ -110,9 +110,7 @@ uint16_t ConjugateGradientEngine::execute(
 	floatType Alpha, R0_norm, r_squaredNorm, aux, beta;
 
 	// Assign P = R
-	gpu_device.memCpy_dvc2dvc(
-		m_P_dvc.get(), m_R_dvc.get(), m_R_dvc.size_bytes()
-	);
+	gpu_device.memCpy_dvc2dvc(m_P_dvc.get(), m_R_dvc.get(), vectorLength);
 
 	while (flag) { // this flag is useful to know when we have arrived to the desired tolerance
 		// Alpha computation (EVERYTHING IS CORRECT!)
@@ -206,7 +204,7 @@ uint16_t ConjugateGradientEngine::execute(
 				return EXIT_FAILURE;
 			}
 			k++;
-			mainTerminal.print_message("Current norm: " + std::to_string(r_squaredNorm));
+			//mainTerminal.print_message("Current norm: " + std::to_string(r_squaredNorm));
 		}
 	}
 	return k;	// In this case, we return the iteration number, contrarily to returning the success/failure of the function

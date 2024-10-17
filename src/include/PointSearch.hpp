@@ -135,8 +135,7 @@ public:
 
 
 int16_t particleNeighborSearch(
-	deviceUniquePtr<Particle>& Search_Particles,
-	deviceUniquePtr<floatType>& PDF_vals,
+	const deviceUniquePtr<Particle>& Search_Particles,
 	deviceUniquePtr<int64_t>& Index_Array,
 	deviceUniquePtr<floatType>& Matrix_Entries,
 	const uintType Adapt_Points,

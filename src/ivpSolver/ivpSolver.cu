@@ -260,7 +260,6 @@ int16_t ivpSolver::evolvePDF() {
 		// Maximum neighbors to search. Diameter number of points powered to the dimension
 		uintType MaxNeighborNum = round(fmin(pow(2 * round(DISC_RADIUS) + 1, PHASE_SPACE_DIMENSIONS), AMR_ActiveNodeCount));
 
-
 		// Compressed COO-style indexing of the sparse interpolation matrix
 		deviceUniquePtr<int64_t> matrixIndex_dvc(MaxNeighborNum * AMR_ActiveNodeCount, (int64_t)-1);
 		deviceUniquePtr<floatType> matrixValues_dvc(MaxNeighborNum * AMR_ActiveNodeCount, (floatType)0.0);
@@ -268,7 +267,6 @@ int16_t ivpSolver::evolvePDF() {
 		startTimeSeconds = std::chrono::high_resolution_clock::now();
 		errorCheck(particleNeighborSearch(
 			particleLocations_dvc,
-			particleValues_dvc,		// Not actually used for now
 			matrixIndex_dvc,
 			matrixValues_dvc,
 			AMR_ActiveNodeCount,
