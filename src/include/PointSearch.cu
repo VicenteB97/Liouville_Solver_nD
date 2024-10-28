@@ -299,7 +299,7 @@ void Exh_PP_Search::operator()(const uint64_t global_id) const {
 
 	uintType		aux = 1;
 	const intType	i_aux = (double)floor((double)global_id / Adapt_Points);	// this double is used so that the compiler knows that we are using the CUDA version
-	floatType			dist;
+	floatType		dist;
 
 	for (uintType j = i_aux * Adapt_Points; j < (i_aux + 1) * Adapt_Points; j++) {		// neighborhood where I'm searching
 

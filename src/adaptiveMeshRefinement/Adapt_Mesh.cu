@@ -104,34 +104,4 @@ void getDetailAboveThresholdNodes(
 		std::cout << "Caught exception: " << e.what() << std::endl;
 		throw;
 	}
-
-
-
-
-
-	// FOR DEBUGGING:
-	float* debugPtr = new float[nr_selected_nodes];
-
-	gpu_device.memCpy_dvc2hst(debugPtr, outputActiveNodesValues_dvc.get(), sizeof(float) * nr_selected_nodes);
-	std::unique_ptr<float[]> debugUPtr(debugPtr);
-
-	std::ofstream file_0;
-	file_0.open("Debug.csv");
-
-	if (file_0.is_open()) {
-		/*for (uint32_t k = 0; k < amrEngine.nodes_per_dim(); k++) {
-			for (uint32_t j = 0; j < amrEngine.nodes_per_dim(); j++) {
-				file_0 << debugPtr[j + amrEngine.nodes_per_dim() * k] << ",";
-			}
-			file_0 << "\n";
-		}*/
-		for (uint32_t k = 0; k < nr_selected_nodes; k++) {
-			file_0 << debugUPtr[k] << ",";
-		}
-		file_0.close();
-		mainTerminal.print_message("Completed");
-	}
-	else {
-		mainTerminal.print_message("Failed");
-	}
 };

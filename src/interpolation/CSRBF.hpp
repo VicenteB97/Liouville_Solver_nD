@@ -3,7 +3,8 @@
 
 #include "include/headers.hpp"
 
-deviceFunction inline floatType RBF(const floatType& SuppRBF, const floatType& inputNormalized) {
+deviceFunction inline floatType 
+RBF(const floatType& SuppRBF, const floatType& inputNormalized) {
 
 #if PHASE_SPACE_DIMENSIONS == 1
 	const double Mass_RBF = 0.333383333333333;
@@ -19,6 +20,5 @@ deviceFunction inline floatType RBF(const floatType& SuppRBF, const floatType& i
 #endif
 
 	return (floatType)powf(fmaxf(0, 1 - inputNormalized), 4) * (4 * inputNormalized + 1) / Mass_RBF / powf(SuppRBF, PHASE_SPACE_DIMENSIONS); // We multiply by this last factor to get the L1-normalized RBF
-
 }
 #endif
