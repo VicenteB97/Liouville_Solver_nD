@@ -66,7 +66,7 @@ void setInitialParticles(
 		outputActiveNodesValues_dvc, 
 		signalBoundingBox
 	);
-
+	
 	return /*EXIT_SUCCESS*/;
 };
 

@@ -298,7 +298,6 @@ int16_t ivpSolver::evolvePDF() {
 		endTimeSeconds = std::chrono::high_resolution_clock::now();
 		durationSeconds = endTimeSeconds - startTimeSeconds;
 
-
 		// To the Log file
 		m_simulationLog.LogFrames[iterationCount].log_Interpolation_Time = durationSeconds.count();
 		m_simulationLog.LogFrames[iterationCount].log_Interpolation_Iterations = iterations;
@@ -396,7 +395,7 @@ int16_t ivpSolver::evolvePDF() {
 				uintType ActiveNodes_PerBlk = Samples_PerBlk * AMR_ActiveNodeCount;
 
 				deviceUniquePtr<Particle> fullParticleLocations_dvc(ActiveNodes_PerBlk, Particle());
-				deviceUniquePtr<floatType> fullBasisWeightsLambdas_dvc(ActiveNodes_PerBlk, (floatType) 0);
+				deviceUniquePtr<floatType> fullParticleValues_ptr(ActiveNodes_PerBlk, (floatType) 0);
 
 				for (uintType k = 0; k < Samples_PerBlk; k++) {
 					gpu_device.memCpy_dvc2dvc(
@@ -404,7 +403,7 @@ int16_t ivpSolver::evolvePDF() {
 						particleLocations_dvc.size_bytes()
 					);
 					gpu_device.memCpy_dvc2dvc(
-						fullBasisWeightsLambdas_dvc.get(k * AMR_ActiveNodeCount), particleValues_dvc.get(),
+						fullParticleValues_ptr.get(k * AMR_ActiveNodeCount), particleValues_dvc.get(),
 						particleValues_dvc.size_bytes()
 					);
 				}
@@ -419,12 +418,14 @@ int16_t ivpSolver::evolvePDF() {
 				uint16_t Threads = fmin(THREADS_P_BLK, ActiveNodes_PerBlk);
 				uint64_t Blocks = floor((double)(ActiveNodes_PerBlk - 1) / Threads) + 1;
 
+				mainTerminal.print_message("Size of vectors: " + std::to_string(fullParticleLocations_dvc.size_count()));
+
 				startTimeSeconds = std::chrono::high_resolution_clock::now();
 				try{
 					gpu_device.launchKernel(Blocks, Threads, characteristicIntegrator{
 						fullParticleLocations_dvc.get(),
-						fullBasisWeightsLambdas_dvc.get(),
-						parameterMesh_dvc.get(Sample_idx_offset_init),
+						fullParticleValues_ptr.get(),
+						parameterMesh_dvc.get(),
 						samplesPerParameter_dvc.get(),
 						t0,
 						__delta_t,
@@ -434,7 +435,7 @@ int16_t ivpSolver::evolvePDF() {
 						mode,
 						extraParameters_dvc.get(),
 						m_problemDomain
-						});
+					});
 				}
 				catch (const std::exception& except) {
 					std::cerr << "Exception caught at characteristic integration. Code: " << except.what() << std::endl;
@@ -451,7 +452,7 @@ int16_t ivpSolver::evolvePDF() {
 
 				// COMPUTE THE SOLUTION "PROJECTION" INTO THE L1 SUBSPACE. THIS WAY, REINITIALIZATION CONSERVES VOLUME (=1)
 				if (PHASE_SPACE_DIMENSIONS < 5) {
-					L1normalizeLambdas(fullBasisWeightsLambdas_dvc.get(), Samples_PerBlk, ActiveNodes_PerBlk);
+					L1normalizeLambdas(fullParticleValues_ptr.get(), Samples_PerBlk, ActiveNodes_PerBlk);
 				}
 
 				/////////////////////////////////////////////////////////////////////////////////////////
@@ -470,7 +471,7 @@ int16_t ivpSolver::evolvePDF() {
 					gpu_device.launchKernel(Blocks, Threads, remeshParticles<parameterPair>{
 						fullParticleLocations_dvc.get(),
 							pdfValuesAtProblemDomain_dvc.get(),
-							fullBasisWeightsLambdas_dvc.get(),
+							fullParticleValues_ptr.get(),
 							parameterMesh_dvc.get(),
 							samplesPerParameter_dvc.get(),
 							RBF_SupportRadius,

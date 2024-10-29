@@ -27,8 +27,10 @@ void COOMatVecMultiplication_dvc::operator()(const uint64_t global_id) const {
 
 	floatType a = 0;	// auxiliary value for sum (the diagonal is always 1 in our case)
 	uintType j = i0;
-	while (matrixIdxs_dvc[j] != -1 && j < totalLength * maxNeighbors) {
+
+	while (j < (global_id + 1) * maxNeighbors) {
 		intType p = matrixIdxs_dvc[j];
+		if (p == -1) { break; }
 
 		a += matrixEntries_dvc[j] * x0_dvc[p]; 	// < n calls to global memory
 		j++;
@@ -42,8 +44,8 @@ void COOMatVecMultiplication_dvc::operator()(const uint64_t global_id) const {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-deviceFunction
-void vectorUpdate_dvc::operator()(const uint64_t global_id) const {
+deviceFunction void 
+vectorUpdate_dvc::operator()(const uint64_t global_id) const {
 	const uint64_t id = ELEMENTS_AT_A_TIME * global_id;
 
 	#pragma unroll
@@ -111,7 +113,7 @@ uint16_t ConjugateGradientEngine::execute(
 	floatType Alpha, R0_norm, r_squaredNorm, aux, beta;
 
 	// Assign P = R
-	gpu_device.memCpy_dvc2dvc(m_P_dvc.get(), m_R_dvc.get(), vectorLength);
+	gpu_device.memCpy_dvc2dvc(m_P_dvc.get(), m_R_dvc.get(), m_R_dvc.size_bytes());
 
 	while (flag) { // this flag is useful to know when we have arrived to the desired tolerance
 		// Alpha computation (EVERYTHING IS CORRECT!)
@@ -176,8 +178,6 @@ uint16_t ConjugateGradientEngine::execute(
 		// Compute residual l_2 norm
 		r_squaredNorm = innerProduct_dvc<floatType>(m_R_dvc.get(), m_R_dvc.get(), vectorLength);
 
-		mainTerminal.print_message("Residual norm is: " + std::to_string(r_squaredNorm / (vectorLength * vectorLength)));
-
 		if ((double) r_squaredNorm < squaredTolerance * vectorLength * vectorLength) {
 			flag = false;
 			break;
@@ -207,44 +207,7 @@ uint16_t ConjugateGradientEngine::execute(
 				return EXIT_FAILURE;
 			}
 			k++;
-			//mainTerminal.print_message("Current norm: " + std::to_string(r_squaredNorm));
 		}
 	}
 	return k;	// In this case, we return the iteration number, contrarily to returning the success/failure of the function
 }
-//
-//
-//
-//
-//
-//
-//
-//
-//// FOR DEBUGGING:
-//int64_t* debugPtr = new int64_t[vectorLength * maxNeighbors];
-//
-//gpu_device.memCpy_dvc2hst(debugPtr, matrixIndeces.get(), matrixIndeces.size_bytes());
-//std::unique_ptr<int64_t[]> debugUPtr(debugPtr);
-//
-//std::ofstream file_0;
-//file_0.open("Debug.csv");
-//
-//if (file_0.is_open()) {
-//	for (uint32_t k = 0; k < vectorLength; k++) {
-//		for (uint32_t j = 0; j < maxNeighbors; j++) {
-//			file_0 << debugPtr[j + maxNeighbors * k] << ",";
-//		}
-//		file_0 << "\n";
-//	}
-//	/*for (uint32_t k = 0; k < vectorLength; k++) {
-//		file_0 << debugUPtr[k] << ",";
-//	}*/
-//	file_0.close();
-//	mainTerminal.print_message("Completed");
-//}
-//else {
-//	mainTerminal.print_message("Failed");
-//}
-//
-//
-//

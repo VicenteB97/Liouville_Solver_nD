@@ -139,7 +139,6 @@ deviceFunction void lie_euler_mathieu(
 
 		val_aux *= expf((float)-time_step / 6 * (Int1 + 4 * Int2 + Int3)); // New particle value
 
-
 		// Reinit step
 		position = temp_position;
 		t0 += h;
@@ -150,7 +149,8 @@ deviceFunction void lie_euler_mathieu(
 	if (!domain_mesh.containsParticle(position)) { value = 0; }
 }
 
-deviceFunction void characteristicIntegrator::operator()(const uint64_t global_id) const {
+deviceFunction void 
+characteristicIntegrator::operator()(const uint64_t global_id) const {
 	if (global_id >= particleCountPerSample * sampleCountTotal) { return; }
 
 	// So, the total amount of advections are going to be: (no. particles x no. of samples)
