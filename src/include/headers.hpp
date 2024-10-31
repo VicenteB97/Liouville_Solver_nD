@@ -60,7 +60,9 @@ inline uint64_t positive_rem(const uint64_t a, const uint64_t b) {
 	return (a % b + b) % b;
 }
 
-inline void printEntryMessage(const std::string& str_projectVersion) {
+inline 
+void 
+printEntryMessage(const std::string& str_projectVersion) {
 
 	mainTerminal.print_full_sep_line();
 	mainTerminal.print_message("Welcome to the Liouville Eq. Simulator. You are using version " + str_projectVersion);

@@ -120,7 +120,8 @@ public:
 	/// @brief This function allocates size_count elements of memory type given by the template parameter T of the unique_poitner.
 	/// This function returns a runtime exception if allocation fails.
 	/// @param size_count - The number of elements that the poitner will point to.
-	void malloc(int64_t size_count, T value) {
+	void 
+	malloc(int64_t size_count, T value) {
 		if (size_count <= 0) { throw std::runtime_error("Cannot allocate 0 elements on array.\n"); }
 		
 		// Allocate memory assuming the desired size is at least 1
@@ -146,7 +147,8 @@ public:
 	/// @param value - Initial value set to the array
 	/// @param first_element - First array element pointed
 	/// @param last_element - Last array element poitned to
-	void set_init_values(T value, int64_t last_element = -1, uint64_t first_element = 0) {
+	void 
+	set_init_values(T value, int64_t last_element = -1, uint64_t first_element = 0) {
 		if (last_element == -1) {
 			last_element = __size_count;
 		}
@@ -197,36 +199,43 @@ public:
 	//};
 
 	/// @brief Returns the raw device pointer
-	hostFunction
-		T* get(uint64_t offset = 0) const {
+	hostFunction 
+	T* 
+	get(uint64_t offset = 0) const {
+		if (__size_count == 0 && offset == 0) {
+			return __raw_dvc_pointer;	// Note that we're returning a nullptr in this case
+		}
 		if (offset >= __size_count) {
-			throw std::runtime_error("Attempting to access out-of-bounds array element.");
+			throw std::runtime_error("Attempting to access out-of-bounds array element with .get() method.");
 		}
 		return __raw_dvc_pointer + offset;
 	};
 
 	/// @brief Get the size (number of elements) of the pointed array
 	hostFunction
-	uint64_t size_count() const {
+	uint64_t 
+	size_count() const {
 		return __size_count;
 	};
 
 	/// @brief Get the size (in bytes) of the pointed array
 	hostFunction
-	uint64_t size_bytes() const {
+	uint64_t 
+	size_bytes() const {
 		return __size_count * sizeof(T);
 	};
 
 private:
 	hostFunction
-	void free() {
+	void 
+	free() {
 		__size_count = 0;
 		if (!__valid_state) { return; }	// This line will make sure we don't call cudaFree if it has already been called
 		
 		cudaError_t err = cudaDeviceSynchronize();  // Pick up any possible errors that we were previously unaware of
 		cudaFree(__raw_dvc_pointer);
 		if (err != cudaSuccess){ // cudaFree automatically manages the case of the nullptr, so no need to check here
-			throw std::runtime_error("Error caught freeing device memory: " + std::string{ cudaGetErrorString(err) });
+			throw std::runtime_error("Error caught while freeing device memory. Code: " + std::string{ cudaGetErrorString(err) });
 		}
 		__valid_state = false;
 		__raw_dvc_pointer = nullptr;

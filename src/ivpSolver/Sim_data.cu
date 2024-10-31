@@ -32,7 +32,7 @@ void LogSimulation::resize(uintType size) {
 int16_t LogSimulation::writeSimulationLog_toFile(const std::string& fileName, const std::string fileExtension, const std::string_view fileRelativePath) {
 
     std::string fileCompleteInfo{fileRelativePath};
-    fileCompleteInfo += "/output/";
+    fileCompleteInfo += "/out/";
     fileCompleteInfo += fileName;
     fileCompleteInfo += fileExtension;
 

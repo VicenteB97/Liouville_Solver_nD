@@ -45,7 +45,8 @@ public:
 		if (global_id >= nrParticles * blockSamples) { return; }
 
 		uintType Current_sample = offset + floor((double)global_id / nrParticles);
-		Param_vec<PARAM_SPACE_DIMENSIONS>	aux = Gather_Param_Vec<PARAM_SPACE_DIMENSIONS>(Current_sample, parameterWeights, nrSamplesPerParameter);
+		Param_vec<PARAM_SPACE_DIMENSIONS>	aux = 
+			Gather_Param_Vec<PARAM_SPACE_DIMENSIONS>(Current_sample, parameterWeights, nrSamplesPerParameter);
 
 		floatType weighted_lambda = interpolationLambdas[global_id] * aux.Joint_PDF;
 
@@ -54,9 +55,9 @@ public:
 		// Find the point in the lowest corner of the search box!
 		Particle Lowest_node(expandedDomain.get_node(expandedDomain.getBinIdx(particle, -lround(DISC_RADIUS))));
 
-		const uintType Neighbors_per_dim = 2 * lround(DISC_RADIUS) + 1;
-		const uintType totalNeighborsToVisit = pow(Neighbors_per_dim, PHASE_SPACE_DIMENSIONS);
-		const floatType domainDiscretization = Domain.discr_length();
+		const uintType  Neighbors_per_dim	  = 2 * lround(DISC_RADIUS) + 1;
+		const uintType  totalNeighborsToVisit = pow(Neighbors_per_dim, PHASE_SPACE_DIMENSIONS);
+		const floatType domainDiscretization  = Domain.discr_length();
 
 		// Go through all the nodes where rewriting will be possible
 		for (uint16_t k = 0; k < totalNeighborsToVisit; k++) {
@@ -95,12 +96,12 @@ public:
 };
 
 template<typename _Ty>
-void L1normalizeLambdas(_Ty* lambdasFromInterpolation, const uint32_t normalizingValue, const uint64_t sizeArray){
+void L1normalizeLambdas(_Ty* lambdasFromInterpolation, const uint32_t normalizingValue, const uint64_t sizeCount){
 #ifdef USECUDA
 	thrust::device_ptr<_Ty> lambdasPointer(lambdasFromInterpolation);
 
-	floatType temp = thrust::reduce(thrust::device, lambdasPointer, lambdasPointer + sizeArray);
-	thrust::transform(lambdasPointer, lambdasPointer + sizeArray, lambdasPointer, normalizingValue / temp * thrust::placeholders::_1);
+	floatType temp = thrust::reduce(thrust::device, lambdasPointer, lambdasPointer + sizeCount);
+	thrust::transform(lambdasPointer, lambdasPointer + sizeCount, lambdasPointer, normalizingValue / temp * thrust::placeholders::_1);
 #endif
 };
 #endif

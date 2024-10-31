@@ -25,7 +25,7 @@
     
     // Timing definitions:
     #define INIT_TIME 0
-    #define FINAL_TIME 6
+    #define FINAL_TIME 0.05
     #define TIME_STEP 0.01
     #define REINIT_STEPS 1
     #define SAVING_STEPS 4
