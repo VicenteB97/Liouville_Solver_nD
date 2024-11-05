@@ -52,9 +52,15 @@ public:
     LogSimulation(uintType size = 1);
 
 public:
-    void resize(uintType size = 1);
+    void 
+    resize(uintType size = 1);
 
-    int16_t writeSimulationLog_toFile(const std::string& fileName = "Simulation Log File", const std::string fileExtension = ".csv", const std::string_view fileRelativePath = SRC_DIR);
+    int16_t 
+    writeSimulationLog_toFile(
+        const std::string& fileName = "Simulation Log File", 
+        const std::string fileExtension = ".csv", 
+        const std::string_view fileRelativePath = SRC_DIR
+    ) const;
 };
 
 #endif

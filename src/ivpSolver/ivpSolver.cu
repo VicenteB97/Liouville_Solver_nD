@@ -188,12 +188,18 @@ int16_t ivpSolver::evolvePDF() {
 	#endif
 
 	// Define concurrent saving lambda function
-	auto concurrentSaving = [&currentlySavedFrames](const floatType* vSrc, std::vector<floatType>& vDst, const uintType iterationCount, const uintType m_storageSteps, const uintType nrNodesPerFrame) {
-		if ((iterationCount == 0 || iterationCount % m_storageSteps == 0) && currentlySavedFrames < vDst.size() / nrNodesPerFrame - 1) {
-			// Store info in cumulative variable
-			std::copy(vSrc, vSrc + currentlySavedFrames * nrNodesPerFrame, vDst.begin());
-			currentlySavedFrames++;
-		}
+	auto concurrentSaving = [&currentlySavedFrames](
+		const floatType* vSrc, 
+		std::vector<floatType>& vDst, 
+		const uintType iterationCount, 
+		const uintType m_storageSteps, 
+		const uintType nrNodesPerFrame
+	) {
+			if ((iterationCount == 0 || iterationCount % m_storageSteps == 0) && currentlySavedFrames < vDst.size() / nrNodesPerFrame - 1) {
+				// Store info in cumulative variable
+				std::copy(vSrc, vSrc + nrNodesPerFrame, &vDst[currentlySavedFrames * nrNodesPerFrame]);
+				currentlySavedFrames++;
+			}
 	};
 
 	// IN THIS LINE WE START WITH THE ACTUAL ITERATIONS OF THE LIOUVILLE EQUATION
@@ -527,14 +533,13 @@ int16_t ivpSolver::evolvePDF() {
 		}
 
 		storeFrame_worker.join();
-
-		mainTerminal.update_simulation_status(++iterationCount, m_reinitializationInfo.size() - 1);
+		mainTerminal.update_simulation_status(iterationCount, m_reinitializationInfo.size() - 1);
+		++iterationCount;
 	}
 
-	/*thrust::copy(PDF_ProbDomain.begin(), PDF_ProbDomain.end(), &m_simulationStorage[currentlySavedFrames * nrNodesPerFrame]);*/
 	std::copy(pdfValuesAtProblemDomain.get(), pdfValuesAtProblemDomain.get() + nrNodesPerFrame, &m_simulationStorage[currentlySavedFrames * nrNodesPerFrame]);
 
-	mainTerminal.simulation_completed();
+	mainTerminal.simulation_completed(iterationCount);
 
 	std::string log_filename{CASE};
 	log_filename += "_log_file"; 
@@ -557,7 +562,7 @@ int16_t ivpSolver::writeFramesToFile(const double& simulationDuration) {
 	uint64_t max_frames_file = MAX_FILE_SIZE_B / nrNodesPerFrame / sizeof(float);
 	uintType number_of_files_needed = floor((double)(number_of_frames_needed - 1) / max_frames_file) + 1;
 
-	mainTerminal.print_message("Simulation time: " + std::to_string(simulationDuration) + " seconds.");
+	mainTerminal.print_message(" - Simulation time: " + std::to_string(simulationDuration) + " seconds.");
 
 	if (number_of_files_needed == 0) {
 		std::cout << "There has been a problem. No memory written. Exiting simulation.\n";
@@ -567,9 +572,9 @@ int16_t ivpSolver::writeFramesToFile(const double& simulationDuration) {
 
 	while (saving_active) {
 		
-		std::cout << "Total memory of simulation: " << (double) MEM_2_STORE / 1024 / 1024 << " MB. \n";
-		std::cout << number_of_files_needed << " files required for total storage. Total frames: ";
-		std::cout << number_of_frames_needed << ", with frames per file: " << max_frames_file << " \n";
+		mainTerminal.print_message(" - Total memory of simulation: " + std::to_string(MEM_2_STORE / 1024 / 1024) + " MB.");
+		mainTerminal.print_message(" - " + std::to_string(number_of_files_needed) + " files required for total storage.");
+		mainTerminal.print_message(" - Total frames: " + std::to_string(number_of_frames_needed) + " ( max. " + std::to_string(max_frames_file) + " frames per file)");
 
 		intType frames_init = 0, frames_end = number_of_files_needed - 1;
 		bool condition = false;

@@ -29,25 +29,25 @@ void LogSimulation::resize(uintType size) {
     LogFrames.resize(size);
 };
 
-int16_t LogSimulation::writeSimulationLog_toFile(const std::string& fileName, const std::string fileExtension, const std::string_view fileRelativePath) {
+int16_t LogSimulation::writeSimulationLog_toFile(const std::string& fileName, const std::string fileExtension, const std::string_view fileRelativePath) const {
 
     std::string fileCompleteInfo{fileRelativePath};
     fileCompleteInfo += "/out/";
     fileCompleteInfo += fileName;
     fileCompleteInfo += fileExtension;
 
-    std::cout << "[INFO] Saving log file into " + fileCompleteInfo << std::endl;
-
     std::ofstream logFile(fileCompleteInfo, std::ios::out);
     if (!logFile.is_open()) {
-        std::cout << termcolor::bold << termcolor::yellow << "[WARNING] Log file cannot be opened. Log information will not be written." << std::endl;
-        std::cout << termcolor::reset;
-        return -1;
+        mainTerminal.print_message("[WARNING] Log file cannot be opened. Log information will be lost.");
+        return EXIT_FAILURE;
     }
 
     // We follow the following order: Timings >> Iterations/Particles
 
-    logFile << "Time in Sim, Iteration index in Sim, Time [s]: AMR, Time [s]: Interpolation, Time[s]: Advection, Time[s]: Reinitialization, , Relevant Particles (AMR), Conj.Grad. Iterations, Total particles (Advection)\n";
+    logFile << "Time in Sim, Iteration index in Sim, Time [s]: AMR, \
+                Time [s]: Interpolation, Time[s]: Advection, \
+                Time[s]: Reinitialization, , Relevant Particles (AMR), \
+                Conj.Grad. Iterations, Total particles (Advection)\n";
 
     for (auto& LogFrame : LogFrames) {
 
@@ -63,5 +63,5 @@ int16_t LogSimulation::writeSimulationLog_toFile(const std::string& fileName, co
     }
 
     logFile.close();
-    return 0;
+    return EXIT_SUCCESS;
 };

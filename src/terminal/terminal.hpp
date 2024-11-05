@@ -124,13 +124,17 @@ public:
 	// Simulation status methods
 	void update_simulation_status(const uint32_t currentIteration, const uint32_t totalIterations) const {
 		std::string updateMessage = "[RUNNING] Current progress: (" + std::to_string(currentIteration + 1) + "/" + std::to_string(totalIterations) + ")";
+		if (currentIteration >= totalIterations) {
+			this->print_message(updateMessage);
+			return;
+		}
 		this->print_message(updateMessage, "\r");
 		// Update progress bar if applicable (commented section for progress bar usage)
 	};
 
-	void simulation_completed() const {
-		this->print_message("");
-		this->print_message("Simulation completed successfully.");
+	void simulation_completed(uint32_t nrIterations) const {
+		this->print_message("Simulation completed successfully. Simple statistics:");
+		this->print_message(" - Number of iterations: " + std::to_string(nrIterations));
 	};
 };
 
