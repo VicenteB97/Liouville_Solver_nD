@@ -158,6 +158,9 @@ int16_t ivpSolver::evolvePDF() {
 
 	// Resize the simulation logger
 	m_simulationLog.resize(m_reinitializationInfo.size() - 1);
+	std::string log_filename{ CASE };
+	log_filename += "_log_file";
+	// We will use this file name for writing the log arrays into a file
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -540,9 +543,6 @@ int16_t ivpSolver::evolvePDF() {
 	std::copy(pdfValuesAtProblemDomain.get(), pdfValuesAtProblemDomain.get() + nrNodesPerFrame, &m_simulationStorage[currentlySavedFrames * nrNodesPerFrame]);
 
 	mainTerminal.simulation_completed(iterationCount);
-
-	std::string log_filename{CASE};
-	log_filename += "_log_file"; 
 	m_simulationLog.writeSimulationLog_toFile(log_filename);
 	// Exit current function
 	return EXIT_SUCCESS;

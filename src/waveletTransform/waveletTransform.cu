@@ -52,8 +52,8 @@ void single_block_single_level_wavelet_transform::operator()(const uint64_t glob
 		uint64_t detailNodeIdx = boundingBox.idx_here_from_other_mesh(k, miniCubeWaveletTransform);
 
 		assigned_node_indeces[detailNodeIdx] = detailNodeIdx;
-		if (abs(signal[detailNodeIdx]) < tolerance) {
-			assigned_node_markers[detailNodeIdx] = 0;
+		if (abs(signal[detailNodeIdx]) >= tolerance) {
+			assigned_node_markers[detailNodeIdx] = 1;
 		}
 	}
 };
@@ -224,7 +224,7 @@ void waveletTransform::computeWaveletTransform() {
 
 	// Allocate memory 
 	m_assignedNodeIndeces_dvc.malloc(total_signal_nodes, 0);
-	m_assignedNodeMarkers_dvc.malloc(total_signal_nodes, 1);	// We choose all of them at the beginning
+	m_assignedNodeMarkers_dvc.malloc(total_signal_nodes, 0);	// We don't choose any of them at the beginning
 	m_transformedSignal_dvc.malloc(total_signal_nodes, (floatType)0);
 	
 	try{
@@ -268,6 +268,8 @@ void waveletTransform::computeWaveletTransform() {
 
 		rescaling <<= 1;	// or *=2; our cartesianMesh will now have half the number of points
 	}
+
+	// Add the approx nodes in case we don't want a full transform
 };
 
 
